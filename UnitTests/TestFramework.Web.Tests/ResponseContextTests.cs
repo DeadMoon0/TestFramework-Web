@@ -92,31 +92,39 @@ public class ResponseContextTests
         => Assert.Null(Response(body: null).BodyExcerpt());
 
     [Fact]
-    public void StatusAssertionFailure_CarriesEnoughContextToDiagnoseWithoutRerunning()
+    public void Summary_IdentifiesTheCallIncludingCorrelation()
     {
         HttpResponseContext response = Response(
             HttpStatusCode.InternalServerError,
-            """{"error":"boom"}""",
             headers: new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
             {
                 ["x-correlation-id"] = ["corr-42"],
             });
 
-        ApiStatusAssertionException exception = ApiStatusAssertionException.Mismatch(response, "200 OK");
+        string summary = response.Summary();
 
-        Assert.Contains("200 OK", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("500", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("GET http://localhost:5080/api/items", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("corr-42", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("boom", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("server-side fault", exception.Message, StringComparison.Ordinal);
+        // Assertion failures render values through their string form, so this is what makes an
+        // in-house assertion failure point at the exact call.
+        Assert.Contains("GET http://localhost:5080/api/items", summary, StringComparison.Ordinal);
+        Assert.Contains("500", summary, StringComparison.Ordinal);
+        Assert.Contains("x-correlation-id=corr-42", summary, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void StatusAssertionFailure_PointsAtAuthConfiguration_OnUnauthorized()
+    public void ToString_AddsABodyExcerpt_WhenTheStatusIsNotSuccessful()
     {
-        ApiStatusAssertionException exception = ApiStatusAssertionException.Mismatch(Response(HttpStatusCode.Unauthorized), "200 OK");
+        string rendered = Response(HttpStatusCode.InternalServerError, """{"error":"boom"}""").ToString();
 
-        Assert.Contains("Negotiate", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("500", rendered, StringComparison.Ordinal);
+        Assert.Contains("boom", rendered, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ToString_StaysCompact_WhenTheStatusIsSuccessful()
+    {
+        HttpResponseContext response = Response(HttpStatusCode.OK, """{"name":"widget"}""");
+
+        Assert.Equal(response.Summary(), response.ToString());
+        Assert.DoesNotContain("widget", response.ToString(), StringComparison.Ordinal);
     }
 }

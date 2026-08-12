@@ -1,9 +1,9 @@
 using System;
 using System.Net;
 using TestFramework.Core.Timelines;
+using TestFramework.Core.Timelines.Assertions;
 using TestFramework.Core.Timelines.Builder.TimelineBuilder;
 using TestFramework.Core.Variables;
-using TestFramework.Web.Exceptions;
 using TestFramework.Web.Http;
 using TestFramework.Web.Trigger.IsLive;
 
@@ -12,6 +12,11 @@ namespace TestFramework.Web;
 /// <summary>
 /// Typed result helpers for web timeline steps.
 /// </summary>
+/// <remarks>
+/// The assertion entry points return the framework's own <see cref="ValueHandle{T}"/>, so web
+/// assertions behave exactly like Core assertions: they are signalled to the debugging UI, they
+/// participate in <c>run.AssertionScope()</c>, and they fail with the framework exception types.
+/// </remarks>
 public static class WebTimelineResultExtensions
 {
     /// <summary>
@@ -31,43 +36,6 @@ public static class WebTimelineResultExtensions
     }
 
     /// <summary>
-    /// Asserts the response status code and returns the response for further assertions.
-    /// </summary>
-    /// <param name="handle">The executed step.</param>
-    /// <param name="expected">The expected status code.</param>
-    /// <returns>The captured response context.</returns>
-    /// <exception cref="ApiStatusAssertionException">The status code does not match.</exception>
-    public static HttpResponseContext ExpectStatus(this StepHandle handle, HttpStatusCode expected)
-    {
-        HttpResponseContext response = handle.Response();
-        return response.StatusCode == expected
-            ? response
-            : throw ApiStatusAssertionException.Mismatch(response, $"{(int)expected} {expected}");
-    }
-
-    /// <summary>
-    /// Asserts the response status code is in the 2xx range and returns the response.
-    /// </summary>
-    /// <param name="handle">The executed step.</param>
-    /// <returns>The captured response context.</returns>
-    /// <exception cref="ApiStatusAssertionException">The status code is not successful.</exception>
-    public static HttpResponseContext ExpectSuccess(this StepHandle handle)
-    {
-        HttpResponseContext response = handle.Response();
-        return response.IsSuccess
-            ? response
-            : throw ApiStatusAssertionException.Mismatch(response, "a 2xx status code");
-    }
-
-    /// <summary>
-    /// Asserts a successful response and deserializes its body as JSON.
-    /// </summary>
-    /// <typeparam name="T">The type to deserialize into.</typeparam>
-    /// <param name="handle">The executed step.</param>
-    /// <returns>The deserialized body.</returns>
-    public static T ExpectJson<T>(this StepHandle handle) => handle.ExpectSuccess().Json<T>();
-
-    /// <summary>
     /// Returns the liveness probe result captured by an is-live step.
     /// </summary>
     /// <param name="handle">The executed step.</param>
@@ -81,6 +49,81 @@ public static class WebTimelineResultExtensions
             ?? throw new InvalidOperationException(
                 $"Step '{handle.Label ?? handle.Step.Name}' did not produce an {nameof(ApiIsLiveResult)}. "
                 + $"Its last result was '{handle.LastResult.Result?.GetType().Name ?? "null"}'.");
+    }
+
+    /// <summary>
+    /// Starts an assertion chain for the whole response of an API step.
+    /// </summary>
+    /// <param name="run">The completed timeline run.</param>
+    /// <param name="label">The step label.</param>
+    public static ValueHandle<HttpResponseContext> ApiResponse(this TimelineRun run, string label)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        return run.Assert(run.Step(label).Response(), $"'{label}' response");
+    }
+
+    /// <summary>
+    /// Starts an assertion chain for the status code of an API step.
+    /// </summary>
+    /// <param name="run">The completed timeline run.</param>
+    /// <param name="label">The step label.</param>
+    public static ValueHandle<HttpStatusCode> ApiStatus(this TimelineRun run, string label)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        HttpResponseContext response = run.Step(label).Response();
+
+        // The expression carries the request and the timing, so an assertion failure identifies the
+        // call without the reader having to re-run anything.
+        return run.Assert(response.StatusCode, $"'{label}' status of {response.Summary()}");
+    }
+
+    /// <summary>
+    /// Starts an assertion chain for the response body of an API step.
+    /// </summary>
+    /// <param name="run">The completed timeline run.</param>
+    /// <param name="label">The step label.</param>
+    public static ValueHandle<string?> ApiBody(this TimelineRun run, string label)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        HttpResponseContext response = run.Step(label).Response();
+        return run.Assert(response.Body, $"'{label}' body of {response.Summary()}");
+    }
+
+    /// <summary>
+    /// Starts an assertion chain for a single response header of an API step.
+    /// </summary>
+    /// <param name="run">The completed timeline run.</param>
+    /// <param name="label">The step label.</param>
+    /// <param name="headerName">The header name, matched case-insensitively.</param>
+    public static ValueHandle<string?> ApiHeader(this TimelineRun run, string label, string headerName)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        HttpResponseContext response = run.Step(label).Response();
+        return run.Assert(response.Header(headerName), $"'{label}' header '{headerName}'");
+    }
+
+    /// <summary>
+    /// Deserializes the response body of an API step and starts an assertion chain for it.
+    /// </summary>
+    /// <typeparam name="T">The type to deserialize into.</typeparam>
+    /// <param name="run">The completed timeline run.</param>
+    /// <param name="label">The step label.</param>
+    public static ValueHandle<T> ApiJson<T>(this TimelineRun run, string label)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        HttpResponseContext response = run.Step(label).Response();
+        return run.Assert(response.Json<T>(), $"'{label}' body as {typeof(T).Name}");
+    }
+
+    /// <summary>
+    /// Starts an assertion chain for the probe result of a liveness step.
+    /// </summary>
+    /// <param name="run">The completed timeline run.</param>
+    /// <param name="label">The step label.</param>
+    public static ValueHandle<ApiIsLiveResult> ApiProbe(this TimelineRun run, string label)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        return run.Assert(run.Step(label).ProbeResult(), $"'{label}' probe");
     }
 
     /// <summary>

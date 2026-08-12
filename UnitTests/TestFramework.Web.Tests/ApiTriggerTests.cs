@@ -1,17 +1,17 @@
 using System.Net;
 using TestFramework.Config;
-using TestFramework.Core.Exceptions;
 using TestFramework.Core.Timelines;
+using TestFramework.Core.Timelines.Assertions;
 using TestFramework.Core.Variables;
 using TestFramework.Web.Exceptions;
-using TestFramework.Web.Http;
 using TestFramework.Web.SampleApi;
 using TestFramework.Web.Trigger.IsLive;
 
 namespace TestFramework.Web.Tests;
 
 /// <summary>
-/// Drives the real sender against the sample API over a real socket.
+/// Drives the real sender against the sample API over a real socket, asserting through the
+/// framework's own fluent assertions so every check is signalled to the debugging UI.
 /// </summary>
 [Collection(SampleApiCollection.CollectionName)]
 public class ApiTriggerTests(SampleApiFixture fixture)
@@ -26,12 +26,14 @@ public class ApiTriggerTests(SampleApiFixture fixture)
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
 
         run.EnsureRanToCompletion();
-        SampleItem[] items = run.Step("list").ExpectJson<SampleItem[]>();
+        run.Step("list").Should().HaveCompleted();
+        run.ApiStatus("list").Should().Be(HttpStatusCode.OK);
 
-        // The sample API is shared across this collection and other tests create items, so assert
-        // on the seeded data rather than on an exact count.
-        Assert.Contains(items, item => item.Name == "first");
-        Assert.True(items.Length >= 3);
+        // The sample API is shared across this collection and other tests create items, so assert on
+        // the seeded data rather than on an exact count.
+        run.ApiJson<SampleItem[]>("list").Should()
+            .Match(items => items.Any(item => item.Name == "first"), "contains the seeded item")
+            .And().Match(items => items.Length >= 3, "has at least the seeded items");
     }
 
     [Fact]
@@ -48,7 +50,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
 
         run.EnsureRanToCompletion();
-        Assert.Equal(2, run.Step("list").ExpectJson<SampleItem[]>().Length);
+        run.ApiJson<SampleItem[]>("list").Should().HaveCount(2);
     }
 
     [Fact]
@@ -65,7 +67,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
 
         run.EnsureRanToCompletion();
-        Assert.Equal("2", run.Step("get-item").ExpectJson<SampleItem>().Id);
+        run.ApiJson<SampleItem>("get-item").Select(item => item.Id).Should().Be("2");
     }
 
     [Fact]
@@ -80,7 +82,8 @@ public class ApiTriggerTests(SampleApiFixture fixture)
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
 
         run.EnsureRanToCompletion();
-        Assert.Equal(HttpStatusCode.NotFound, run.Step("missing").Response().StatusCode);
+        run.Step("missing").Should().HaveCompleted();
+        run.ApiStatus("missing").Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -97,9 +100,14 @@ public class ApiTriggerTests(SampleApiFixture fixture)
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
 
         run.EnsureRanToCompletion();
-        HttpResponseContext response = run.Step("create").ExpectStatus(HttpStatusCode.Created);
-        Assert.StartsWith("/api/items/", response.Header("Location")!, StringComparison.Ordinal);
-        Assert.Equal("created-by-test", response.Json<SampleItem>().Name);
+
+        // One scope, so a failing header check does not hide a failing body check.
+        using (run.AssertionScope())
+        {
+            run.ApiStatus("create").Should().Be(HttpStatusCode.Created);
+            run.ApiHeader("create", "Location").Should().StartWith("/api/items/");
+            run.ApiJson<SampleItem>("create").Select(item => item.Name).Should().Be("created-by-test");
+        }
     }
 
     [Fact]
@@ -116,9 +124,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
 
         run.EnsureRanToCompletion();
-        string body = run.Step("echo").ExpectSuccess().Body!;
-        Assert.Contains("application/json", body, StringComparison.Ordinal);
-        Assert.Contains("echo", body, StringComparison.Ordinal);
+        run.ApiBody("echo").Should().Contain("application/json").And().Contain("echo");
     }
 
     [Fact]
@@ -135,7 +141,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
 
         run.EnsureRanToCompletion();
-        Assert.Contains("corr-4711", run.Step("echo").ExpectSuccess().Body!, StringComparison.Ordinal);
+        run.ApiBody("echo").Should().Contain("corr-4711");
     }
 
     [Fact]
@@ -155,7 +161,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
         TimelineRun run = await timeline.SetupRun(config).RunAsync();
 
         run.EnsureRanToCompletion();
-        run.Step("secure").ExpectStatus(HttpStatusCode.OK);
+        run.ApiStatus("secure").Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
@@ -168,7 +174,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
 
         run.EnsureRanToCompletion();
-        Assert.Equal(HttpStatusCode.Unauthorized, run.Step("secure").Response().StatusCode);
+        run.ApiStatus("secure").Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
@@ -185,7 +191,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
 
         run.EnsureRanToCompletion();
-        run.Step("secure").ExpectStatus(HttpStatusCode.OK);
+        run.ApiStatus("secure").Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
@@ -198,10 +204,12 @@ public class ApiTriggerTests(SampleApiFixture fixture)
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
 
         run.EnsureRanToCompletion();
-        HttpResponseContext response = run.Step("problem").Response();
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains("problem+json", response.ContentType!, StringComparison.Ordinal);
-        Assert.Contains("Sample problem", response.Body!, StringComparison.Ordinal);
+        using (run.AssertionScope())
+        {
+            run.ApiStatus("problem").Should().Be(HttpStatusCode.BadRequest);
+            run.ApiResponse("problem").Select(response => response.ContentType).Should().Contain("problem+json");
+            run.ApiBody("problem").Should().Contain("Sample problem");
+        }
     }
 
     [Fact]
@@ -220,7 +228,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
 
         run.EnsureRanToCompletion();
-        run.Step("flaky").ExpectStatus(HttpStatusCode.OK);
+        run.ApiStatus("flaky").Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
@@ -237,9 +245,9 @@ public class ApiTriggerTests(SampleApiFixture fixture)
 
         TimelineRun run = await timeline.SetupRun(config).RunAsync();
 
-        Assert.Throws<TimelineRunFailedException>(run.EnsureRanToCompletion);
-        ApiRequestFailedException failure = FindApiRequestFailure(run.Step("slow").LastResult.Exception);
-        Assert.Contains("RequestTimeout", failure.Message, StringComparison.Ordinal);
+        run.Step("slow").Should().HaveErrored().And().HaveThrown<ApiRequestFailedException>();
+        run.Assert(run.Step("slow").LastResult.Exception!.Message, "transport failure message")
+            .Should().Contain("RequestTimeout");
     }
 
     [Fact]
@@ -253,10 +261,9 @@ public class ApiTriggerTests(SampleApiFixture fixture)
 
         TimelineRun run = await timeline.SetupRun(config).RunAsync();
 
-        Assert.Throws<TimelineRunFailedException>(run.EnsureRanToCompletion);
-        ApiRequestFailedException failure = FindApiRequestFailure(run.Step("dead").LastResult.Exception);
-        Assert.Contains("127.0.0.1:1", failure.Message, StringComparison.Ordinal);
-        Assert.Contains("BaseUrl", failure.Message, StringComparison.Ordinal);
+        run.Step("dead").Should().HaveThrown<ApiRequestFailedException>();
+        run.Assert(run.Step("dead").LastResult.Exception!.Message, "transport failure message")
+            .Should().Contain("127.0.0.1:1").And().Contain("BaseUrl");
     }
 
     [Fact]
@@ -268,11 +275,9 @@ public class ApiTriggerTests(SampleApiFixture fixture)
 
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
 
-        Assert.Throws<TimelineRunFailedException>(run.EnsureRanToCompletion);
-        Exception? exception = run.Step("unknown").LastResult.Exception;
-        ApiConfigurationValidationException failure = FindException<ApiConfigurationValidationException>(exception);
-        Assert.Contains("not-registered", failure.Message, StringComparison.Ordinal);
-        Assert.Contains("sample", failure.Message, StringComparison.Ordinal);
+        run.Step("unknown").Should().HaveThrown<ApiConfigurationValidationException>();
+        run.Assert(run.Step("unknown").LastResult.Exception!.Message, "configuration failure message")
+            .Should().Contain("not-registered").And().Contain("sample");
     }
 
     [Fact]
@@ -285,9 +290,11 @@ public class ApiTriggerTests(SampleApiFixture fixture)
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
 
         run.EnsureRanToCompletion();
-        ApiIsLiveResult result = run.Step("reachable").ProbeResult();
-        Assert.True(result.Success);
-        Assert.Equal(ApiAlivenessLevel.Reachable, result.AlivenessLevel);
+        using (run.AssertionScope())
+        {
+            run.ApiProbe("reachable").Select(probe => probe.Success).Should().Be(true);
+            run.ApiProbe("reachable").Select(probe => probe.AlivenessLevel).Should().Be(ApiAlivenessLevel.Reachable);
+        }
     }
 
     [Fact]
@@ -300,9 +307,11 @@ public class ApiTriggerTests(SampleApiFixture fixture)
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
 
         run.EnsureRanToCompletion();
-        ApiIsLiveResult result = run.Step("healthy").ProbeResult();
-        Assert.Equal(HttpStatusCode.OK, result.StatusCode);
-        Assert.EndsWith("health", result.ProbeUri.AbsolutePath, StringComparison.Ordinal);
+        using (run.AssertionScope())
+        {
+            run.ApiProbe("healthy").Select(probe => probe.StatusCode).Should().Be(HttpStatusCode.OK);
+            run.ApiProbe("healthy").Select(probe => probe.ProbeUri.AbsolutePath).Should().EndWith("health");
+        }
     }
 
     [Fact]
@@ -316,22 +325,8 @@ public class ApiTriggerTests(SampleApiFixture fixture)
 
         TimelineRun run = await timeline.SetupRun(config).RunAsync();
 
-        Assert.Throws<TimelineRunFailedException>(run.EnsureRanToCompletion);
-        ApiLivenessProbeException failure = FindException<ApiLivenessProbeException>(run.Step("healthy").LastResult.Exception);
-        Assert.Contains("HealthPath", failure.Message, StringComparison.Ordinal);
-    }
-
-    private static ApiRequestFailedException FindApiRequestFailure(Exception? exception)
-        => FindException<ApiRequestFailedException>(exception);
-
-    private static TException FindException<TException>(Exception? exception) where TException : Exception
-    {
-        for (Exception? current = exception; current is not null; current = current.InnerException)
-        {
-            if (current is TException match)
-                return match;
-        }
-
-        throw new InvalidOperationException($"No {typeof(TException).Name} was found in the exception chain: {exception?.ToString() ?? "(none)"}");
+        run.Step("healthy").Should().HaveThrown<ApiLivenessProbeException>();
+        run.Assert(run.Step("healthy").LastResult.Exception!.Message, "probe failure message")
+            .Should().Contain("HealthPath");
     }
 }

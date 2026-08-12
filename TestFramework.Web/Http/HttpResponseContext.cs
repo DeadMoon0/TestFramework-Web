@@ -44,6 +44,17 @@ public sealed record HttpResponseContext(
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>
+    /// Headers surfaced in call summaries because they usually identify the call in server logs.
+    /// </summary>
+    private static readonly string[] CorrelationHeaderNames =
+    [
+        "x-correlation-id",
+        "x-request-id",
+        "traceparent",
+        "request-id",
+    ];
+
+    /// <summary>
     /// Gets a value indicating whether the status code is in the 2xx range.
     /// </summary>
     public bool IsSuccess => (int)StatusCode is >= 200 and <= 299;
@@ -76,6 +87,30 @@ public sealed record HttpResponseContext(
     /// <param name="name">The header name, matched case-insensitively.</param>
     public string? Header(string name)
         => Headers.TryGetValue(name, out string[]? values) && values.Length > 0 ? values[0] : null;
+
+    /// <summary>
+    /// Returns a one-line description of the call: request, status, duration and correlation.
+    /// </summary>
+    /// <remarks>
+    /// Assertion failures render values through their string form, so this is what makes an
+    /// in-house assertion failure identify the exact call that produced it.
+    /// </remarks>
+    public string Summary()
+    {
+        string correlation = CorrelationHeaderNames
+            .Select(name => Header(name) is { } value ? $" {name}={value}" : null)
+            .FirstOrDefault(value => value is not null) ?? string.Empty;
+
+        return $"{RequestMethod} {RequestUri} -> {(int)StatusCode} {StatusCode} in {Elapsed:g}{correlation}";
+    }
+
+    /// <summary>
+    /// Returns the call summary, extended with a body excerpt when the status is not successful.
+    /// </summary>
+    public override string ToString()
+        => IsSuccess || BodyExcerpt() is not { } excerpt
+            ? Summary()
+            : $"{Summary()} body={excerpt}";
 
     /// <summary>
     /// Returns a bounded excerpt of the body suitable for log and error output.
