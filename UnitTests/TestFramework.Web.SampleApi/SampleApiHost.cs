@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 
 namespace TestFramework.Web.SampleApi;
 
@@ -83,8 +84,8 @@ public static class SampleApiHost
             request.Method,
             request.Path.Value ?? string.Empty,
             request.QueryString.Value ?? string.Empty,
-            request.Query.ToDictionary(pair => pair.Key, pair => pair.Value.ToArray()!, StringComparer.OrdinalIgnoreCase),
-            request.Headers.ToDictionary(pair => pair.Key, pair => pair.Value.ToArray()!, StringComparer.OrdinalIgnoreCase))));
+            ToStringArrays(request.Query),
+            ToStringArrays(request.Headers))));
 
         app.MapPost("/api/echo", async (HttpRequest request) =>
         {
@@ -143,6 +144,12 @@ public static class SampleApiHost
 
         return address.EndsWith('/') ? address : address + "/";
     }
+
+    private static Dictionary<string, string[]> ToStringArrays(IEnumerable<KeyValuePair<string, StringValues>> values)
+        => values.ToDictionary(
+            pair => pair.Key,
+            pair => pair.Value.Select(value => value ?? string.Empty).ToArray(),
+            StringComparer.OrdinalIgnoreCase);
 
     private sealed record EchoResponse(
         string Method,
