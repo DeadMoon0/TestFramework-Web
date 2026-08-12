@@ -23,4 +23,10 @@ public interface IApiConfigProvider
     /// <param name="configuration">The configuration source to read from.</param>
     /// <param name="identifier">The identifier to read.</param>
     ApiConfig LoadApiConfig(IConfiguration configuration, string identifier);
+
+    /// <summary>
+    /// Reads the header redaction policy from the configuration source.
+    /// </summary>
+    /// <param name="configuration">The configuration source to read from.</param>
+    WebRedactionOptions LoadRedactionOptions(IConfiguration configuration);
 }

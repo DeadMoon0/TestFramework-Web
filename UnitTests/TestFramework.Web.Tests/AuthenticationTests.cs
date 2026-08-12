@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using TestFramework.Web.Auth;
@@ -104,16 +105,40 @@ public class AuthenticationTests
     [InlineData("authorization")]
     [InlineData("x-api-key")]
     [InlineData("Cookie")]
-    public void SensitiveHeaders_AreRedacted(string headerName)
+    public void BuiltInSensitiveHeaders_AreAlwaysRedacted(string headerName)
     {
-        Assert.True(HttpHeaderRedaction.IsSensitive(headerName));
-        Assert.Equal("(redacted)", HttpHeaderRedaction.Redact(headerName, "secret"));
+        Assert.True(HttpHeaderRedactor.Default.IsSensitive(headerName));
+        Assert.Equal(HttpHeaderRedactor.RedactedMarker, HttpHeaderRedactor.Default.Redact(headerName, "secret"));
     }
 
     [Fact]
     public void OrdinaryHeaders_AreNotRedacted()
     {
-        Assert.False(HttpHeaderRedaction.IsSensitive("x-correlation-id"));
-        Assert.Equal("abc", HttpHeaderRedaction.Redact("x-correlation-id", "abc"));
+        Assert.False(HttpHeaderRedactor.Default.IsSensitive("x-correlation-id"));
+        Assert.Equal("abc", HttpHeaderRedactor.Default.Redact("x-correlation-id", "abc"));
+    }
+
+    [Fact]
+    public void ConfiguredSensitiveHeaders_AreRedactedOnTopOfTheBuiltInNames()
+    {
+        HttpHeaderRedactor redactor = new(WebRedactionOptions.Default.With("x-tenant-secret"));
+
+        Assert.True(redactor.IsSensitive("x-tenant-secret"));
+        Assert.True(redactor.IsSensitive("Authorization"));
+    }
+
+    [Fact]
+    public void Describe_RendersHeadersWithSensitiveValuesHidden()
+    {
+        HttpHeaderRedactor redactor = HttpHeaderRedactor.Default;
+
+        string described = redactor.Describe(
+        [
+            new KeyValuePair<string, string[]>("Authorization", ["Bearer super-secret"]),
+            new KeyValuePair<string, string[]>("x-correlation-id", ["corr-1"]),
+        ]);
+
+        Assert.DoesNotContain("super-secret", described, StringComparison.Ordinal);
+        Assert.Contains("corr-1", described, StringComparison.Ordinal);
     }
 }

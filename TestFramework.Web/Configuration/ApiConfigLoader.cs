@@ -14,5 +14,9 @@ internal sealed class ApiConfigLoader(IApiConfigProvider configProvider)
 
         foreach (string identifier in configProvider.LoadAllApiIdentifier(configuration))
             store.AddConfig(identifier, configProvider.LoadApiConfig(configuration, identifier));
+
+        WebRedactionOptions redactionOptions = configProvider.LoadRedactionOptions(configuration);
+        serviceCollection.AddSingleton(redactionOptions);
+        serviceCollection.AddSingleton(new Http.HttpHeaderRedactor(redactionOptions));
     }
 }

@@ -24,6 +24,36 @@ public class DefaultApiConfigProvider : IApiConfigProvider
         return [.. configuration.GetSection(ApiSelector).GetChildren().Select(x => x.Key)];
     }
 
+    /// <summary>
+    /// Configuration section name holding module-wide web settings.
+    /// </summary>
+    public const string WebSelector = "Web";
+
+    /// <summary>
+    /// Configuration key holding additional header names to redact.
+    /// </summary>
+    public const string SensitiveHeadersSelector = "SensitiveHeaders";
+
+    /// <inheritdoc />
+    public WebRedactionOptions LoadRedactionOptions(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        // Accepts either a JSON array or a single comma-separated value, because both shapes turn up
+        // in hand-written test settings.
+        string[] configured =
+        [
+            .. configuration.GetSection(WebSelector).GetSection(SensitiveHeadersSelector)
+                .GetChildren()
+                .Select(child => child.Value)
+                .Concat([configuration.GetSection(WebSelector).GetSection(SensitiveHeadersSelector).Value])
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .SelectMany(value => value!.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)),
+        ];
+
+        return configured.Length == 0 ? WebRedactionOptions.Default : WebRedactionOptions.Default.With(configured);
+    }
+
     /// <inheritdoc />
     public ApiConfig LoadApiConfig(IConfiguration configuration, string identifier)
     {
