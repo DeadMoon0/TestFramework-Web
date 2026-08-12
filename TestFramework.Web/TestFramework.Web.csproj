@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+		<ImplicitUsings>disable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<Title>TestFramework.Web</Title>
+		<Authors>DeadMoon0</Authors>
+		<Product>TestFramework</Product>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageTags>Test;UnitTest;IntegrationTest;Framework;Fluent;Timeline;Web;Rest;Api;Http</PackageTags>
+		<PackageIcon>Icon.png</PackageIcon>
+		<Description>Test REST APIs from inside a TestFramework timeline. Provides identifier-driven API configuration, HTTP triggers with variable-backed requests, liveness probes, and request authentication including Windows Negotiate.</Description>
+		<Version>0.1.0</Version>
+		<PackageProjectUrl>https://github.com/DeadMoon0/TestFramework-Web</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/DeadMoon0/TestFramework-Web.git</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<Copyright>Copyright (c) DeadMoon0 2026</Copyright>
+		<PackageReleaseNotes>Initial release: REST API triggers, liveness probes and request authentication</PackageReleaseNotes>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+		<TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+		<TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+			<_Parameter1>TestFramework.Web.Tests</_Parameter1>
+		</AssemblyAttribute>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+		<PackageReference Include="TestFramework.Config" Version="0.1.4" />
+		<PackageReference Include="TestFramework.Core" Version="0.1.8" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="..\Modules\TestFramework-Common\Assets\Icon.png">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+		<None Include="README.md">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+	</ItemGroup>
+
+</Project>

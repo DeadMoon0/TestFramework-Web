@@ -1,0 +1,22 @@
+{
+  "Api": {
+    "sample": {
+      "BaseUrl": "http://localhost:5080/",
+      "HealthPath": "/health",
+      "Auth": "None",
+      "RequestTimeout": "00:00:30"
+    },
+    "sample-keyed": {
+      "BaseUrl": "http://localhost:5080/",
+      "HealthPath": "/health",
+      "Auth": "ApiKey",
+      "ApiKeyHeaderName": "x-api-key",
+      "ApiKey": "replace-me"
+    },
+    "sample-windows": {
+      "BaseUrl": "http://localhost:5080/",
+      "HealthPath": "/health",
+      "Auth": "Negotiate"
+    }
+  }
+}

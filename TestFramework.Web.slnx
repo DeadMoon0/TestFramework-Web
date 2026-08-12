@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="TestFramework.Web/TestFramework.Web.csproj" />
+  <Project Path="UnitTests/TestFramework.Web.SampleApi/TestFramework.Web.SampleApi.csproj" />
+  <Project Path="UnitTests/TestFramework.Web.Tests/TestFramework.Web.Tests.csproj" />
+</Solution>

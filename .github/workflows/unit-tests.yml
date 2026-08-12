@@ -1,0 +1,37 @@
+name: Unit Tests
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: unit-tests-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: unit-tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore test project
+        run: dotnet restore UnitTests/TestFramework.Web.Tests/TestFramework.Web.Tests.csproj
+
+      - name: Run unit tests
+        run: dotnet test UnitTests/TestFramework.Web.Tests/TestFramework.Web.Tests.csproj --configuration Release --no-restore --filter "Category!=WindowsOnly" --logger "trx"
