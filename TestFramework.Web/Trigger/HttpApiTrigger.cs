@@ -77,6 +77,9 @@ internal sealed class HttpApiTrigger(ApiIdentifier identifier, ComposedRequestVa
         if (triggerConfig.LogRequests)
             logger.LogInformation("API '{0}' -> {1} {2}", identifier, spec.Method, requestUri);
 
+        if (triggerConfig.LogRequestHeaders && spec.Headers.Count > 0)
+            logger.LogInformation("API '{0}' request headers: {1}", identifier, HttpHeaderRedactor.Resolve(serviceProvider).Describe(spec.Headers));
+
         Stopwatch stopwatch = Stopwatch.StartNew();
         HttpResponseMessage? response = null;
 

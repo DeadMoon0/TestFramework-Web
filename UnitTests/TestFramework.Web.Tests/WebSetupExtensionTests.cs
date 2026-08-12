@@ -1,13 +1,16 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using TestFramework.Config;
 using TestFramework.Web.Configuration;
 using TestFramework.Web.Extensions;
 using TestFramework.Web.Http;
+using TestFramework.Web.Trigger;
 
 namespace TestFramework.Web.Tests;
 
 /// <summary>
-/// Covers the redaction policy: it comes from configuration rather than from code setup.
+/// Covers the setup surface: redaction is configuration, and trigger behaviour has its own
+/// extension method rather than a raw service registration.
 /// </summary>
 public class WebSetupExtensionTests
 {
@@ -67,5 +70,33 @@ public class WebSetupExtensionTests
         IServiceProvider provider = new ServiceCollection().BuildServiceProvider();
 
         Assert.Same(HttpHeaderRedactor.Default, HttpHeaderRedactor.Resolve(provider));
+    }
+
+    [Fact]
+    public void ConfigureApiTrigger_ProjectsOntoTheDefaults()
+    {
+        IServiceProvider provider = ConfigInstance.Create()
+            .ConfigureApiTrigger(config => config with { LogRequestHeaders = true, LogRequests = false })
+            .Build()
+            .BuildServiceProvider();
+
+        ApiTriggerConfig config = provider.GetRequiredService<ApiTriggerConfig>();
+
+        Assert.True(config.LogRequestHeaders);
+        Assert.False(config.LogRequests);
+
+        // Untouched values keep their defaults, so callers only state what they are changing.
+        Assert.Equal(TimeSpan.FromSeconds(10), config.LocalWarmupRetryDuration);
+    }
+
+    [Fact]
+    public void RedactHeaders_AddsNamesFromCode()
+    {
+        IServiceProvider provider = ConfigInstance.Create()
+            .RedactHeaders("x-runtime-secret")
+            .Build()
+            .BuildServiceProvider();
+
+        Assert.True(HttpHeaderRedactor.Resolve(provider).IsSensitive("x-runtime-secret"));
     }
 }

@@ -26,4 +26,13 @@ public sealed record ApiTriggerConfig
     /// Logs the resolved request URI and the response status for every call.
     /// </summary>
     public bool LogRequests { get; init; } = true;
+
+    /// <summary>
+    /// Logs the outgoing request headers, with sensitive values redacted.
+    /// </summary>
+    /// <remarks>
+    /// Off by default because it is noisy. Turn it on when diagnosing authentication or routing
+    /// problems; which header values stay hidden is controlled by <c>Web:SensitiveHeaders</c>.
+    /// </remarks>
+    public bool LogRequestHeaders { get; init; }
 }
