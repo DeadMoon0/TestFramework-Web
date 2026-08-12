@@ -1,7 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Net;
 using TestFramework.Web.Exceptions;
 using TestFramework.Web.Http;
+using Xunit;
 
 namespace TestFramework.Web.Tests;
 
