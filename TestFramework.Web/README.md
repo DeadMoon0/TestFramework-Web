@@ -52,7 +52,8 @@ Timeline timeline = Timeline.Create()
 TimelineRun run = await timeline.SetupRun(config).RunAsync();
 run.EnsureRanToCompletion();
 
-SampleItem item = run.Step("get-item").ExpectJson<SampleItem>();
+run.ApiStatus("get-item").Should().Be(HttpStatusCode.OK);
+run.ApiJson<SampleItem>("get-item").Select(item => item.Id).Should().Be("2");
 ```
 
 ## Conceptual Model
@@ -71,17 +72,48 @@ SampleItem item = run.Step("get-item").ExpectJson<SampleItem>();
 An unsuccessful status code is returned to the timeline so you can assert on it:
 
 ```csharp
-Assert.Equal(HttpStatusCode.NotFound, run.Step("missing").Response().StatusCode);
+run.ApiStatus("missing").Should().Be(HttpStatusCode.NotFound);
 ```
 
 Only transport problems — connection refused, DNS failure, timeout — raise
-`ApiRequestFailedException`. When you *do* want a status asserted, ask for it and get a diagnostic
-message instead of a bare comparison:
+`ApiRequestFailedException`.
+
+## Assertions
+
+Assertions go through the framework's own fluent assertions, so they are signalled to the debugging
+UI, they participate in `run.AssertionScope()`, and they fail with the framework exception types:
 
 ```csharp
-run.Step("create").ExpectStatus(HttpStatusCode.Created);
-run.Step("list").ExpectSuccess();
-SampleItem[] items = run.Step("list").ExpectJson<SampleItem[]>();
+run.ApiStatus("create").Should().Be(HttpStatusCode.Created);
+run.ApiHeader("create", "Location").Should().StartWith("/api/items/");
+run.ApiBody("list").Should().Contain("widget");
+run.ApiJson<SampleItem[]>("list").Should().HaveCount(3);
+run.ApiJson<SampleItem>("get-item").Select(item => item.Id).Should().Be("2");
+run.ApiProbe("live").Select(probe => probe.Success).Should().Be(true);
+```
+
+Collect several failures instead of stopping at the first:
+
+```csharp
+using (run.AssertionScope())
+{
+    run.ApiStatus("create").Should().Be(HttpStatusCode.Created);
+    run.ApiHeader("create", "Location").Should().StartWith("/api/items/");
+}
+```
+
+Step state uses the Core asserters unchanged:
+
+```csharp
+run.Step("create").Should().HaveCompleted();
+run.Step("dead").Should().HaveThrown<ApiRequestFailedException>();
+```
+
+A failing assertion names the call that produced it, because the response renders as a one-line
+summary:
+
+```
+'create' status of POST http://localhost:5080/api/items -> 500 InternalServerError in 0:00:01.2 x-correlation-id=corr-42: Be(Created) failed — expected Created, was InternalServerError
 ```
 
 ### The path is the contract
@@ -135,8 +167,18 @@ authenticates a later one:
 .WithAuth(new DelegateApiAuthenticationProvider(async (message, ct) => { /* custom flow */ }))
 ```
 
-Credential values are never written to logs or debug output. `Authorization`, `Cookie` and common key
-headers are redacted; add your own with `HttpHeaderRedaction.AddSensitiveHeader("x-my-secret")`.
+Credential values are never written to logs or debug output. `Authorization`,
+`Proxy-Authorization`, `Cookie`, `Set-Cookie` and common key headers are always redacted; extend the
+policy in configuration rather than in code:
+
+```jsonc
+{
+  "Web": { "SensitiveHeaders": [ "x-tenant-secret", "x-signature" ] }
+}
+```
+
+A comma-separated string works too. For names only known at run time there is
+`.RedactHeaders("x-runtime-secret")` on the config builder.
 
 ## Liveness
 
@@ -162,11 +204,27 @@ Combine it with the normal timeline modifiers:
 | `the path '...' still contains an unsubstituted route token` | A `{token}` in the path has no `WithRouteValue`. |
 | `API 'x' did not answer ...` | Transport failure. The message names the authority to check, and suggests the timeout or certificate setting when those are the likely cause. |
 | `401` or `403` against a Windows-authenticated API | Set `Auth` to `Negotiate` for that identifier. |
-| A local host answers `404` right after start | Already handled: warmup statuses from loopback hosts are retried for a bounded window. Tune with `ApiTriggerConfig`. |
+| A local host answers `404` right after start | Already handled: warmup statuses from loopback hosts are retried for a bounded window. Tune with `.ConfigureApiTrigger(...)`. |
+| Need to see what headers actually went out | `.ConfigureApiTrigger(c => c with { LogRequestHeaders = true })`, with sensitive values redacted. |
 | `The response body could not be read as 'T'` | Assert the status first; error responses rarely use the success schema. |
+
+## Tuning
+
+```csharp
+ConfigInstance config = ConfigInstance.FromJsonFile("local.testsettings.json")
+    .LoadWebConfig()
+    .ConfigureApiTrigger(c => c with
+    {
+        LocalWarmupRetryDuration = TimeSpan.FromSeconds(30),
+        LogRequestHeaders = true,
+    })
+    .Build();
+```
+
+Values you do not mention keep their defaults.
 
 ## Scope
 
-This package covers the REST lane. ASP.NET in-process hosting, SQL Server assertions, container
-hosting and UI tests are planned as separate additions; the request DSL and the `IHttpSender` seam
-are designed so timelines written today keep working when those land.
+This package covers calling REST APIs that are already reachable. It does not start or host the
+application under test, and it does not assert on databases. The `IHttpSender` seam exists so that
+adding a hosting mode later does not change the timelines written against it.

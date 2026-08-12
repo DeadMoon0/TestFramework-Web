@@ -15,8 +15,8 @@ timeouts and debugging UI are the same ones the rest of the framework uses.
   configure `Api:<identifier>:BaseUrl` and write steps. Nothing else needed.
 - **The API is behind Windows integrated authentication**: set `Auth` to `Negotiate`. No change on
   the API side.
-- **You need the API booted for you**: that is the in-process and container hosting work, planned
-  next. Timelines written now keep working — only the environment changes.
+- **You need the API booted for you**: not covered by this package. Timelines are written against
+  the `IHttpSender` seam, so a hosting mode can be added later without changing them.
 
 ## Install
 
@@ -46,7 +46,8 @@ Timeline timeline = Timeline.Create()
 TimelineRun run = await timeline.SetupRun(config).RunAsync();
 run.EnsureRanToCompletion();
 
-SampleItem[] items = run.Step("list").ExpectJson<SampleItem[]>();
+run.ApiStatus("list").Should().Be(HttpStatusCode.OK);
+run.ApiJson<SampleItem[]>("list").Should().HaveItems();
 ```
 
 Two rules shape everything else:
@@ -56,15 +57,13 @@ Two rules shape everything else:
 2. **The path is the contract.** Endpoints are never derived from the application's types, so the
    test project does not reference the application and a server-side route change fails the test.
 
+Assertions use the framework's own fluent assertions, so they reach the debugging UI and honour
+`run.AssertionScope()` exactly like Core assertions do.
+
 ## Current Scope
 
-| Area | State |
-|---|---|
-| REST requests, liveness probes, authentication | shipped |
-| ASP.NET in-process hosting | planned |
-| SQL Server assertions and row artifacts | planned |
-| Container hosting | planned |
-| UI tests | later, deliberately unscheduled |
+REST requests against a reachable API, liveness probes, request authentication including Windows
+Negotiate, and assertions through the framework's own fluent assertions.
 
 ## Repository Layout
 

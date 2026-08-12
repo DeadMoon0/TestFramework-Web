@@ -9,13 +9,13 @@
 
 <package_scope>
     Covers WebExt.Api.Http(...) request building, WebExt.Api.IsLive(...) liveness probes, ApiConfig and the Api configuration section, authentication modes including Windows Negotiate, HttpResponseContext and its assertion helpers, the IHttpSender seam, and the web.restapi environment requirement kind.
-    Does not cover ASP.NET in-process hosting, SQL Server assertions, container hosting or UI tests. Those are planned additions to the same package.
+    Does not cover starting or hosting the application under test, and does not cover database assertions.
 </package_scope>
 
 <key_concepts>
     TestFramework.Web does not replace the Core timeline model. A request is an ordinary step and the response is an ordinary step result.
     APIs are addressed by logical identifier, never by a literal URL in the timeline. The identifier resolves through WebConfigStore&lt;ApiConfig&gt;, populated from the Api:&lt;identifier&gt; configuration section by LoadWebConfig().
-    A non-2xx status code is returned as data. Only transport failures - connection refused, DNS failure, timeout - raise ApiRequestFailedException. Use ExpectStatus/ExpectSuccess/ExpectJson when a status should be asserted.
+    A non-2xx status code is returned as data. Only transport failures - connection refused, DNS failure, timeout - raise ApiRequestFailedException. Assert the status with the in-house fluent assertions instead.
     Endpoints are addressed by explicit path and method. The framework deliberately does not derive routes from controller types, so the test never references the application project and a server-side route change fails the test.
     Every request part is variable-backed: path, route values, query, headers and body. The trigger declares identifier-backed inputs through DeclareIO.
     IHttpSender is the seam that decides how a request travels. The same timeline therefore works against a deployed API today and against an in-process or containerized host later.
@@ -25,15 +25,16 @@
 
 <best_practices>
     Configure one identifier per API and keep base URLs out of timelines entirely.
-    Assert the status code before reading the body. ExpectJson does this for you; a raw Json&lt;T&gt;() call on an error payload produces a confusing format error instead of a clear status failure.
+    Assert with the in-house fluent assertions: run.ApiStatus(label).Should().Be(...), run.ApiBody(label).Should().Contain(...), run.ApiJson&lt;T&gt;(label).Should().HaveCount(...). They are signalled to the debugging UI and participate in run.AssertionScope(). Do not hand-roll comparisons with a third-party assertion library.
+    Assert the status code before reading the body; an error payload rarely uses the success schema.
     Use variables for anything that changes between runs, including paths built from earlier step results. A hardcoded string in a step breaks build-once-run-many.
     Prefer WithRouteValue over string concatenation. It escapes the value and fails loudly when a token is left unsubstituted.
     For APIs behind Windows integrated authentication, set Auth to Negotiate rather than changing the application.
     Use per-request WithBearerToken or WithAuth when a token comes from an earlier step; configuration is for static credentials.
     Wait for a slow host with IsLive at Reachable level plus .WithTimeOut(...) and .WithRetry(...), not with sleeps.
     Let the step timeout be the only timeout unless a per-request transport limit is genuinely needed.
-    Register additional secret-bearing header names with HttpHeaderRedaction.AddSensitiveHeader so they never reach logs.
-    Prefer run assertions such as run.Step("x").ExpectStatus(...) over manual comparisons: they produce diagnosable failure messages.
+    Put additional secret-bearing header names in the Web:SensitiveHeaders configuration section rather than registering them in code.
+    Turn on LogRequestHeaders through .ConfigureApiTrigger(...) when diagnosing authentication or routing; header values stay redacted.
 </best_practices>
 
 <api_hints>
@@ -41,12 +42,15 @@
     - WebExt.Api.Http(identifier).Get|Post|Put|Patch|Delete(path).Call()
     - WithRouteValue(name, variable), WithQuery(name, variable), WithHeader(key, value), WithJsonBody(variable), WithBody(text|bytes, contentType), WithAuth(provider), WithBearerToken(variable)
     - WebExt.Api.IsLive(identifier, ApiAlivenessLevel.Reachable|Healthy|Authenticated)
-    - run.Step("label").Response() | ExpectStatus(code) | ExpectSuccess() | ExpectJson&lt;T&gt;() | ProbeResult()
+    - run.ApiStatus(label) | ApiBody(label) | ApiHeader(label, name) | ApiJson&lt;T&gt;(label) | ApiResponse(label) | ApiProbe(label) -> ValueHandle&lt;T&gt;, then .Should()...
+    - run.Step(label).Should().HaveCompleted() | HaveThrown&lt;T&gt;(), run.AssertionScope()
+    - run.Step("label").Response() | ProbeResult() for the raw typed result
     - HttpResponseContext: StatusCode, Body, Headers, ContentType, Elapsed, IsSuccess, Json&lt;T&gt;(), Header(name), BodyExcerpt()
     - ConfigInstance.FromJsonFile(path).LoadWebConfig().Build(), then timeline.SetupRun(config)
     - ApiConfig: BaseUrl, HealthPath, Auth, ApiKeyHeaderName, ApiKey, BearerToken, UserName, Password, RequestTimeout, AllowInvalidCertificates
     - ApiAuthMode: None, ApiKey, Bearer, Basic, Negotiate
-    - Exceptions: ApiConfigurationValidationException, ApiRequestFailedException, ApiStatusAssertionException, ApiResponseFormatException, ApiLivenessProbeException
+    - Exceptions: ApiConfigurationValidationException, ApiRequestFailedException, ApiResponseFormatException, ApiLivenessProbeException
+    - Setup: .LoadWebConfig(), .ConfigureApiTrigger(c =&gt; c with { ... }), .RedactHeaders(...)
     - Extension points: IWebComponentFactory, IHttpSender, IApiConfigProvider, IApiAuthenticationProvider
 </api_hints>
 
@@ -59,6 +63,9 @@
           "Auth": "None",
           "RequestTimeout": "00:00:30"
         }
+      },
+      "Web": {
+        "SensitiveHeaders": [ "x-tenant-secret" ]
       }
     }
 </configuration_shape>
@@ -70,4 +77,5 @@
     Do not read the body before asserting the status.
     Do not add sleeps to wait for a host; use IsLive with a timeout and retry.
     Do not log credential headers or put secrets in variables that are bound into results.
+    Do not assert with a third-party fluent-assertion package; the framework has its own.
 </anti_patterns>

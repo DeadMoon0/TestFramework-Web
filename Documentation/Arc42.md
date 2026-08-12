@@ -52,7 +52,7 @@ section exists, so a future environment can hydrate identifiers at run time.
 
 **`Http/`** — `HttpRequestSpec` (resolved request, URI composition, message creation),
 `ApiRequestBuilderState` and `ComposedRequestVariable` (variable accumulation and resolution),
-`HttpResponseContext` (the step result), `IHttpSender`, `HttpHeaderRedaction`.
+`HttpResponseContext` (the step result), `IHttpSender`, `HttpHeaderRedactor`.
 
 **`Builder/`** — two staged interfaces, one action interface per capability, implemented by
 `RemoteApiBuilder`. `Call()` materializes the step.
@@ -92,7 +92,13 @@ The trigger declares identifier-backed inputs through `DeclareIO`, which is what
 reason about data flow between steps.
 
 **Redaction.** Credential-bearing headers are redacted before any value reaches a log or debug
-envelope.
+envelope. The policy is a configured `WebRedactionOptions` resolved from the run services rather than
+global mutable state, so one test project cannot change what another one hides.
+
+**Assertions are the framework's own.** The module exposes `ValueHandle<T>` entry points obtained
+through `TimelineRun.Assert(...)` instead of its own comparison helpers, so web assertions are
+signalled to the debugging UI, honour `run.AssertionScope()` and throw the Core exception types.
+`HttpResponseContext.ToString()` supplies the diagnostic context those messages render.
 
 **Serializable results.** `HttpResponseContext` is a record of primitives and dictionaries. Bounded
 body excerpts (2 KB) keep failure messages and the debug transport from being flooded.
@@ -108,6 +114,7 @@ disagree is a defect, not a feature.
 | Non-2xx is not an exception | Tests routinely assert error behaviour. Throwing would make the common case awkward and the rare case no clearer. |
 | Own HTTP primitives rather than reusing `TestFramework.Azure` | The Azure package carries Cosmos, Service Bus and EF Core. Consolidating the duplicated primitives into a shared package is planned once the shape settles. |
 | Own `WebConfigStore<T>` | `ConfigStore<T>` lives in `TestFramework.Azure`. A distinct name lets both be imported in one test file. |
+| Assertions reuse Core asserters rather than adding module-specific ones | The assertion infrastructure - debug signalling and scope collection - is internal to Core. Wrapping values into `ValueHandle<T>` keeps web assertions first-class instead of a parallel mechanism that bypasses the debugging UI. |
 | Warmup retry limited to local hosts | A transient `404` while a local route table warms up is infrastructure noise. On a remote host the same status is a real answer and must not be hidden. |
 | Pooled clients keyed by connection-relevant settings | Connection reuse across steps, while a run that rewrites the endpoint still gets a fresh client. |
 

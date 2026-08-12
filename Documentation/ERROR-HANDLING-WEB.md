@@ -14,7 +14,7 @@ The design rule: a failure message must be enough to fix the problem without re-
 | Missing or unparsable configuration | `ApiConfigurationValidationException` |
 | Unsubstituted `{token}` in the path | `ApiConfigurationValidationException` |
 | Authentication mode configured without its values | `ApiConfigurationValidationException` |
-| Asserted status did not match | `ApiStatusAssertionException` |
+| Asserted status did not match | `ValueAssertionException` from the framework's own assertions |
 | Body cannot be read as the requested type | `ApiResponseFormatException` |
 | Liveness probe answered, but not acceptably | `ApiLivenessProbeException` |
 
@@ -51,26 +51,20 @@ Names the method, the absolute URI, the elapsed time and the underlying transpor
 adapts its recovery hints to the cause: timeouts point at `RequestTimeout` and `.WithTimeOut(...)`,
 HTTPS failures point at `AllowInvalidCertificates`.
 
-## ApiStatusAssertionException
+## Assertion Failures
 
-Raised by `ExpectStatus`, `ExpectSuccess` and `ExpectJson`. The message carries the request, the
-actual status, the elapsed time, any correlation headers (`x-correlation-id`, `x-request-id`,
-`traceparent`, `request-id`) and a body excerpt bounded to 2 KB:
+Assertions run through the framework's own fluent assertions, so a failure is signalled to the
+debugging UI, honours `run.AssertionScope()` and throws the Core assertion exception types. The
+diagnostic context comes from how a response renders itself: a one-line summary naming the request,
+the status, the duration and the first correlation header present, plus a bounded body excerpt when
+the status was not successful.
 
 ```
-Expected 200 OK but the API answered 500 InternalServerError.
-Request: POST http://localhost:5080/api/items
-Elapsed: 0:00:01.24
-x-correlation-id: corr-42
-Body: {"error":"boom"}
-
-Recovery:
-  - Look the request up in the API log using the correlation header above.
-  - A 5xx is a server-side fault: the API log, not the test, holds the cause.
+'create' status of POST http://localhost:5080/api/items -> 500 InternalServerError in 0:00:01.2 x-correlation-id=corr-42: Be(Created) failed - expected Created, was InternalServerError
 ```
 
-Recovery adapts to the status: `401`/`403` point at the `Auth` mode and name `Negotiate`, `404`
-points at path composition, `5xx` says plainly that the cause is server-side.
+Correlation headers recognised for the summary: `x-correlation-id`, `x-request-id`, `traceparent`,
+`request-id`.
 
 ## ApiResponseFormatException
 
@@ -88,7 +82,14 @@ anonymous health endpoint.
 
 `ApiKey`, `BearerToken` and `Password` never appear in messages, logs or debug values. The
 `Authorization`, `Proxy-Authorization`, `Cookie`, `Set-Cookie` and common key headers are redacted.
-Register additional names with `HttpHeaderRedaction.AddSensitiveHeader(...)`.
+Extend the policy in configuration, not in code:
+
+```jsonc
+{ "Web": { "SensitiveHeaders": [ "x-tenant-secret", "x-signature" ] } }
+```
+
+`.RedactHeaders(...)` on the config builder exists for names that are only known at run time. There
+is no global mutable list, so one test project cannot change what another one redacts.
 
 ## What Callers Should Not Have To Handle
 
@@ -96,7 +97,7 @@ Some conditions are absorbed on purpose, because making them the caller's proble
 infrastructure quirks into test code:
 
 - **Warmup statuses from local hosts.** A `404` or `503` from a loopback or `host.docker.internal`
-  host is retried for a bounded window while the route table comes up. Tune or disable it through
-  `ApiTriggerConfig`.
+  host is retried for a bounded window while the route table comes up. Tune or disable it with
+  `.ConfigureApiTrigger(c => c with { LocalWarmupRetryDuration = ... })`.
 - **Transport timeouts versus step timeouts.** With no `RequestTimeout` configured, the step timeout
   is the single source of truth, so two timeout knobs cannot silently disagree.
