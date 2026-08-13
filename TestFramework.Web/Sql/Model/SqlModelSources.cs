@@ -90,11 +90,7 @@ public sealed class DataAnnotationsSqlModelSource : ISqlModelMapSource
         }
 
         TableAttribute? table = modelType.GetCustomAttribute<TableAttribute>();
-        List<SqlColumnMap> columns = [.. properties.Select(property => new SqlColumnMap(
-            property,
-            property.GetCustomAttribute<ColumnAttribute>()?.Name ?? property.Name,
-            keys.Contains(property),
-            IsGenerated(property)))];
+        List<SqlColumnMap> columns = [.. properties.Select(property => Describe(property, keys.Contains(property)))];
 
         List<SqlColumnMap> ordered = [
             .. columns.Where(column => column.IsKey),
@@ -105,8 +101,33 @@ public sealed class DataAnnotationsSqlModelSource : ISqlModelMapSource
         return true;
     }
 
-    private static bool IsGenerated(PropertyInfo property)
-        => property.GetCustomAttribute<DatabaseGeneratedAttribute>() is { DatabaseGeneratedOption: DatabaseGeneratedOption.Identity or DatabaseGeneratedOption.Computed };
+    private static SqlColumnMap Describe(PropertyInfo property, bool isKey)
+    {
+        DatabaseGeneratedAttribute? generated = property.GetCustomAttribute<DatabaseGeneratedAttribute>();
+
+        return new SqlColumnMap(
+            property,
+            property.GetCustomAttribute<ColumnAttribute>()?.Name ?? property.Name,
+            isKey,
+            generated is { DatabaseGeneratedOption: DatabaseGeneratedOption.Identity or DatabaseGeneratedOption.Computed })
+        {
+            MaxLength = ResolveMaxLength(property),
+            ColumnType = property.GetCustomAttribute<ColumnAttribute>()?.TypeName,
+            IsIdentity = generated is { DatabaseGeneratedOption: DatabaseGeneratedOption.Identity },
+            IsRequired = property.GetCustomAttribute<RequiredAttribute>() is not null,
+        };
+    }
+
+    private static int? ResolveMaxLength(PropertyInfo property)
+    {
+        if (property.GetCustomAttribute<MaxLengthAttribute>() is { Length: > 0 } maxLength)
+            return maxLength.Length;
+
+        if (property.GetCustomAttribute<StringLengthAttribute>() is { MaximumLength: > 0 } stringLength)
+            return stringLength.MaximumLength;
+
+        return null;
+    }
 }
 
 /// <summary>

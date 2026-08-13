@@ -38,10 +38,11 @@ public sealed class SqlScript
     /// Creates a script from inline text.
     /// </summary>
     /// <param name="text">The script text.</param>
-    public static SqlScript FromText(string text)
+    /// <param name="description">A short description used in logs. Defaults to a generic one.</param>
+    public static SqlScript FromText(string text, string? description = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(text);
-        return new SqlScript(text, "inline script");
+        return new SqlScript(text, string.IsNullOrWhiteSpace(description) ? "inline script" : description);
     }
 
     /// <summary>

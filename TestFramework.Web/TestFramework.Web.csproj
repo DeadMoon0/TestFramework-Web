@@ -14,12 +14,12 @@
 		<PackageTags>Test;UnitTest;IntegrationTest;Framework;Fluent;Timeline;Web;Rest;Api;Http;Sql;SqlServer</PackageTags>
 		<PackageIcon>Icon.png</PackageIcon>
 		<Description>Test web applications from inside a TestFramework timeline: REST APIs and the SQL Server databases behind them. Provides identifier-driven configuration, variable-backed HTTP requests and SQL statements, row artifacts with automatic teardown, liveness probes, and request authentication including Windows Negotiate.</Description>
-		<Version>0.2.0</Version>
+		<Version>0.3.0</Version>
 		<PackageProjectUrl>https://github.com/DeadMoon0/TestFramework-Web</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/DeadMoon0/TestFramework-Web.git</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<Copyright>Copyright (c) DeadMoon0 2026</Copyright>
-		<PackageReleaseNotes>Add SQL Server support: row artifacts, query finders, statement steps and liveness probes</PackageReleaseNotes>
+		<PackageReleaseNotes>Generate table definitions from registered models</PackageReleaseNotes>
 	</PropertyGroup>
 
 	<ItemGroup>

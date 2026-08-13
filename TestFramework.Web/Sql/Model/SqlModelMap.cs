@@ -19,6 +19,47 @@ public sealed record SqlColumnMap(PropertyInfo Property, string ColumnName, bool
     /// The CLR type of the mapped property, with nullability removed.
     /// </summary>
     public Type ClrType { get; } = Nullable.GetUnderlyingType(Property.PropertyType) ?? Property.PropertyType;
+
+    /// <summary>
+    /// The declared maximum length of a text or binary column.
+    /// </summary>
+    /// <remarks>
+    /// Only schema generation reads this. Reading and writing rows works without it.
+    /// </remarks>
+    public int? MaxLength { get; init; }
+
+    /// <summary>
+    /// The declared precision of a numeric column.
+    /// </summary>
+    public int? Precision { get; init; }
+
+    /// <summary>
+    /// The declared scale of a numeric column.
+    /// </summary>
+    public int? Scale { get; init; }
+
+    /// <summary>
+    /// An explicit SQL column type that replaces the inferred one.
+    /// </summary>
+    /// <remarks>
+    /// The escape hatch for a type the generator cannot infer, such as <c>money</c> or <c>xml</c>.
+    /// It is emitted verbatim.
+    /// </remarks>
+    public string? ColumnType { get; init; }
+
+    /// <summary>
+    /// Whether the database assigns the value from an identity sequence.
+    /// </summary>
+    public bool IsIdentity { get; init; }
+
+    /// <summary>
+    /// Whether the column was explicitly declared as not accepting nulls.
+    /// </summary>
+    /// <remarks>
+    /// When this is <see langword="false"/>, schema generation infers nullability from the property
+    /// type and its nullable annotations instead.
+    /// </remarks>
+    public bool IsRequired { get; init; }
 }
 
 /// <summary>

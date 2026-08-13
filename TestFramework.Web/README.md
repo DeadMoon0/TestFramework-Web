@@ -264,6 +264,38 @@ Two rules worth knowing:
 - **Setup upserts.** A rerun against a database a previous run left dirty converges instead of
   failing on a duplicate key.
 
+### Generating a fixture schema
+
+A table the test owns can be derived from the models it already declares, instead of from a script
+kept in step with them by hand:
+
+```csharp
+Timeline timeline = Timeline.Create()
+    .Trigger(WebExt.Sql.Script("main", SqlSchema.CreateTablesScript(typeof(Order), typeof(Customer)))).Name("schema")
+    .Build();
+```
+
+The map supplies the table, columns, key and which columns the database assigns. What a CLR type
+cannot supply is declared alongside it:
+
+```csharp
+.AddWebSqlModels(models => models.For<Order>()
+    .Schema("sales").Table("Orders")
+    .Key(x => x.Id).Identity(x => x.Id)     // IDENTITY(1,1)
+    .MaxLength(x => x.Name, 200)            // NVARCHAR(200) instead of NVARCHAR(MAX)
+    .Required(x => x.Name)                  // overrides what the property type implies
+    .Precision(x => x.Total, 18, 2)         // DECIMAL(18,2)
+    .ColumnType(x => x.Amount, "money"))    // verbatim, for anything not inferable
+```
+
+`[MaxLength]`, `[StringLength]`, `[Required]`, `[DatabaseGenerated]` and `[Column(TypeName = "...")]`
+say the same things as attributes.
+
+Generation covers schemas, tables, columns, nullability, identities and primary keys — **not** foreign
+keys, indexes, check constraints or collations. It is scaffolding for a database the test owns, not a
+migration tool: a table generated from test-side models proves only that the models agree with
+themselves. Where the real schema is owned elsewhere, point the test at that schema instead.
+
 Credentials can come from configuration or from an `ISqlCredentialProvider`, so one settings file can
 run with integrated security locally and a SQL login elsewhere. Passwords and connection strings
 never reach a log. Parameter *names* are logged; values only when you ask via
@@ -300,6 +332,6 @@ Values you do not mention keep their defaults.
 
 ## Scope
 
-This package covers calling REST APIs that are already reachable. It does not start or host the
-application under test, and it does not assert on databases. The `IHttpSender` seam exists so that
-adding a hosting mode later does not change the timelines written against it.
+This package covers reaching an API and a database that are already running: it does not start or
+host the application under test. The `IHttpSender` seam exists so that adding a hosting mode later
+does not change the timelines written against it.
