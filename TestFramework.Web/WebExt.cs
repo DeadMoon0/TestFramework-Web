@@ -23,6 +23,11 @@ public static class WebExt
     public static SqlProxy Sql { get; } = new SqlProxy();
 
     /// <summary>
+    /// Access steps that observe a stubbed dependency.
+    /// </summary>
+    public static StubProxy Stub { get; } = new StubProxy();
+
+    /// <summary>
     /// Access artifact reference factories.
     /// </summary>
     public static WebArtifactProxy Artifact { get; } = new WebArtifactProxy();

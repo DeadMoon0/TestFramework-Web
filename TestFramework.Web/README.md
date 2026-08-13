@@ -301,6 +301,55 @@ run with integrated security locally and a SQL login elsewhere. Passwords and co
 never reach a log. Parameter *names* are logged; values only when you ask via
 `.ConfigureSqlSteps(c => c with { LogParameterValues = true })`.
 
+## Stubbed Dependencies
+
+An application does two things: it answers, and it calls other systems. A response body shows the
+first half only. Declare what a dependency answers, then assert on what was actually sent to it.
+
+```jsonc
+{ "Stub": { "payments": { "BaseUrl": "http://localhost:9091/" } } }
+```
+
+```csharp
+internal sealed class PaymentsStubDefinition : StubDefinition
+{
+    public override StubIdentifier Identifier => "payments";
+
+    protected override void Configure(StubMappingBuilder builder) => builder
+        .OnGet("/api/rates/EUR")
+            .RespondJson(HttpStatusCode.OK, new { currency = "EUR", rate = 1.08 })
+        .OnPost("/api/charges")
+            .WithHeader("Idempotency-Key")
+            .WithBodyContaining("\"amount\"")
+            .RespondJson(HttpStatusCode.Created, new { id = "{{Random Type=Guid}}" }, useTemplating: true);
+}
+```
+
+Mappings are tried in declaration order, so declare the specific case before the general one. They
+are plain data — no delegates — because the server that runs them may be in another process
+entirely; `{{request.body.amount}}` templating covers what a callback would otherwise be for.
+
+```csharp
+Timeline timeline = Timeline.Create()
+    .Trigger(WebExt.Stub.Reset("payments")).Name("clean")
+    .Trigger(WebExt.Api.Http("orders").Post("api/orders").WithJsonBody(...).Call()).Name("create")
+    .WaitForEvent(WebExt.Stub.Called("payments", HttpMethod.Post, "/api/charges"))
+        .WithTimeOut(TimeSpan.FromSeconds(30)).Name("charged")
+    .Trigger(WebExt.Stub.Calls("payments")).Name("calls")
+    .Build();
+
+run.StubCall("charged").Select(call => call.Body).Should().Contain("\"amount\":30");
+run.StubCalls("calls").Should().HaveCount(1);
+run.StubUnmatchedCalls("calls").Should().HaveCount(0);
+```
+
+That last line is the one worth adopting: an unmatched call is the application asking a dependency
+for something the test never declared, and nothing else in a test would reveal it.
+
+Verification reads the server's own request log over its admin surface, so it works against a stub
+this run started, one your team runs permanently, or one you started by hand. **This package declares
+and verifies; it does not host.** `TestFramework.Container.Web` hosts declarations in a container.
+
 ## Troubleshooting
 
 | Symptom | Cause and fix |
@@ -314,6 +363,9 @@ never reach a log. Parameter *names* are logged; values only when you ask via
 | A local host answers `404` right after start | Already handled: warmup statuses from loopback hosts are retried for a bounded window. Tune with `.ConfigureApiTrigger(...)`. |
 | Need to see what headers actually went out | `.ConfigureApiTrigger(c => c with { LogRequestHeaders = true })`, with sensitive values redacted. |
 | `The response body could not be read as 'T'` | Assert the status first; error responses rarely use the success schema. |
+| `No stub configuration was registered for identifier 'x'` | The `Stub:x` section is missing, or no environment published it. |
+| `The stub at '...' did not answer` | The stub server is gone. A container that exited takes its request log with it. |
+| A stub assertion sees no calls | Check `StubUnmatchedCalls` first: the application may have called a path no mapping covers. |
 
 ## Tuning
 
@@ -332,6 +384,6 @@ Values you do not mention keep their defaults.
 
 ## Scope
 
-This package covers reaching an API and a database that are already running: it does not start or
-host the application under test. The `IHttpSender` seam exists so that adding a hosting mode later
-does not change the timelines written against it.
+This package covers reaching an API, a database and a stub that are already running: it does not
+start or host any of them. The `IHttpSender` seam exists so that adding a hosting mode later does not
+change the timelines written against it.

@@ -11,15 +11,15 @@
 		<Authors>DeadMoon0</Authors>
 		<Product>TestFramework</Product>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageTags>Test;UnitTest;IntegrationTest;Framework;Fluent;Timeline;Web;Rest;Api;Http;Sql;SqlServer</PackageTags>
+		<PackageTags>Test;UnitTest;IntegrationTest;Framework;Fluent;Timeline;Web;Rest;Api;Http;Sql;SqlServer;Stub;Mock;WireMock</PackageTags>
 		<PackageIcon>Icon.png</PackageIcon>
-		<Description>Test web applications from inside a TestFramework timeline: REST APIs and the SQL Server databases behind them. Provides identifier-driven configuration, variable-backed HTTP requests and SQL statements, row artifacts with automatic teardown, liveness probes, and request authentication including Windows Negotiate.</Description>
-		<Version>0.3.0</Version>
+		<Description>Test web applications from inside a TestFramework timeline: REST APIs, the SQL Server databases behind them, and the dependencies they call. Provides identifier-driven configuration, variable-backed HTTP requests and SQL statements, row artifacts with automatic teardown, liveness probes, stub declarations with request verification, and request authentication including Windows Negotiate.</Description>
+		<Version>0.4.0</Version>
 		<PackageProjectUrl>https://github.com/DeadMoon0/TestFramework-Web</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/DeadMoon0/TestFramework-Web.git</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<Copyright>Copyright (c) DeadMoon0 2026</Copyright>
-		<PackageReleaseNotes>Generate table definitions from registered models</PackageReleaseNotes>
+		<PackageReleaseNotes>Declare and assert on stubbed dependencies</PackageReleaseNotes>
 	</PropertyGroup>
 
 	<ItemGroup>
