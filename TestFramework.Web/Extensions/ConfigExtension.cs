@@ -16,7 +16,11 @@ public static class ConfigExtension
     /// <returns>The builder for fluent chaining.</returns>
     public static IConfigInstanceBuilder LoadWebConfig(this IConfigInstanceBuilder builder, IApiConfigProvider? provider = null)
     {
-        builder.AddService((services, configuration) => services.LoadWebConfigs(configuration, provider));
+        builder.AddService((services, configuration) =>
+        {
+            services.LoadWebConfigs(configuration, provider);
+            services.LoadWebSqlConfigs(configuration);
+        });
         return builder;
     }
 }

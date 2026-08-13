@@ -34,4 +34,4 @@ jobs:
         run: dotnet restore UnitTests/TestFramework.Web.Tests/TestFramework.Web.Tests.csproj
 
       - name: Run unit tests
-        run: dotnet test UnitTests/TestFramework.Web.Tests/TestFramework.Web.Tests.csproj --configuration Release --no-restore --filter "Category!=WindowsOnly" --logger "trx"
+        run: dotnet test UnitTests/TestFramework.Web.Tests/TestFramework.Web.Tests.csproj --configuration Release --no-restore --filter "Category!=WindowsOnly&Category!=SqlServer" --logger "trx"

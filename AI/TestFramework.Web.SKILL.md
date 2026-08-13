@@ -9,7 +9,8 @@
 
 <package_scope>
     Covers WebExt.Api.Http(...) request building, WebExt.Api.IsLive(...) liveness probes, ApiConfig and the Api configuration section, authentication modes including Windows Negotiate, HttpResponseContext and its assertion helpers, the IHttpSender seam, and the web.restapi environment requirement kind.
-    Does not cover starting or hosting the application under test, and does not cover database assertions.
+    Also covers SQL Server: row artifacts, query finders, statement and script steps, scalar observations and liveness probes.
+    Does not cover starting or hosting the application under test or its database; that is the container lane's job.
 </package_scope>
 
 <key_concepts>
@@ -21,6 +22,9 @@
     IHttpSender is the seam that decides how a request travels. The same timeline therefore works against a deployed API today and against an in-process or containerized host later.
     Steps declare the environment requirement kind web.restapi. The active environment provider, if any, decides how that requirement is satisfied.
     HttpResponseContext is plain serializable data because step results travel to the debugging UI. A live HttpResponseMessage never leaves the trigger.
+    A database row has a key and a lifecycle, so it is an artifact, not a step. Rows the test seeds are upserted on setup and deleted on teardown; rows located by a finder are observed and never deleted.
+    Statements that change data are steps in the Act phase. Aggregates are steps in the Observe phase, because a scalar has no identity and no lifecycle.
+    The framework reaches SQL through a connection string and a model map, never through the application's own data access layer. The map comes from explicit registration, then DataAnnotations attributes, then convention.
 </key_concepts>
 
 <best_practices>
@@ -51,7 +55,14 @@
     - ApiAuthMode: None, ApiKey, Bearer, Basic, Negotiate
     - Exceptions: ApiConfigurationValidationException, ApiRequestFailedException, ApiResponseFormatException, ApiLivenessProbeException
     - Setup: .LoadWebConfig(), .ConfigureApiTrigger(c =&gt; c with { ... }), .RedactHeaders(...)
-    - Extension points: IWebComponentFactory, IHttpSender, IApiConfigProvider, IApiAuthenticationProvider
+    - WebExt.Artifact.Sql.Row&lt;T&gt;(identifier, keyValues...) with SetupArtifact/AddArtifact
+    - WebExt.ArtifactFinder.Sql.Where&lt;T&gt;(identifier, "Name = @name").WithParameter("name", variable) with FindArtifact/FindArtifacts
+    - WebExt.Sql.Execute|Scalar&lt;T&gt;|Script(identifier, ...).WithParameter(name, variable)
+    - WebExt.Sql.IsLive(identifier, SqlAlivenessLevel.Reachable|Database)
+    - run.SqlRow&lt;T&gt;(artifactId) | SqlScalar&lt;T&gt;(label) | SqlAffectedRows(label) | SqlProbe(label) -> ValueHandle&lt;T&gt;
+    - SqlConfig: ConnectionString or Server/Database/IntegratedSecurity/UserName/Password/TrustServerCertificate/CommandTimeout
+    - Setup: .AddWebSqlModels(models =&gt; models.For&lt;T&gt;().Table("...").Key(x =&gt; x.Id).Generated(x =&gt; x.Id)), .ConfigureSqlSteps(...), .UseSqlCredentials(...)
+    - Extension points: IWebComponentFactory, IHttpSender, IApiConfigProvider, IApiAuthenticationProvider, ISqlExecutor, ISqlModelMapSource, ISqlCredentialProvider, ISqlConfigProvider
 </api_hints>
 
 <configuration_shape>
@@ -63,6 +74,9 @@
           "Auth": "None",
           "RequestTimeout": "00:00:30"
         }
+      },
+      "Sql": {
+        "main": { "Server": "localhost,1433", "Database": "SampleDb", "IntegratedSecurity": true, "TrustServerCertificate": true }
       },
       "Web": {
         "SensitiveHeaders": [ "x-tenant-secret" ]
@@ -77,5 +91,8 @@
     Do not read the body before asserting the status.
     Do not add sleeps to wait for a host; use IsLive with a timeout and retry.
     Do not log credential headers or put secrets in variables that are bound into results.
+    Do not model a database row as a step; it is an artifact.
+    Do not delete rows the application created; only rows the test seeded are its own.
+    Do not concatenate values into SQL; parameters are variable-backed for exactly that reason.
     Do not assert with a third-party fluent-assertion package; the framework has its own.
 </anti_patterns>

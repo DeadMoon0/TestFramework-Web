@@ -18,5 +18,20 @@
       "HealthPath": "/health",
       "Auth": "Negotiate"
     }
+  },
+  "Sql": {
+    "main": {
+      "Server": "localhost,1433",
+      "Database": "SampleDb",
+      "IntegratedSecurity": true,
+      "TrustServerCertificate": true,
+      "CommandTimeout": "00:00:30"
+    },
+    "container": {
+      "ConnectionString": "Server=localhost,51433;Database=SampleDb;User Id=sa;Password=replace-me;TrustServerCertificate=True"
+    }
+  },
+  "Web": {
+    "SensitiveHeaders": [ "x-tenant-secret" ]
   }
 }

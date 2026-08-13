@@ -18,6 +18,21 @@ public static class WebExt
     public static ApiProxy Api { get; } = new ApiProxy();
 
     /// <summary>
+    /// Access SQL steps and liveness probes.
+    /// </summary>
+    public static SqlProxy Sql { get; } = new SqlProxy();
+
+    /// <summary>
+    /// Access artifact reference factories.
+    /// </summary>
+    public static WebArtifactProxy Artifact { get; } = new WebArtifactProxy();
+
+    /// <summary>
+    /// Access artifact finder factories.
+    /// </summary>
+    public static WebArtifactFinderProxy ArtifactFinder { get; } = new WebArtifactFinderProxy();
+
+    /// <summary>
     /// Creates REST API steps for a configured identifier.
     /// </summary>
     public class ApiProxy

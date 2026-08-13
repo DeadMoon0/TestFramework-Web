@@ -196,6 +196,79 @@ Combine it with the normal timeline modifiers:
 .Trigger(WebExt.Api.IsLive("sample")).WithTimeOut(TimeSpan.FromMinutes(1)).WithRetry(10, CalcDelays.Fixed(TimeSpan.FromSeconds(2)))
 ```
 
+## SQL Server
+
+Configure a database the same way an API is configured, then assert what the API actually did to it.
+
+```jsonc
+{
+  "Sql": {
+    "main": { "Server": "localhost,1433", "Database": "SampleDb", "IntegratedSecurity": true, "TrustServerCertificate": true }
+  }
+}
+```
+
+Tell the framework where a model lives. Explicit registration wins, then `[Table]`/`[Column]`/`[Key]`
+attributes, then convention (type name is the table, `Id` is the key):
+
+```csharp
+ConfigInstance config = ConfigInstance.FromJsonFile("local.testsettings.json")
+    .LoadWebConfig()
+    .AddWebSqlModels(models => models.For<Order>().Schema("sales").Table("Orders").Key(x => x.Id).Generated(x => x.Id))
+    .Build();
+```
+
+A row has a key and a lifecycle, so it is an artifact. A statement that changes data is an action, so
+it is a step. An aggregate is neither, so it is an observation:
+
+```csharp
+Timeline timeline = Timeline.Create()
+    .SetupArtifact("customer")                                   // seeded, then removed on teardown
+    .SetVariable("orderName", Var.Const("Testauftrag"))
+    .Trigger(WebExt.Api.Http("orders").Post("api/orders").WithJsonBody(Var.Ref<CreateOrder>("payload")).Call()).Name("create")
+    .FindArtifact("order", WebExt.ArtifactFinder.Sql.Where<Order>("main", "Name = @name")
+        .WithParameter("name", Var.Ref<string>("orderName")))
+    .Build();
+
+TimelineRun run = await timeline.SetupRun(config)
+    .AddArtifact("customer",
+        WebExt.Artifact.Sql.Row<Customer>("main", Var.Const("4711")),
+        new SqlRowArtifactData<Customer>(new Customer { Id = 4711, Name = "Testkunde" }))
+    .RunAsync();
+
+run.ApiStatus("create").Should().Be(HttpStatusCode.Created);
+run.SqlRow<Order>("order").Select(order => order.Quantity).Should().Be(3);
+```
+
+| Surface | Use |
+|---|---|
+| `WebExt.Artifact.Sql.Row<T>(id, keys...)` | a row the test owns: upserted on setup, deleted on teardown |
+| `WebExt.ArtifactFinder.Sql.Where<T>(id, "...")` | locate rows; a predicate that matches nothing fails the step |
+| `WebExt.Sql.Execute(id, "...")` | `UPDATE` / `DELETE` |
+| `WebExt.Sql.Script(id, SqlScript.FromFile("seed.sql"))` | seeding, batch-aware (`GO` splits batches) |
+| `WebExt.Sql.Scalar<T>(id, "...")` | counts and aggregates |
+| `WebExt.Sql.IsLive(id, SqlAlivenessLevel.Database)` | wait for a database to answer |
+
+Parameters are variable-backed, like request bodies:
+
+```csharp
+WebExt.Sql.Execute("main", "UPDATE Orders SET Status = @status WHERE Id = @id")
+    .WithParameter("status", Var.Const(9))
+    .WithParameter("id", Var.Ref<string>("orderId"))
+```
+
+Two rules worth knowing:
+
+- **Rows the test seeds are deleted on teardown; rows it merely finds are not.** A test must never
+  delete data the application under test created.
+- **Setup upserts.** A rerun against a database a previous run left dirty converges instead of
+  failing on a duplicate key.
+
+Credentials can come from configuration or from an `ISqlCredentialProvider`, so one settings file can
+run with integrated security locally and a SQL login elsewhere. Passwords and connection strings
+never reach a log. Parameter *names* are logged; values only when you ask via
+`.ConfigureSqlSteps(c => c with { LogParameterValues = true })`.
+
 ## Troubleshooting
 
 | Symptom | Cause and fix |
@@ -204,6 +277,8 @@ Combine it with the normal timeline modifiers:
 | `the path '...' still contains an unsubstituted route token` | A `{token}` in the path has no `WithRouteValue`. |
 | `API 'x' did not answer ...` | Transport failure. The message names the authority to check, and suggests the timeout or certificate setting when those are the likely cause. |
 | `401` or `403` against a Windows-authenticated API | Set `Auth` to `Negotiate` for that identifier. |
+| `No SQL configuration was registered for identifier 'x'` | The `Sql:x` section is missing. The message lists the identifiers that *are* registered. |
+| `No key column could be determined for 'T'` | Register the model, annotate the key with `[Key]`, or name it `Id`. |
 | A local host answers `404` right after start | Already handled: warmup statuses from loopback hosts are retried for a bounded window. Tune with `.ConfigureApiTrigger(...)`. |
 | Need to see what headers actually went out | `.ConfigureApiTrigger(c => c with { LogRequestHeaders = true })`, with sensitive values redacted. |
 | `The response body could not be read as 'T'` | Assert the status first; error responses rarely use the success schema. |

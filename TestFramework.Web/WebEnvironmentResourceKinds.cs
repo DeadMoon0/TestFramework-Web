@@ -14,4 +14,9 @@ public static class WebEnvironmentResourceKinds
     /// REST API environment requirement kind.
     /// </summary>
     public const string RestApi = "web.restapi";
+
+    /// <summary>
+    /// SQL database environment requirement kind.
+    /// </summary>
+    public const string Sql = "web.sql";
 }

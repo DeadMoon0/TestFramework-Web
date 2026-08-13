@@ -11,15 +11,15 @@
 		<Authors>DeadMoon0</Authors>
 		<Product>TestFramework</Product>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageTags>Test;UnitTest;IntegrationTest;Framework;Fluent;Timeline;Web;Rest;Api;Http</PackageTags>
+		<PackageTags>Test;UnitTest;IntegrationTest;Framework;Fluent;Timeline;Web;Rest;Api;Http;Sql;SqlServer</PackageTags>
 		<PackageIcon>Icon.png</PackageIcon>
-		<Description>Test REST APIs from inside a TestFramework timeline. Provides identifier-driven API configuration, HTTP triggers with variable-backed requests, liveness probes, and request authentication including Windows Negotiate.</Description>
-		<Version>0.1.0</Version>
+		<Description>Test web applications from inside a TestFramework timeline: REST APIs and the SQL Server databases behind them. Provides identifier-driven configuration, variable-backed HTTP requests and SQL statements, row artifacts with automatic teardown, liveness probes, and request authentication including Windows Negotiate.</Description>
+		<Version>0.2.0</Version>
 		<PackageProjectUrl>https://github.com/DeadMoon0/TestFramework-Web</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/DeadMoon0/TestFramework-Web.git</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<Copyright>Copyright (c) DeadMoon0 2026</Copyright>
-		<PackageReleaseNotes>Initial release: REST API triggers, liveness probes and request authentication</PackageReleaseNotes>
+		<PackageReleaseNotes>Add SQL Server support: row artifacts, query finders, statement steps and liveness probes</PackageReleaseNotes>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -29,6 +29,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<PackageReference Include="Dapper" Version="2.1.66" />
+		<PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.2" />
 		<PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
 		<PackageReference Include="TestFramework.Config" Version="0.1.4" />

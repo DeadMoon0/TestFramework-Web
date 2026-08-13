@@ -4,10 +4,11 @@
 # TestFramework-Web
 
 `TestFramework.Web` lets a normal TestFramework timeline drive web applications: the REST API at the
-front, and — as the module grows — the ASP.NET host and the SQL Server database behind it.
+front and the SQL Server database behind it.
 
-Use it when the thing under test speaks HTTP. The timeline shape, variables, artifacts, retries,
-timeouts and debugging UI are the same ones the rest of the framework uses.
+Use it when the thing under test speaks HTTP, and assert what it did to its database in the same
+timeline. The timeline shape, variables, artifacts, retries, timeouts and debugging UI are the same
+ones the rest of the framework uses.
 
 ## Choose Your Path
 
@@ -15,8 +16,11 @@ timeouts and debugging UI are the same ones the rest of the framework uses.
   configure `Api:<identifier>:BaseUrl` and write steps. Nothing else needed.
 - **The API is behind Windows integrated authentication**: set `Auth` to `Negotiate`. No change on
   the API side.
-- **You need the API booted for you**: not covered by this package. Timelines are written against
-  the `IHttpSender` seam, so a hosting mode can be added later without changing them.
+- **You want to verify what the API did to its database**: configure `Sql:<identifier>` and use row
+  artifacts and query finders in the same timeline.
+- **You need the API or the database booted for you**: not covered by this package. Timelines are
+  written against the `IHttpSender` and `ISqlExecutor` seams, so a container lane slots in without
+  changing them.
 
 ## Install
 
@@ -63,7 +67,11 @@ Assertions use the framework's own fluent assertions, so they reach the debuggin
 ## Current Scope
 
 REST requests against a reachable API, liveness probes, request authentication including Windows
-Negotiate, and assertions through the framework's own fluent assertions.
+Negotiate, SQL Server row artifacts, query finders, statement steps, and assertions through the
+framework's own fluent assertions.
+
+The package is client side only: it talks to things that are already listening. Starting an
+application or a database is the container lane's job.
 
 ## Repository Layout
 
