@@ -40,6 +40,7 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
     private readonly StubIdentifier _stubIdentifier;
     private readonly string _method;
     private readonly string _path;
+    private VariableReference<string>? _bodyContains;
 
     /// <summary>
     /// Creates the event.
@@ -58,6 +59,22 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
         _path = path.StartsWith('/') ? path : $"/{path}";
     }
 
+    /// <summary>
+    /// Narrows the wait to a call whose body contains a text.
+    /// </summary>
+    /// <param name="text">The variable carrying the text the body must contain.</param>
+    /// <remarks>
+    /// Without this, a run that produces several calls to the same endpoint completes on the first
+    /// one, which is rarely the one the test meant.
+    /// </remarks>
+    public StubCalledEvent WithBodyContaining(VariableReference<string> text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        ((TestFramework.Core.IFreezable)this).EnsureNotFrozen();
+        _bodyContains = text;
+        return this;
+    }
+
     /// <inheritdoc />
     public override string Name => "Stub Called";
 
@@ -74,10 +91,21 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
     /// <inheritdoc />
     public override void DeclareIO(StepIOContract contract)
     {
+        ArgumentNullException.ThrowIfNull(contract);
+
+        if (_bodyContains?.Identifier is { } identifier)
+            contract.Inputs.Add(new StepIOEntry(identifier.Identifier, StepIOKind.Variable, true, typeof(string)));
     }
 
     /// <inheritdoc />
-    public override Step<StubCalledResult> Clone() => new StubCalledEvent(_stubIdentifier, _method, _path).WithClonedOptions(this);
+    public override Step<StubCalledResult> Clone()
+    {
+        StubCalledEvent clone = new(_stubIdentifier, _method, _path);
+        if (_bodyContains is { } bodyContains)
+            clone.WithBodyContaining(bodyContains);
+
+        return clone.WithClonedOptions(this);
+    }
 
     /// <inheritdoc />
     public override async Task<StubCalledResult?> DoEventPolling(
@@ -91,6 +119,7 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
 
         StubConfig config = StubConfigResolver.Resolve(serviceProvider, _stubIdentifier);
         StubAdminClient admin = StubConfigResolver.CreateAdminClient(serviceProvider, _stubIdentifier);
+        string? expectedBody = _bodyContains?.GetRequiredValue(variableStore, "body text");
         System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         // The step timeout is the only limit, so a caller controls how long to wait with
@@ -101,11 +130,8 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
 
             foreach (StubCall call in await admin.GetCallsAsync(cancellationToken).ConfigureAwait(false))
             {
-                if (!string.Equals(call.Method, _method, StringComparison.OrdinalIgnoreCase)
-                    || !string.Equals(call.Path, _path, StringComparison.OrdinalIgnoreCase))
-                {
+                if (!Matches(call, expectedBody))
                     continue;
-                }
 
                 stopwatch.Stop();
                 logger.LogInformation("Stub '{0}' received {1} {2} after {3}.", _stubIdentifier.ToString(), _method, _path, stopwatch.Elapsed);
@@ -115,4 +141,9 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
             await Task.Delay(config.PollInterval, cancellationToken).ConfigureAwait(false);
         }
     }
+
+    private bool Matches(StubCall call, string? expectedBody)
+        => string.Equals(call.Method, _method, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(call.Path, _path, StringComparison.OrdinalIgnoreCase)
+        && (expectedBody is null || call.Body?.Contains(expectedBody, StringComparison.Ordinal) == true);
 }
