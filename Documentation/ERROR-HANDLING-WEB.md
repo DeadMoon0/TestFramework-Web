@@ -78,6 +78,23 @@ Distinguishes the two common causes. A `404` points at `HealthPath` or suggests 
 `Reachable`; a `401` or `403` tells you whether to probe at `Authenticated` level or expose an
 anonymous health endpoint.
 
+## SqlSchemaGenerationException
+
+Raised while generating table definitions from a model map, never at run time. It names the property
+that could not be described and what to declare instead: an explicit column type, a length, a
+precision, or a hand-written script. Generation refuses to emit a column it cannot describe
+faithfully rather than produce a table that silently differs from the model.
+
+## StubConfigurationValidationException and StubAdminException
+
+`StubConfigurationValidationException` follows the same shape as its API and SQL siblings: an
+identifier with no registered configuration, listing the identifiers that are registered.
+
+`StubAdminException` is raised when a stub's administration surface cannot be read. It is
+deliberately distinct from an assertion failure: it means the assertions could not be evaluated, not
+that they failed. A stub whose container has exited takes its request log with it, and that must not
+read as "the call was never made".
+
 ## Secrets
 
 `ApiKey`, `BearerToken` and `Password` never appear in messages, logs or debug values. The

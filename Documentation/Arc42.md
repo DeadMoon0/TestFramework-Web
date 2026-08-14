@@ -66,6 +66,15 @@ provider, and a variable-backed bearer provider resolved against the store at ex
 **`Runtime/`** — `IWebComponentFactory` and the default implementation pooling `HttpClient`
 instances per identifier and per connection-relevant setting.
 
+**`Sql/`** — `SqlConfig` and its store, the model map (`Model/`) resolved from explicit
+registrations, then attributes, then convention, the statement builder and ADO executor
+(`Execution/`), row artifacts and finders (`Artifacts/`), Act and Observe steps (`Steps/`), and
+`Schema/` generating table definitions from a map.
+
+**`Stub/`** — `StubDefinition` and the mapping model (`Mappings/`), serialized to the JSON a stub
+server loads; `Admin/` reading the server's request log over HTTP; `Steps/` providing the wait event
+and the observation. The package declares and verifies stubs; it never hosts one.
+
 ## 6. Runtime View
 
 A single API step:
@@ -117,6 +126,10 @@ disagree is a defect, not a feature.
 | Assertions reuse Core asserters rather than adding module-specific ones | The assertion infrastructure - debug signalling and scope collection - is internal to Core. Wrapping values into `ValueHandle<T>` keeps web assertions first-class instead of a parallel mechanism that bypasses the debugging UI. |
 | Warmup retry limited to local hosts | A transient `404` while a local route table warms up is infrastructure noise. On a remote host the same status is a real answer and must not be hidden. |
 | Pooled clients keyed by connection-relevant settings | Connection reuse across steps, while a run that rewrites the endpoint still gets a fresh client. |
+| A database row is an artifact, a statement is a step, an aggregate is an observation | A row has identity and a lifecycle; a statement is an action; a scalar has neither. Modelling them alike would give rows no teardown and statements no ordering. |
+| Generated schema covers tables and keys only | Foreign keys, indexes and constraints belong to a schema someone owns. Generating them would imply this is a migration tool, which it is not. |
+| Stub mappings carry no delegates | The server that runs them may be in another process or container and cannot call back. Templating over the request covers what a callback would be for, and keeps one declaration valid wherever it runs. |
+| Stub verification polls the admin log | A push channel would require the stub to reach the test process, which a container cannot do without exposing a host listener. Polling works identically everywhere. |
 
 ## 10. Quality Requirements
 
@@ -135,6 +148,12 @@ disagree is a defect, not a feature.
   `VariableStore` has an internal constructor that this assembly cannot reach.
 - `DeclareIO` reports every input as `typeof(string)`. Adequate for the current contract validator,
   but it loses type information for non-string request parts.
+- Generated schema is derived from test-side models, so it can drift from a schema owned elsewhere
+  without any test failing. Comparing a map against a live schema is the planned answer.
+- `WebExt.Stub.Calls(...)` filters on method and path only; a body predicate exists on the wait
+  event but not on the observation.
+- Stub verification depends on the shape of the stub server's admin request log. It is pinned by a
+  test against a real container, so an upgrade that changes it fails loudly.
 
 ## 12. Glossary
 

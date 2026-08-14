@@ -333,7 +333,8 @@ entirely; `{{request.body.amount}}` templating covers what a callback would othe
 Timeline timeline = Timeline.Create()
     .Trigger(WebExt.Stub.Reset("payments")).Name("clean")
     .Trigger(WebExt.Api.Http("orders").Post("api/orders").WithJsonBody(...).Call()).Name("create")
-    .WaitForEvent(WebExt.Stub.Called("payments", HttpMethod.Post, "/api/charges"))
+    .WaitForEvent(WebExt.Stub.Called("payments", HttpMethod.Post, "/api/charges")
+        .WithBodyContaining(Var.Ref<string>("orderId")))            // wait for *this* call
         .WithTimeOut(TimeSpan.FromSeconds(30)).Name("charged")
     .Trigger(WebExt.Stub.Calls("payments")).Name("calls")
     .Build();

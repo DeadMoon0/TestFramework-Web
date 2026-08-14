@@ -9,8 +9,9 @@
 
 <package_scope>
     Covers WebExt.Api.Http(...) request building, WebExt.Api.IsLive(...) liveness probes, ApiConfig and the Api configuration section, authentication modes including Windows Negotiate, HttpResponseContext and its assertion helpers, the IHttpSender seam, and the web.restapi environment requirement kind.
-    Also covers SQL Server: row artifacts, query finders, statement and script steps, scalar observations and liveness probes.
-    Does not cover starting or hosting the application under test or its database; that is the container lane's job.
+    Also covers SQL Server: row artifacts, query finders, statement and script steps, scalar observations, liveness probes, and generating table definitions from registered models.
+    Also covers stubbed dependencies: declaring what a stub answers, and asserting over its request log what the application under test actually sent outwards.
+    Does not cover starting or hosting the application under test, its database or its stubs; that is the container lane's job.
 </package_scope>
 
 <key_concepts>
@@ -25,6 +26,10 @@
     A database row has a key and a lifecycle, so it is an artifact, not a step. Rows the test seeds are upserted on setup and deleted on teardown; rows located by a finder are observed and never deleted.
     Statements that change data are steps in the Act phase. Aggregates are steps in the Observe phase, because a scalar has no identity and no lifecycle.
     The framework reaches SQL through a connection string and a model map, never through the application's own data access layer. The map comes from explicit registration, then DataAnnotations attributes, then convention.
+    SqlSchema generates CREATE TABLE from a model map: schemas, tables, columns, nullability, identities and primary keys, and nothing else. It is scaffolding for a database the test owns, not a migration tool - a table generated from test-side models proves only that the models agree with themselves.
+    A stub declaration is plain data with no delegates, because the server that runs it may be in another process or container and cannot call back into the test. Handlebars templating over the request covers what a callback would otherwise be for.
+    Stub verification and waiting go through the stub server's own admin request log, polled over HTTP. That is what lets the same assertions work against a stub this run started, one the team runs permanently, or one started by hand.
+    An unmatched stub call is the application asking a dependency for something the test never declared. Nothing else in a test reveals it, so assert that the unmatched list is empty.
 </key_concepts>
 
 <best_practices>
@@ -39,6 +44,9 @@
     Let the step timeout be the only timeout unless a per-request transport limit is genuinely needed.
     Put additional secret-bearing header names in the Web:SensitiveHeaders configuration section rather than registering them in code.
     Turn on LogRequestHeaders through .ConfigureApiTrigger(...) when diagnosing authentication or routing; header values stay redacted.
+    Declare lengths, precision, identities and required-ness on the model map when generating a schema; a CLR type cannot express them and the generator refuses to guess.
+    Assert run.StubUnmatchedCalls(label).Should().HaveCount(0) alongside the positive assertions; it catches calls to endpoints the test never declared.
+    Narrow a stub wait with WithBodyContaining(...) when a run produces several calls to one endpoint, or the wait completes on the first one rather than the intended one.
 </best_practices>
 
 <api_hints>
@@ -62,7 +70,14 @@
     - run.SqlRow&lt;T&gt;(artifactId) | SqlScalar&lt;T&gt;(label) | SqlAffectedRows(label) | SqlProbe(label) -> ValueHandle&lt;T&gt;
     - SqlConfig: ConnectionString or Server/Database/IntegratedSecurity/UserName/Password/TrustServerCertificate/CommandTimeout
     - Setup: .AddWebSqlModels(models =&gt; models.For&lt;T&gt;().Table("...").Key(x =&gt; x.Id).Generated(x =&gt; x.Id)), .ConfigureSqlSteps(...), .UseSqlCredentials(...)
-    - Extension points: IWebComponentFactory, IHttpSender, IApiConfigProvider, IApiAuthenticationProvider, ISqlExecutor, ISqlModelMapSource, ISqlCredentialProvider, ISqlConfigProvider
+    - SqlSchema.CreateTablesScript(types...) | CreateTable(map) | CreateTables(maps) -> DDL from a model map
+    - Model map extras for generation: .Identity(x =&gt; x.Id), .MaxLength(x =&gt; x.Name, 200), .Precision(x =&gt; x.Total, 18, 2), .Required(x =&gt; x.Name), .ColumnType(x =&gt; x.Amount, "money")
+    - StubDefinition with Configure(StubMappingBuilder): .OnGet|OnPost|OnPut|OnDelete(path).WithHeader|WithQuery|WithBodyContaining|WithPriority(...).RespondJson|RespondText|RespondStatus(...)
+    - WebExt.Stub.Called(identifier, method, path).WithBodyContaining(variable) as a WaitForEvent source
+    - WebExt.Stub.Calls(identifier, method?, path?) | WebExt.Stub.Reset(identifier)
+    - run.StubCall(label) | StubCalls(label) | StubUnmatchedCalls(label) -> ValueHandle&lt;T&gt;
+    - StubConfig: BaseUrl, AdminPath, PollInterval, AllowInvalidCertificates
+    - Extension points: IWebComponentFactory, IHttpSender, IApiConfigProvider, IApiAuthenticationProvider, ISqlExecutor, ISqlModelMapSource, ISqlCredentialProvider, ISqlConfigProvider, IStubConfigProvider
 </api_hints>
 
 <configuration_shape>
@@ -77,6 +92,9 @@
       },
       "Sql": {
         "main": { "Server": "localhost,1433", "Database": "SampleDb", "IntegratedSecurity": true, "TrustServerCertificate": true }
+      },
+      "Stub": {
+        "payments": { "BaseUrl": "http://localhost:9091/" }
       },
       "Web": {
         "SensitiveHeaders": [ "x-tenant-secret" ]
@@ -95,4 +113,6 @@
     Do not delete rows the application created; only rows the test seeded are its own.
     Do not concatenate values into SQL; parameters are variable-backed for exactly that reason.
     Do not assert with a third-party fluent-assertion package; the framework has its own.
+    Do not generate a schema from models for a database whose schema is owned elsewhere; mirror the real schema with a script instead.
+    Do not expect a stub declaration to run C# on a request; it is data, and the server may be in another container.
 </anti_patterns>
