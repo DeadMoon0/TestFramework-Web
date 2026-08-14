@@ -14,12 +14,12 @@
 		<PackageTags>Test;UnitTest;IntegrationTest;Framework;Fluent;Timeline;Web;Rest;Api;Http;Sql;SqlServer;Stub;Mock;WireMock</PackageTags>
 		<PackageIcon>Icon.png</PackageIcon>
 		<Description>Test web applications from inside a TestFramework timeline: REST APIs, the SQL Server databases behind them, and the dependencies they call. Provides identifier-driven configuration, variable-backed HTTP requests and SQL statements, row artifacts with automatic teardown, liveness probes, stub declarations with request verification, and request authentication including Windows Negotiate.</Description>
-		<Version>0.4.0</Version>
+		<Version>0.1.0</Version>
 		<PackageProjectUrl>https://github.com/DeadMoon0/TestFramework-Web</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/DeadMoon0/TestFramework-Web.git</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<Copyright>Copyright (c) DeadMoon0 2026</Copyright>
-		<PackageReleaseNotes>Declare and assert on stubbed dependencies</PackageReleaseNotes>
+		<PackageReleaseNotes>Initial release: REST API and SQL Server testing, model-derived schema, and stubbed dependencies</PackageReleaseNotes>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -33,8 +33,8 @@
 		<PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.2" />
 		<PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
-		<PackageReference Include="TestFramework.Config" Version="0.1.4" />
-		<PackageReference Include="TestFramework.Core" Version="0.1.8" />
+		<PackageReference Include="TestFramework.Config" Version="0.1.5" />
+		<PackageReference Include="TestFramework.Core" Version="0.1.9" />
 	</ItemGroup>
 
 	<ItemGroup>
