@@ -23,7 +23,7 @@
     IHttpSender is the seam that decides how a request travels. The same timeline therefore works against a deployed API today and against an in-process or containerized host later.
     Steps declare the environment requirement kind web.restapi. The active environment provider, if any, decides how that requirement is satisfied.
     HttpResponseContext is plain serializable data because step results travel to the debugging UI. A live HttpResponseMessage never leaves the trigger.
-    A database row has a key and a lifecycle, so it is an artifact, not a step. Rows the test seeds are upserted on setup and deleted on teardown; rows located by a finder are observed and never deleted.
+    A database row has a key and a lifecycle, so it is an artifact, not a step. Three ways exist to put one in front of a test and they differ only in ownership: SetupArtifact plus AddArtifact creates and owns it, RegisterArtifact adopts an existing row by key and also owns it, and FindArtifact only observes what it locates. An owned row is removed on teardown; an observed row is left in place, and teardown records that it passed over it as information rather than as a failure.
     Statements that change data are steps in the Act phase. Aggregates are steps in the Observe phase, because a scalar has no identity and no lifecycle.
     The framework reaches SQL through a connection string and a model map, never through the application's own data access layer. The map comes from explicit registration, then DataAnnotations attributes, then convention.
     SqlSchema generates CREATE TABLE from a model map: schemas, tables, columns, nullability, identities and primary keys, and nothing else. It is scaffolding for a database the test owns, not a migration tool - a table generated from test-side models proves only that the models agree with themselves.
@@ -65,6 +65,7 @@
     - Setup: .LoadWebConfig(), .ConfigureApiTrigger(c =&gt; c with { ... }), .RedactHeaders(...)
     - WebExt.Artifact.Sql.Row&lt;T&gt;(identifier, keyValues...) with SetupArtifact/AddArtifact
     - WebExt.ArtifactFinder.Sql.Where&lt;T&gt;(identifier, "Name = @name").WithParameter("name", variable) with FindArtifact/FindArtifacts
+    - timeline.RegisterArtifact(identifier, WebExt.Artifact.Sql.Row&lt;T&gt;(...)) to adopt a row the application wrote
     - WebExt.Sql.Execute|Scalar&lt;T&gt;|Script(identifier, ...).WithParameter(name, variable)
     - WebExt.Sql.IsLive(identifier, SqlAlivenessLevel.Reachable|Database)
     - run.SqlRow&lt;T&gt;(artifactId) | SqlScalar&lt;T&gt;(label) | SqlAffectedRows(label) | SqlProbe(label) -> ValueHandle&lt;T&gt;
@@ -110,7 +111,8 @@
     Do not add sleeps to wait for a host; use IsLive with a timeout and retry.
     Do not log credential headers or put secrets in variables that are bound into results.
     Do not model a database row as a step; it is an artifact.
-    Do not delete rows the application created; only rows the test seeded are its own.
+    Do not delete rows the application created; only rows the test seeded or explicitly adopted are its own.
+    Do not use RegisterArtifact for a row that existed before the test ran: adopting it means owning it, and owning it means removing it.
     Do not concatenate values into SQL; parameters are variable-backed for exactly that reason.
     Do not assert with a third-party fluent-assertion package; the framework has its own.
     Do not generate a schema from models for a database whose schema is owned elsewhere; mirror the real schema with a script instead.

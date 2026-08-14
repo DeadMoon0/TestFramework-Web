@@ -243,6 +243,7 @@ run.SqlRow<Order>("order").Select(order => order.Quantity).Should().Be(3);
 | Surface | Use |
 |---|---|
 | `WebExt.Artifact.Sql.Row<T>(id, keys...)` | a row the test owns: upserted on setup, deleted on teardown |
+| `.RegisterArtifact(id, WebExt.Artifact.Sql.Row<T>(...))` | adopt a row the application wrote: resolved by key, and **removed on teardown** |
 | `WebExt.ArtifactFinder.Sql.Where<T>(id, "...")` | locate rows; a predicate that matches nothing fails the step |
 | `WebExt.Sql.Execute(id, "...")` | `UPDATE` / `DELETE` |
 | `WebExt.Sql.Script(id, SqlScript.FromFile("seed.sql"))` | seeding, batch-aware (`GO` splits batches) |
@@ -259,8 +260,11 @@ WebExt.Sql.Execute("main", "UPDATE Orders SET Status = @status WHERE Id = @id")
 
 Two rules worth knowing:
 
-- **Rows the test seeds are deleted on teardown; rows it merely finds are not.** A test must never
-  delete data the application under test created.
+- **Ownership decides teardown.** There are three ways to put a row in front of a test and they
+  differ only in who is responsible afterwards: `SetupArtifact` + `AddArtifact` creates and **owns**
+  it; `RegisterArtifact` adopts an existing row by key and **also owns** it, so it is removed;
+  `FindArtifact` only **observes**, and what it finds is left exactly where it was. Teardown records
+  that it passed over an observed artifact — an informational line, not a failure.
 - **Setup upserts.** A rerun against a database a previous run left dirty converges instead of
   failing on a duplicate key.
 
