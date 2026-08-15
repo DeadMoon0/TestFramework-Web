@@ -46,8 +46,12 @@ public sealed class SampleApiFixture : IAsyncLifetime
     /// </summary>
     /// <param name="identifier">The API identifier to register.</param>
     /// <param name="configure">Optional extra configuration values, relative to the identifier.</param>
+    /// <param name="configureBuilder">Optional extra builder steps, applied after the web config is loaded.</param>
     /// <returns>The configuration instance for the run.</returns>
-    public ConfigInstance CreateConfig(string identifier = "sample", Action<Dictionary<string, string?>>? configure = null)
+    public ConfigInstance CreateConfig(
+        string identifier = "sample",
+        Action<Dictionary<string, string?>>? configure = null,
+        Func<IConfigInstanceBuilder, IConfigInstanceBuilder>? configureBuilder = null)
     {
         Dictionary<string, string?> values = new(StringComparer.Ordinal)
         {
@@ -60,6 +64,9 @@ public sealed class SampleApiFixture : IAsyncLifetime
         IConfigInstanceBuilder builder = ConfigInstance.Create()
             .OverrideConfig(values)
             .LoadWebConfig();
+
+        if (configureBuilder is not null)
+            builder = configureBuilder(builder);
 
         return builder.Build();
     }

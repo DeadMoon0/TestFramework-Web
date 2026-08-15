@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,7 +25,10 @@ namespace TestFramework.Web.Trigger;
 /// </summary>
 /// <remarks>
 /// An unsuccessful status code is a result, not a failure: it is returned so the timeline can
-/// assert on it. Only transport failures raise <see cref="ApiRequestFailedException"/>.
+/// assert on it. Only transport failures raise <see cref="ApiRequestFailedException"/>. The call is
+/// sent exactly once — a host that may still be starting is the job of
+/// <c>WebExt.Api.IsLive(...)</c>, which waits, so a deliberate 404 assertion is not slowed down by
+/// a startup retry.
 /// </remarks>
 internal sealed class HttpApiTrigger(ApiIdentifier identifier, ComposedRequestVariable request)
     : Step<HttpResponseContext>, IHasEnvironmentRequirements
@@ -85,14 +87,11 @@ internal sealed class HttpApiTrigger(ApiIdentifier identifier, ComposedRequestVa
 
         try
         {
-            response = await SendWithLocalWarmupRetryAsync(
-                sender,
-                spec,
-                requestUri,
-                authentication,
-                triggerConfig,
-                logger,
-                cancellationToken).ConfigureAwait(false);
+            using (HttpRequestMessage message = spec.CreateMessage(requestUri))
+            {
+                await authentication.ApplyAsync(message, cancellationToken).ConfigureAwait(false);
+                response = await sender.SendAsync(message, cancellationToken).ConfigureAwait(false);
+            }
 
             stopwatch.Stop();
 
@@ -129,46 +128,4 @@ internal sealed class HttpApiTrigger(ApiIdentifier identifier, ComposedRequestVa
 
         return spec.AuthOverride ?? new ConfiguredApiAuthenticationProvider(identifier, config);
     }
-
-    private async Task<HttpResponseMessage> SendWithLocalWarmupRetryAsync(
-        IHttpSender sender,
-        HttpRequestSpec spec,
-        Uri requestUri,
-        IApiAuthenticationProvider authentication,
-        ApiTriggerConfig triggerConfig,
-        ScopedLogger logger,
-        CancellationToken cancellationToken)
-    {
-        // A freshly started local host answers 404 or 503 until its routes are live. Callers should
-        // not have to model that startup quirk as a user-visible step retry.
-        bool retryWarmup = IsLocalDevelopmentHost(requestUri) && triggerConfig.LocalWarmupRetryDuration > TimeSpan.Zero;
-        DateTime deadline = DateTime.UtcNow.Add(triggerConfig.LocalWarmupRetryDuration);
-
-        while (true)
-        {
-            using HttpRequestMessage message = spec.CreateMessage(requestUri);
-            await authentication.ApplyAsync(message, cancellationToken).ConfigureAwait(false);
-
-            HttpResponseMessage response = await sender.SendAsync(message, cancellationToken).ConfigureAwait(false);
-            bool warmupStatus = response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.ServiceUnavailable;
-
-            if (!retryWarmup || !warmupStatus || DateTime.UtcNow >= deadline)
-                return response;
-
-            logger.LogWarning(
-                "API '{0}' warmup retry after {1} from local host '{2}'. Retrying in {3}.",
-                identifier,
-                response.StatusCode,
-                requestUri.Authority,
-                triggerConfig.LocalWarmupRetryDelay);
-
-            response.Dispose();
-            await Task.Delay(triggerConfig.LocalWarmupRetryDelay, cancellationToken).ConfigureAwait(false);
-        }
-    }
-
-    private static bool IsLocalDevelopmentHost(Uri uri)
-        => uri.IsLoopback
-        || string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(uri.Host, "host.docker.internal", StringComparison.OrdinalIgnoreCase);
 }

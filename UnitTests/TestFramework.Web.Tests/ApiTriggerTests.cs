@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
@@ -7,6 +8,7 @@ using TestFramework.Core.Timelines;
 using TestFramework.Core.Timelines.Assertions;
 using TestFramework.Core.Variables;
 using TestFramework.Web.Exceptions;
+using TestFramework.Web.Extensions;
 using TestFramework.Web.SampleApi;
 using TestFramework.Web.Trigger.IsLive;
 using Xunit;
@@ -217,22 +219,46 @@ public class ApiTriggerTests(SampleApiFixture fixture)
     }
 
     [Fact]
-    public async Task WarmupStatus_IsRetriedAgainstALocalHost()
+    public async Task WarmupStatus_IsWaitedOutByTheLivenessProbe()
     {
-        // The sample API answers 404 twice for this key before succeeding, which is exactly the
-        // startup behaviour the warmup rule exists to absorb.
+        // The sample API answers 404 twice for this health path before succeeding, which is exactly
+        // the startup behaviour the probe exists to absorb.
+        ConfigInstance config = fixture.CreateConfig(
+            "warming",
+            values => values["Api:warming:HealthPath"] = $"/api/flaky?key=warmup-{Guid.NewGuid()}&failures=2");
+
+        Timeline timeline = Timeline.Create()
+            .Trigger(WebExt.Api.IsLive("warming", ApiAlivenessLevel.Healthy)).Name("live")
+            .Build();
+
+        TimelineRun run = await timeline.SetupRun(config).RunAsync();
+
+        run.EnsureRanToCompletion();
+        run.ApiProbe("live").Select(probe => probe.StatusCode).Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task WarmupStatus_IsNotRetriedByAnOrdinaryCall()
+    {
+        // A deliberate 404 must come back at once: the call itself never waits for a warmup.
         Timeline timeline = Timeline.Create()
             .Trigger(WebExt.Api.Http("sample")
                 .Get("api/flaky")
-                .WithQuery("key", Var.Const($"warmup-{Guid.NewGuid()}"))
+                .WithQuery("key", Var.Const($"no-warmup-{Guid.NewGuid()}"))
                 .WithQuery("failures", Var.Const("2"))
                 .Call()).Name("flaky")
             .Build();
 
+        Stopwatch stopwatch = Stopwatch.StartNew();
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
+        stopwatch.Stop();
 
         run.EnsureRanToCompletion();
-        run.ApiStatus("flaky").Should().Be(HttpStatusCode.OK);
+        using (run.AssertionScope())
+        {
+            run.ApiStatus("flaky").Should().Be(HttpStatusCode.NotFound);
+            run.Assert(stopwatch.Elapsed, "elapsed run time").Should().BeLessThan(TimeSpan.FromSeconds(5));
+        }
     }
 
     [Fact]
@@ -321,7 +347,12 @@ public class ApiTriggerTests(SampleApiFixture fixture)
     [Fact]
     public async Task IsLive_Healthy_Fails_WhenTheHealthPathDoesNotExist()
     {
-        ConfigInstance config = fixture.CreateConfig("nohealth", values => values["Api:nohealth:HealthPath"] = "/no-such-health");
+        // Zero the warmup window: the sample API is fully started, so the wait would only add
+        // ten seconds to a failure this test already expects.
+        ConfigInstance config = fixture.CreateConfig(
+            "nohealth",
+            values => values["Api:nohealth:HealthPath"] = "/no-such-health",
+            builder => builder.ConfigureApiTrigger(trigger => trigger with { LocalWarmupRetryDuration = TimeSpan.Zero }));
 
         Timeline timeline = Timeline.Create()
             .Trigger(WebExt.Api.IsLive("nohealth", ApiAlivenessLevel.Healthy)).Name("healthy")

@@ -58,7 +58,7 @@ section exists, so a future environment can hydrate identifiers at run time.
 `RemoteApiBuilder`. `Call()` materializes the step.
 
 **`Trigger/`** — `HttpApiTrigger` and `IsLive/ApiIsLiveTrigger`, plus `ApiTriggerConfig` for
-warmup-retry tuning.
+liveness-probe warmup tuning and request logging.
 
 **`Auth/`** — the mode enum, the provider interface, the configuration-driven provider, a delegate
 provider, and a variable-backed bearer provider resolved against the store at execution time.
@@ -85,7 +85,7 @@ A single API step:
    and the query, and rejects unsubstituted tokens.
 4. `IWebComponentFactory.CreateSender` returns a pooled sender for that identifier.
 5. Authentication is applied — the per-request override wins over the configured mode.
-6. The request is sent; warmup statuses from local hosts are retried within a bounded window.
+6. The request is sent exactly once; a status code is a result, so nothing is retried here.
 7. The response is converted to `HttpResponseContext`; the live `HttpResponseMessage` is disposed
    inside the step and never escapes.
 
@@ -124,7 +124,7 @@ disagree is a defect, not a feature.
 | Own HTTP primitives rather than reusing `TestFramework.Azure` | The Azure package carries Cosmos, Service Bus and EF Core. Consolidating the duplicated primitives into a shared package is planned once the shape settles. |
 | Own `WebConfigStore<T>` | `ConfigStore<T>` lives in `TestFramework.Azure`. A distinct name lets both be imported in one test file. |
 | Assertions reuse Core asserters rather than adding module-specific ones | The assertion infrastructure - debug signalling and scope collection - is internal to Core. Wrapping values into `ValueHandle<T>` keeps web assertions first-class instead of a parallel mechanism that bypasses the debugging UI. |
-| Warmup retry limited to local hosts | A transient `404` while a local route table warms up is infrastructure noise. On a remote host the same status is a real answer and must not be hidden. |
+| Warmup retry lives in the liveness probe, and only for local hosts | A transient `404` while a local route table warms up is infrastructure noise, and waiting it out is exactly what `IsLive` is for. Putting the same retry on every call would make each deliberate `404` assertion pay the full window. On a remote host the status is a real answer and must not be hidden. |
 | Pooled clients keyed by connection-relevant settings | Connection reuse across steps, while a run that rewrites the endpoint still gets a fresh client. |
 | A database row is an artifact, a statement is a step, an aggregate is an observation | A row has identity and a lifecycle; a statement is an action; a scalar has neither. Modelling them alike would give rows no teardown and statements no ordering. |
 | Generated schema covers tables and keys only | Foreign keys, indexes and constraints belong to a schema someone owns. Generating them would imply this is a migration tool, which it is not. |

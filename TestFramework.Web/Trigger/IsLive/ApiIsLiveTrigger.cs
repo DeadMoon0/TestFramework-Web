@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using TestFramework.Core.Artifacts;
 using TestFramework.Core.Environment;
 using TestFramework.Core.Logging;
@@ -23,6 +24,12 @@ namespace TestFramework.Web.Trigger.IsLive;
 /// <summary>
 /// Probes whether a configured API is answering.
 /// </summary>
+/// <remarks>
+/// Against a local host this is the step that waits: a <c>404</c> or <c>503</c> from a loopback or
+/// <c>host.docker.internal</c> authority is retried for
+/// <see cref="ApiTriggerConfig.LocalWarmupRetryDuration"/> while the route table comes up. Against
+/// any other authority the same status fails immediately — a remote 404 is a real answer.
+/// </remarks>
 internal sealed class ApiIsLiveTrigger(ApiIdentifier identifier, VariableReference<ApiAlivenessLevel> alivenessLevel)
     : Step<ApiIsLiveResult>, IHasEnvironmentRequirements
 {
@@ -62,6 +69,7 @@ internal sealed class ApiIsLiveTrigger(ApiIdentifier identifier, VariableReferen
 
         ApiAlivenessLevel level = alivenessLevel.GetValue(variableStore);
         ApiConfig config = ApiConfigResolver.Resolve(serviceProvider, identifier);
+        ApiTriggerConfig triggerConfig = serviceProvider.GetService<ApiTriggerConfig>() ?? new ApiTriggerConfig();
         Uri probeUri = BuildProbeUri(config, level);
         IHttpSender sender = serviceProvider.GetWebComponentFactory().CreateSender(identifier, config);
 
@@ -72,11 +80,15 @@ internal sealed class ApiIsLiveTrigger(ApiIdentifier identifier, VariableReferen
 
         try
         {
-            using HttpRequestMessage message = new(HttpMethod.Get, probeUri);
-            if (level == ApiAlivenessLevel.Authenticated)
-                await new ConfiguredApiAuthenticationProvider(identifier, config).ApplyAsync(message, cancellationToken).ConfigureAwait(false);
+            response = await ProbeWithLocalWarmupRetryAsync(
+                sender,
+                config,
+                level,
+                probeUri,
+                triggerConfig,
+                logger,
+                cancellationToken).ConfigureAwait(false);
 
-            response = await sender.SendAsync(message, cancellationToken).ConfigureAwait(false);
             stopwatch.Stop();
 
             EnsureProbeSucceeded(level, response.StatusCode, probeUri);
@@ -98,6 +110,59 @@ internal sealed class ApiIsLiveTrigger(ApiIdentifier identifier, VariableReferen
             response?.Dispose();
         }
     }
+
+    private async Task<HttpResponseMessage> ProbeWithLocalWarmupRetryAsync(
+        IHttpSender sender,
+        ApiConfig config,
+        ApiAlivenessLevel level,
+        Uri probeUri,
+        ApiTriggerConfig triggerConfig,
+        ScopedLogger logger,
+        CancellationToken cancellationToken)
+    {
+        // A freshly started local host answers 404 or 503 until its routes are live. Waiting that
+        // out is this step's whole purpose, so it happens here rather than on every later call.
+        bool retryWarmup = IsLocalDevelopmentHost(probeUri)
+            && level != ApiAlivenessLevel.Reachable
+            && triggerConfig.LocalWarmupRetryDuration > TimeSpan.Zero;
+
+        DateTime deadline = DateTime.UtcNow.Add(triggerConfig.LocalWarmupRetryDuration);
+        bool announced = false;
+
+        while (true)
+        {
+            using HttpRequestMessage message = new(HttpMethod.Get, probeUri);
+            if (level == ApiAlivenessLevel.Authenticated)
+                await new ConfiguredApiAuthenticationProvider(identifier, config).ApplyAsync(message, cancellationToken).ConfigureAwait(false);
+
+            HttpResponseMessage response = await sender.SendAsync(message, cancellationToken).ConfigureAwait(false);
+            bool warmupStatus = response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.ServiceUnavailable;
+
+            if (!retryWarmup || !warmupStatus || DateTime.UtcNow >= deadline)
+                return response;
+
+            if (!announced)
+            {
+                // One line for the whole wait: a per-attempt log would bury the run in noise.
+                logger.LogInformation(
+                    "API IsLive '{0}' got {1} from local host '{2}'. Waiting up to {3} for it to warm up.",
+                    identifier,
+                    response.StatusCode,
+                    probeUri.Authority,
+                    triggerConfig.LocalWarmupRetryDuration);
+
+                announced = true;
+            }
+
+            response.Dispose();
+            await Task.Delay(triggerConfig.LocalWarmupRetryDelay, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static bool IsLocalDevelopmentHost(Uri uri)
+        => uri.IsLoopback
+        || string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(uri.Host, "host.docker.internal", StringComparison.OrdinalIgnoreCase);
 
     private Uri BuildProbeUri(ApiConfig config, ApiAlivenessLevel level)
     {

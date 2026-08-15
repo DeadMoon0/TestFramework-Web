@@ -13,12 +13,19 @@ namespace TestFramework.Web.Trigger;
 public sealed record ApiTriggerConfig
 {
     /// <summary>
-    /// How long a transient 404 or 503 from a local host is retried while its route table warms up.
+    /// How long <c>WebExt.Api.IsLive(...)</c> keeps waiting on a 404 or 503 from a local host while
+    /// its route table warms up.
     /// </summary>
+    /// <remarks>
+    /// Only the liveness probe waits. An ordinary call is sent exactly once, so a deliberate 404
+    /// assertion returns immediately. Only loopback and <c>host.docker.internal</c> authorities are
+    /// treated as warming up; anywhere else a 404 is a real answer and fails the probe at once.
+    /// Set to <see cref="TimeSpan.Zero"/> to make the probe single-shot.
+    /// </remarks>
     public TimeSpan LocalWarmupRetryDuration { get; init; } = TimeSpan.FromSeconds(10);
 
     /// <summary>
-    /// Delay between local warmup retries.
+    /// Delay between liveness probe attempts while waiting out a local warmup.
     /// </summary>
     public TimeSpan LocalWarmupRetryDelay { get; init; } = TimeSpan.FromMilliseconds(500);
 

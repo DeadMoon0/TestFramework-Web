@@ -365,7 +365,7 @@ and verifies; it does not host.** `TestFramework.Container.Web` hosts declaratio
 | `401` or `403` against a Windows-authenticated API | Set `Auth` to `Negotiate` for that identifier. |
 | `No SQL configuration was registered for identifier 'x'` | The `Sql:x` section is missing. The message lists the identifiers that *are* registered. |
 | `No key column could be determined for 'T'` | Register the model, annotate the key with `[Key]`, or name it `Id`. |
-| A local host answers `404` right after start | Already handled: warmup statuses from loopback hosts are retried for a bounded window. Tune with `.ConfigureApiTrigger(...)`. |
+| A local host answers `404` right after start | Put `WebExt.Api.IsLive("x", ApiAlivenessLevel.Healthy)` in front of the calls. The probe waits out `404`/`503` from a loopback host for a bounded window; an ordinary call is sent exactly once, so a deliberate `404` assertion is never slowed down. Tune the window with `.ConfigureApiTrigger(...)`. |
 | Need to see what headers actually went out | `.ConfigureApiTrigger(c => c with { LogRequestHeaders = true })`, with sensitive values redacted. |
 | `The response body could not be read as 'T'` | Assert the status first; error responses rarely use the success schema. |
 | `No stub configuration was registered for identifier 'x'` | The `Stub:x` section is missing, or no environment published it. |

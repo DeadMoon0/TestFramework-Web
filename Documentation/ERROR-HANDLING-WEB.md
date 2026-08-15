@@ -113,8 +113,11 @@ is no global mutable list, so one test project cannot change what another one re
 Some conditions are absorbed on purpose, because making them the caller's problem would push
 infrastructure quirks into test code:
 
-- **Warmup statuses from local hosts.** A `404` or `503` from a loopback or `host.docker.internal`
-  host is retried for a bounded window while the route table comes up. Tune or disable it with
-  `.ConfigureApiTrigger(c => c with { LocalWarmupRetryDuration = ... })`.
+- **Warmup statuses from local hosts — in the liveness probe only.** `WebExt.Api.IsLive(...)` retries
+  a `404` or `503` from a loopback or `host.docker.internal` host for a bounded window while the
+  route table comes up, logging one line for the whole wait. Tune or disable it with
+  `.ConfigureApiTrigger(c => c with { LocalWarmupRetryDuration = ... })`. An ordinary call is sent
+  exactly once: a status code is a result, and a timeline asserting `NotFound` must not pay a
+  ten-second retry for it. Put an `IsLive` step in front of a host that may still be starting.
 - **Transport timeouts versus step timeouts.** With no `RequestTimeout` configured, the step timeout
   is the single source of truth, so two timeout knobs cannot silently disagree.
