@@ -367,6 +367,7 @@ and verifies; it does not host.** `TestFramework.Container.Web` hosts declaratio
 | `No key column could be determined for 'T'` | Register the model, annotate the key with `[Key]`, or name it `Id`. |
 | A local host answers `404` right after start | Put `WebExt.Api.IsLive("x", ApiAlivenessLevel.Healthy)` in front of the calls. The probe waits out `404`/`503` from a loopback host for a bounded window; an ordinary call is sent exactly once, so a deliberate `404` assertion is never slowed down. Tune the window with `.ConfigureApiTrigger(...)`. |
 | Need to see what headers actually went out | `.ConfigureApiTrigger(c => c with { LogRequestHeaders = true })`, with sensitive values redacted. |
+| The API needs a cookie session, or a cookie appears to leak between runs | Cookies are off by default: clients are pooled per identifier, so a jar would replay one run's session onto the next. Set `"UseCookies": true` on the identifier when the API genuinely needs one, and expect concurrent runs against that identifier to share the jar. |
 | `The response body could not be read as 'T'` | Assert the status first; error responses rarely use the success schema. |
 | `No stub configuration was registered for identifier 'x'` | The `Stub:x` section is missing, or no environment published it. |
 | `The stub at '...' did not answer` | The stub server is gone. A container that exited takes its request log with it. |

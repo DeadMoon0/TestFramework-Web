@@ -60,7 +60,7 @@
     - run.Step("label").Response() | ProbeResult() for the raw typed result
     - HttpResponseContext: StatusCode, Body, Headers, ContentType, Elapsed, IsSuccess, Json&lt;T&gt;(), Header(name), BodyExcerpt()
     - ConfigInstance.FromJsonFile(path).LoadWebConfig().Build(), then timeline.SetupRun(config)
-    - ApiConfig: BaseUrl, HealthPath, Auth, ApiKeyHeaderName, ApiKey, BearerToken, UserName, Password, RequestTimeout, AllowInvalidCertificates
+    - ApiConfig: BaseUrl, HealthPath, Auth, ApiKeyHeaderName, ApiKey, BearerToken, UserName, Password, RequestTimeout, AllowInvalidCertificates, UseCookies (off by default; the client is pooled per identifier, so a jar is shared by every run in the process)
     - ApiAuthMode: None, ApiKey, Bearer, Basic, Negotiate
     - Exceptions: ApiConfigurationValidationException, ApiRequestFailedException, ApiResponseFormatException, ApiLivenessProbeException
     - Setup: .LoadWebConfig(), .ConfigureApiTrigger(c =&gt; c with { ... }), .RedactHeaders(...)

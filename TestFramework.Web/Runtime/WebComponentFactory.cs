@@ -65,7 +65,7 @@ public sealed class DefaultWebComponentFactory : IWebComponentFactory
         // reuse connections, while a run that rewrites the endpoint still gets a fresh client.
         string key = string.Create(
             CultureInfo.InvariantCulture,
-            $"{identifier}|{config.BaseUrl}|{config.Auth}|{config.AllowInvalidCertificates}|{config.RequestTimeout}");
+            $"{identifier}|{config.BaseUrl}|{config.Auth}|{config.AllowInvalidCertificates}|{config.RequestTimeout}|{config.UseCookies}");
 
         HttpClient client = Clients.GetOrAdd(key, _ => new Lazy<HttpClient>(() => CreateClient(config), LazyThreadSafetyMode.ExecutionAndPublication)).Value;
         return new HttpClientSender(client);
@@ -73,9 +73,12 @@ public sealed class DefaultWebComponentFactory : IWebComponentFactory
 
     private static HttpClient CreateClient(ApiConfig config)
     {
+        // Cookies are off unless asked for: the client is pooled, so its jar would otherwise outlive
+        // the run that filled it and replay a session onto the next one.
         HttpClientHandler handler = new()
         {
             UseDefaultCredentials = config.Auth == ApiAuthMode.Negotiate,
+            UseCookies = config.UseCookies,
         };
 
         if (config.AllowInvalidCertificates)

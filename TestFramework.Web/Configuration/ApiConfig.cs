@@ -61,4 +61,18 @@ public record ApiConfig
     /// Accepts server certificates that fail validation. Intended for local hosts with self-signed certificates.
     /// </summary>
     public bool AllowInvalidCertificates { get; init; }
+
+    /// <summary>
+    /// Keeps a cookie jar across the requests of this identifier. Off by default.
+    /// </summary>
+    /// <remarks>
+    /// Clients are pooled per identifier, so the jar is shared by every run and every test that
+    /// talks to this identifier in the same process. With it on, a <c>Set-Cookie</c> from one run —
+    /// a session id, an authentication cookie, an anti-forgery token, a sticky-session affinity
+    /// hint — is replayed on the next run's first request. That is exactly the hidden state a test
+    /// run must not carry, which is why it is off unless the API genuinely needs a cookie session.
+    /// Turn it on only when the API under test cannot be driven without one, and expect concurrent
+    /// runs against the same identifier to share the jar.
+    /// </remarks>
+    public bool UseCookies { get; init; }
 }

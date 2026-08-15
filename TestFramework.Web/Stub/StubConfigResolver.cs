@@ -58,7 +58,9 @@ public static class StubConfigResolver
 
     private static HttpClient CreateClient(StubConfig config)
     {
-        HttpClientHandler handler = new();
+        // The admin surface has no session, and this client is pooled across runs: a cookie jar here
+        // could only carry one run's state into the next.
+        HttpClientHandler handler = new() { UseCookies = false };
         if (config.AllowInvalidCertificates)
             handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
 

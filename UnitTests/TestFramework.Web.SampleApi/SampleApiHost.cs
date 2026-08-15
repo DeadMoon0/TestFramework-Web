@@ -40,6 +40,11 @@ public static class SampleApiHost
     public const string BearerTokenValue = "sample-token";
 
     /// <summary>
+    /// Name of the session cookie issued by the cookie endpoints.
+    /// </summary>
+    public const string SessionCookieName = "sample-session";
+
+    /// <summary>
     /// Creates the sample application bound to an ephemeral loopback port.
     /// </summary>
     /// <returns>The application, not yet started.</returns>
@@ -128,6 +133,18 @@ public static class SampleApiHost
         });
 
         app.MapGet("/api/status/{code}", (int code) => Results.StatusCode(code));
+
+        // Hands out a session cookie. Paired with /api/cookie/echo it shows whether a pooled client
+        // is carrying a jar from an earlier run.
+        app.MapGet("/api/cookie/set", (HttpResponse response, string? value) =>
+        {
+            response.Cookies.Append(SessionCookieName, value ?? "sample-session");
+            return Results.Ok(new { issued = true });
+        });
+
+        app.MapGet("/api/cookie/echo", (HttpRequest request) => Results.Ok(new CookieEchoResponse(
+            request.Cookies.TryGetValue(SessionCookieName, out string? cookie) ? cookie : null,
+            request.Headers.Cookie.Count > 0)));
     }
 
     /// <summary>

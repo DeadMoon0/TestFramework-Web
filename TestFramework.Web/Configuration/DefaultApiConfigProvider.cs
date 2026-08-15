@@ -74,6 +74,7 @@ public class DefaultApiConfigProvider : IApiConfigProvider
             Password = section.GetSection(nameof(ApiConfig.Password)).Value,
             RequestTimeout = ParseTimeout(identifier, section.GetSection(nameof(ApiConfig.RequestTimeout)).Value),
             AllowInvalidCertificates = ParseBool(identifier, nameof(ApiConfig.AllowInvalidCertificates), section.GetSection(nameof(ApiConfig.AllowInvalidCertificates)).Value),
+            UseCookies = ParseBool(identifier, nameof(ApiConfig.UseCookies), section.GetSection(nameof(ApiConfig.UseCookies)).Value),
         };
 
         string? healthPath = section.GetSection(nameof(ApiConfig.HealthPath)).Value;
