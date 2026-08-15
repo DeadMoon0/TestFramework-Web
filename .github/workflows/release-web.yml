@@ -1,0 +1,90 @@
+name: Release TestFramework.Web
+
+# Publishes ONE package: TestFramework.Web.
+#
+# Trigger: push a package-prefixed tag, e.g.
+#     git tag Web-v<version> && git push origin Web-v<version>
+#
+# This repo produces one package. The tag is prefixed anyway so the tagging convention
+# is the same across every TestFramework repo.
+#
+# The tag is the source of truth: the job refuses to publish unless the packed project's
+# <Version> matches the version in the tag.
+#
+# Publish order matters across repos: this package depends on TestFramework.Core (and
+# TestFramework.Config where referenced), so those must already be on nuget.org first.
+#
+# Secret required: NUGET_API_KEY, scoped to the TestFramework.* package glob.
+# Prefer nuget.org Trusted Publishing (GitHub OIDC, no long-lived key) if it is enabled
+# on the account - swap the push step for the OIDC exchange and drop the secret.
+
+on:
+  push:
+    tags:
+      - 'Web-v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-web-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PACKAGE_PREFIX: Web
+  PROJECT: TestFramework.Web/TestFramework.Web.csproj
+  TEST_PROJECT: UnitTests/TestFramework.Web.Tests/TestFramework.Web.Tests.csproj
+
+jobs:
+  publish:
+    name: publish
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Required: the packed icon comes from Modules/TestFramework-Common.
+          # Without this the pack fails with NuGet's opaque "icon file does not exist".
+          submodules: recursive
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Verify tag matches the project version
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#${PACKAGE_PREFIX}-v}"
+          version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' "$PROJECT" | head -n1)"
+          echo "Tag version:     $tag"
+          echo "Project version: $version"
+          if [ "$tag" = "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag '$GITHUB_REF_NAME' does not start with '${PACKAGE_PREFIX}-v'"
+            exit 1
+          fi
+          if [ "$version" != "$tag" ]; then
+            echo "::error file=$PROJECT::Version '$version' does not match tag '$tag'"
+            exit 1
+          fi
+
+      - name: Test
+        run: dotnet test "$TEST_PROJECT" --configuration Release --logger "trx"
+
+      - name: Pack
+        run: dotnet pack "$PROJECT" -c Release -p:ContinuousIntegrationBuild=true -o out
+
+      - name: Push
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          # --skip-duplicate makes a re-run of the same tag idempotent.
+          dotnet nuget push "out/*.nupkg" \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key "$NUGET_API_KEY" \
+            --skip-duplicate
