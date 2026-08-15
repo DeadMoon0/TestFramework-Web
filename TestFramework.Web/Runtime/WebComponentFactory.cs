@@ -1,6 +1,6 @@
 using System;
-using System.Collections.Concurrent;
 using System.Globalization;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -49,7 +49,7 @@ public static class WebComponentFactoryExtensions
 /// </summary>
 public sealed class DefaultWebComponentFactory : IWebComponentFactory
 {
-    private static readonly ConcurrentDictionary<string, Lazy<HttpClient>> Clients = new(StringComparer.Ordinal);
+    private static readonly HttpClientPool Clients = new(WebHttpClientDefaults.PoolCapacity);
 
     /// <summary>
     /// Gets the shared factory instance.
@@ -67,7 +67,7 @@ public sealed class DefaultWebComponentFactory : IWebComponentFactory
             CultureInfo.InvariantCulture,
             $"{identifier}|{config.BaseUrl}|{config.Auth}|{config.AllowInvalidCertificates}|{config.RequestTimeout}|{config.UseCookies}");
 
-        HttpClient client = Clients.GetOrAdd(key, _ => new Lazy<HttpClient>(() => CreateClient(config), LazyThreadSafetyMode.ExecutionAndPublication)).Value;
+        HttpClient client = Clients.GetOrAdd(key, () => CreateClient(config));
         return new HttpClientSender(client);
     }
 
@@ -75,14 +75,12 @@ public sealed class DefaultWebComponentFactory : IWebComponentFactory
     {
         // Cookies are off unless asked for: the client is pooled, so its jar would otherwise outlive
         // the run that filled it and replay a session onto the next one.
-        HttpClientHandler handler = new()
-        {
-            UseDefaultCredentials = config.Auth == ApiAuthMode.Negotiate,
-            UseCookies = config.UseCookies,
-        };
+        SocketsHttpHandler handler = WebHttpClientDefaults.CreateHandler(config.AllowInvalidCertificates, config.UseCookies);
 
-        if (config.AllowInvalidCertificates)
-            handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+        // The Negotiate equivalent of HttpClientHandler.UseDefaultCredentials = true: that property
+        // is itself implemented as this assignment on the underlying SocketsHttpHandler.
+        if (config.Auth == ApiAuthMode.Negotiate)
+            handler.Credentials = CredentialCache.DefaultCredentials;
 
         HttpClient client = new(handler, disposeHandler: true);
 

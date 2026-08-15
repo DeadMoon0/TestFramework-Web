@@ -1,9 +1,9 @@
 using System;
-using System.Collections.Concurrent;
 using System.Net.Http;
 using System.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using TestFramework.Web.Configuration;
+using TestFramework.Web.Runtime;
 using TestFramework.Web.Stub.Admin;
 using TestFramework.Web.Stub.Exceptions;
 
@@ -47,22 +47,21 @@ public static class StubConfigResolver
     }
 
     // Clients are pooled per identifier and address, so a run that polls a stub in a loop reuses one
-    // connection instead of leaking a socket per step.
-    private static readonly ConcurrentDictionary<string, Lazy<HttpClient>> Clients = new(StringComparer.Ordinal);
+    // connection instead of leaking a socket per step. The pool is bounded and evicts, because a
+    // container lane gives every run a new ephemeral port and therefore a new key.
+    private static readonly HttpClientPool Clients = new(WebHttpClientDefaults.PoolCapacity);
 
     private static HttpClient GetClient(string identifier, StubConfig config)
     {
         string key = $"{identifier}|{config.BaseUrl}|{config.AllowInvalidCertificates}";
-        return Clients.GetOrAdd(key, _ => new Lazy<HttpClient>(() => CreateClient(config), LazyThreadSafetyMode.ExecutionAndPublication)).Value;
+        return Clients.GetOrAdd(key, () => CreateClient(config));
     }
 
     private static HttpClient CreateClient(StubConfig config)
     {
         // The admin surface has no session, and this client is pooled across runs: a cookie jar here
         // could only carry one run's state into the next.
-        HttpClientHandler handler = new() { UseCookies = false };
-        if (config.AllowInvalidCertificates)
-            handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+        SocketsHttpHandler handler = WebHttpClientDefaults.CreateHandler(config.AllowInvalidCertificates, useCookies: false);
 
         return new HttpClient(handler, disposeHandler: true)
         {
