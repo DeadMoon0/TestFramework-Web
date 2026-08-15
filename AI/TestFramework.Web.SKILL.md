@@ -66,7 +66,7 @@
     - ApiAuthMode: None, ApiKey, Bearer, Basic, Negotiate
     - Exceptions: ApiConfigurationValidationException, ApiRequestFailedException, ApiResponseFormatException, ApiLivenessProbeException
     - Setup: .LoadWebConfig(), .ConfigureApiTrigger(c =&gt; c with { ... }), .RedactHeaders(...)
-    - WebExt.Artifact.Sql.Row&lt;T&gt;(identifier, keyValues...) with SetupArtifact/AddArtifact
+    - WebExt.Artifact.Sql.Row&lt;T&gt;(identifier, keyValues...) with SetupArtifact/AddArtifact, payload TestFramework.Web.Sql.Artifacts.SqlRowArtifactData&lt;T&gt;. TestFramework.Azure declares a type of the same name; in a file using both, alias one with a using rather than expecting a rename.
     - WebExt.ArtifactFinder.Sql.Where&lt;T&gt;(identifier, "Name = @name").WithParameter("name", variable) with FindArtifact/FindArtifacts
     - timeline.RegisterArtifact(identifier, WebExt.Artifact.Sql.Row&lt;T&gt;(...)) to adopt a row the application wrote
     - WebExt.Sql.Execute|Scalar&lt;T&gt;|Script(identifier, ...).WithParameter(name, variable). A script's GO batches all run on one connection, so #temp tables and SET options survive a GO; GO 3 repeats a batch. A custom ISqlExecutor keeps the old per-batch behaviour until it overrides ExecuteScriptAsync.

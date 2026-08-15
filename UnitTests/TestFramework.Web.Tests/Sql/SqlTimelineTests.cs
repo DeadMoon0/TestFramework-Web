@@ -62,7 +62,7 @@ public class SqlTimelineTests
 
         Timeline timeline = Timeline.Create()
             .SetVariable("status", Var.Const(9))
-            .SetVariable("name", Var.Const("Testauftrag"))
+            .SetVariable("name", Var.Const("test-order"))
             .Trigger(WebExt.Sql.Execute("main", "UPDATE Orders SET Status = @status WHERE Name = @name")
                 .WithParameter("status", Var.Ref<int>("status"))
                 .WithParameter("name", Var.Ref<string>("name"))).Name("update")
@@ -75,7 +75,7 @@ public class SqlTimelineTests
 
         RecordedSqlCall call = Assert.Single(executor.Calls);
         Assert.Equal(9, call.Parameters["status"]);
-        Assert.Equal("Testauftrag", call.Parameters["name"]);
+        Assert.Equal("test-order", call.Parameters["name"]);
     }
 
     [Fact]
@@ -224,11 +224,11 @@ public class SqlTimelineTests
         // A test must not delete data the application created; only rows it seeded are its own.
         RecordingSqlExecutor executor = new()
         {
-            QueryResult = _ => new[] { new Order { Id = 99, Name = "Testauftrag", Quantity = 3 } },
+            QueryResult = _ => new[] { new Order { Id = 99, Name = "test-order", Quantity = 3 } },
         };
 
         Timeline timeline = Timeline.Create()
-            .SetVariable("name", Var.Const("Testauftrag"))
+            .SetVariable("name", Var.Const("test-order"))
             .FindArtifact("order", WebExt.ArtifactFinder.Sql.Where<Order>("main", "Name = @name")
                 .WithParameter("name", Var.Ref<string>("name")))
             .Build();
@@ -245,11 +245,11 @@ public class SqlTimelineTests
     {
         RecordingSqlExecutor executor = new()
         {
-            QueryResult = _ => new[] { new Order { Id = 1, Name = "Testauftrag", Quantity = 1 } },
+            QueryResult = _ => new[] { new Order { Id = 1, Name = "test-order", Quantity = 1 } },
         };
 
         Timeline timeline = Timeline.Create()
-            .SetVariable("name", Var.Const("Testauftrag"))
+            .SetVariable("name", Var.Const("test-order"))
             .FindArtifact("order", WebExt.ArtifactFinder.Sql.Where<Order>("main", "Name = @name")
                 .WithParameter("name", Var.Ref<string>("name")))
             .Build();
@@ -260,7 +260,7 @@ public class SqlTimelineTests
         // The finder selects by predicate; the artifact machinery then resolves the located
         // reference by key, so two selects are expected.
         RecordedSqlCall select = Assert.Single(executor.CallsContaining("WHERE Name = @name"));
-        Assert.Equal("Testauftrag", select.Parameters["name"]);
+        Assert.Equal("test-order", select.Parameters["name"]);
         Assert.Single(executor.CallsContaining("WHERE [Id] = @tf_key0"));
     }
 

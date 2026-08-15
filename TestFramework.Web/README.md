@@ -237,7 +237,7 @@ it is a step. An aggregate is neither, so it is an observation:
 ```csharp
 Timeline timeline = Timeline.Create()
     .SetupArtifact("customer")                                   // seeded, then removed on teardown
-    .SetVariable("orderName", Var.Const("Testauftrag"))
+    .SetVariable("orderName", Var.Const("test-order"))
     .Trigger(WebExt.Api.Http("orders").Post("api/orders").WithJsonBody(Var.Ref<CreateOrder>("payload")).Call()).Name("create")
     .FindArtifact("order", WebExt.ArtifactFinder.Sql.Where<Order>("main", "Name = @name")
         .WithParameter("name", Var.Ref<string>("orderName")))
@@ -246,7 +246,7 @@ Timeline timeline = Timeline.Create()
 TimelineRun run = await timeline.SetupRun(config)
     .AddArtifact("customer",
         WebExt.Artifact.Sql.Row<Customer>("main", Var.Const("4711")),
-        new SqlRowArtifactData<Customer>(new Customer { Id = 4711, Name = "Testkunde" }))
+        new SqlRowArtifactData<Customer>(new Customer { Id = 4711, Name = "test-customer" }))
     .RunAsync();
 
 run.ApiStatus("create").Should().Be(HttpStatusCode.Created);
@@ -412,6 +412,7 @@ declarations in a container.
 | `API 'x' did not answer ...` | Transport failure. The message names the authority to check, and suggests the timeout or certificate setting when those are the likely cause. |
 | `401` or `403` against a Windows-authenticated API | Set `Auth` to `Negotiate` for that identifier. |
 | `No SQL configuration was registered for identifier 'x'` | The `Sql:x` section is missing. The message lists the identifiers that *are* registered. |
+| `SqlRowArtifactData<T>` is ambiguous between two namespaces | `TestFramework.Azure` has a type of the same name (EF-backed) as this one (ADO-backed). They are different types with the same shape, so alias whichever one the file means: `using SqlRow = TestFramework.Web.Sql.Artifacts.SqlRowArtifactData<Order>;`. They are deliberately not renamed — the two SQL surfaces would end up gratuitously asymmetric to solve what one `using` line solves. |
 | `No key column could be determined for 'T'` | Register the model, annotate the key with `[Key]`, or name it `Id`. |
 | A local host answers `404` right after start | Put `WebExt.Api.IsLive("x", ApiAlivenessLevel.Healthy)` in front of the calls. The probe waits out `404`/`503` from a loopback host for a bounded window; an ordinary call is sent exactly once, so a deliberate `404` assertion is never slowed down. Tune the window with `.ConfigureApiTrigger(...)`. |
 | A long-running test host seems to accumulate sockets | Clients are pooled per identifier and endpoint, capped at 64, and the least recently used one is disposed past the cap. Connections are recycled every two minutes so a DNS change is picked up. |
