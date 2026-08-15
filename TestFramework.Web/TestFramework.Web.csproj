@@ -38,8 +38,8 @@ Worth knowing up front:
 		<PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.2" />
 		<PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
-		<PackageReference Include="TestFramework.Config" Version="0.1.5" />
-		<PackageReference Include="TestFramework.Core" Version="0.1.9" />
+		<PackageReference Include="TestFramework.Config" Version="0.1.6" />
+		<PackageReference Include="TestFramework.Core" Version="0.1.10" />
 	</ItemGroup>
 
 	<ItemGroup>
