@@ -56,7 +56,7 @@
     Important APIs and shapes from the package:
     - WebExt.Api.Http(identifier).Get|Post|Put|Patch|Delete(path).Call()
     - WithRouteValue(name, variable), WithQuery(name, variable), WithHeader(key, value), WithJsonBody(variable), WithBody(text|bytes, contentType), WithAuth(provider), WithBearerToken(variable)
-    - WebExt.Api.IsLive(identifier, ApiAlivenessLevel.Reachable|Healthy|Authenticated)
+    - WebExt.Api.IsLive(identifier, ApiAlivenessLevel.Reachable|Healthy|Authenticated). ApiIsLiveResult.Success and SqlIsLiveResult.Success are always true: a failed probe throws, and the field exists so an asserted probe reads like any other step result.
     - run.ApiStatus(label) | ApiBody(label) | ApiHeader(label, name) | ApiJson&lt;T&gt;(label) | ApiResponse(label) | ApiProbe(label) -> ValueHandle&lt;T&gt;, then .Should()...
     - run.Step(label).Should().HaveCompleted() | HaveThrown&lt;T&gt;(), run.AssertionScope()
     - run.Step("label").Response() | ProbeResult() for the raw typed result
@@ -70,7 +70,7 @@
     - WebExt.ArtifactFinder.Sql.Where&lt;T&gt;(identifier, "Name = @name").WithParameter("name", variable) with FindArtifact/FindArtifacts
     - timeline.RegisterArtifact(identifier, WebExt.Artifact.Sql.Row&lt;T&gt;(...)) to adopt a row the application wrote
     - WebExt.Sql.Execute|Scalar&lt;T&gt;|Script(identifier, ...).WithParameter(name, variable). A script's GO batches all run on one connection, so #temp tables and SET options survive a GO; GO 3 repeats a batch. A custom ISqlExecutor keeps the old per-batch behaviour until it overrides ExecuteScriptAsync.
-    - WebExt.Sql.IsLive(identifier, SqlAlivenessLevel.Reachable|Database)
+    - WebExt.Sql.IsLive(identifier, SqlAlivenessLevel.Reachable|Database). The connection string names the catalog, so both levels have already opened the configured database; they differ only in SELECT 1 against SELECT DB_NAME().
     - run.SqlRow&lt;T&gt;(artifactId) | SqlScalar&lt;T&gt;(label) | SqlAffectedRows(label) | SqlProbe(label) -> ValueHandle&lt;T&gt;
     - SqlConfig: ConnectionString or Server/Database/IntegratedSecurity/UserName/Password/TrustServerCertificate/CommandTimeout
     - Setup: .AddWebSqlModels(models =&gt; models.For&lt;T&gt;().Table("...").Key(x =&gt; x.Id).Generated(x =&gt; x.Id)), .ConfigureSqlSteps(...), .UseSqlCredentials(...)

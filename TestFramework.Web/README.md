@@ -196,6 +196,19 @@ Combine it with the normal timeline modifiers:
 .Trigger(WebExt.Api.IsLive("sample")).WithTimeOut(TimeSpan.FromMinutes(1)).WithRetry(10, CalcDelays.Fixed(TimeSpan.FromSeconds(2)))
 ```
 
+This is also the step that waits out a local host's startup: at `Healthy` or `Authenticated` level a
+`404` or `503` from a loopback authority is retried for `LocalWarmupRetryDuration`. Ordinary calls
+are sent exactly once.
+
+`probe.Success` is always `true`. A failed probe throws — `ApiLivenessProbeException` for a bad
+status, `ApiRequestFailedException` for a transport failure — so there is no result in which it is
+false. The field exists so an asserted probe reads like any other step result. The same holds for
+`SqlIsLiveResult.Success`.
+
+For SQL, `Reachable` and `Database` are closer together than they look: the connection string names
+the catalog, so opening the connection already opened the configured database. The levels differ in
+the query that follows — `SELECT 1` against `SELECT DB_NAME()`.
+
 ## SQL Server
 
 Configure a database the same way an API is configured, then assert what the API actually did to it.

@@ -18,12 +18,21 @@ namespace TestFramework.Web.Sql.Steps.IsLive;
 public enum SqlAlivenessLevel
 {
     /// <summary>
-    /// The server accepts a connection with the configured credentials.
+    /// The connection opens and the server answers a trivial query.
     /// </summary>
+    /// <remarks>
+    /// Not "the server is up but the database may not be". Configured from parts, the connection
+    /// string always names a catalog — <c>SqlConnectionStringFactory</c> requires <c>Database</c>
+    /// and puts it in <c>InitialCatalog</c> — so opening the connection has already opened the
+    /// configured database, and this level differs from <see cref="Database"/> only in the query it
+    /// then sends: <c>SELECT 1</c> against <c>SELECT DB_NAME()</c>. A verbatim
+    /// <c>ConnectionString</c> that omits <c>Initial Catalog</c> is the only case where the two
+    /// really differ, and there the login's default database is what answered.
+    /// </remarks>
     Reachable = 0,
 
     /// <summary>
-    /// The configured database can be opened and queried.
+    /// The configured database answers with its own name.
     /// </summary>
     Database = 1,
 }
@@ -31,10 +40,20 @@ public enum SqlAlivenessLevel
 /// <summary>
 /// Result of a SQL liveness probe.
 /// </summary>
+/// <remarks>
+/// A result only exists when the probe succeeded: a failing probe throws
+/// <see cref="Exceptions.SqlExecutionFailedException"/> or
+/// <see cref="Exceptions.SqlConfigurationValidationException"/> instead of returning.
+/// </remarks>
 /// <param name="SqlIdentifier">The database that was probed.</param>
 /// <param name="AlivenessLevel">The requested probe depth.</param>
 /// <param name="Connection">A log-safe description of the connection.</param>
-/// <param name="Success">Whether the probe succeeded.</param>
+/// <param name="Success">
+/// Always <see langword="true"/>. A failed probe throws rather than returning a result, so there is
+/// no value of this record in which it is false. It exists so that an asserted probe reads like any
+/// other step result instead of forcing a different assertion shape on the one step that cannot
+/// fail quietly.
+/// </param>
 /// <param name="Elapsed">Wall-clock duration of the probe.</param>
 public sealed record SqlIsLiveResult(string SqlIdentifier, SqlAlivenessLevel AlivenessLevel, string Connection, bool Success, TimeSpan Elapsed) : StepResultContext
 {
