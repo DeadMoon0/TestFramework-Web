@@ -40,6 +40,7 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
     private readonly StubIdentifier _stubIdentifier;
     private readonly string _method;
     private readonly string _path;
+    private readonly Dictionary<string, string> _headerFilters = new(StringComparer.OrdinalIgnoreCase);
     private VariableReference<string>? _bodyContains;
 
     /// <summary>
@@ -75,6 +76,27 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
         return this;
     }
 
+    /// <summary>
+    /// Narrows the wait to a call carrying a header value.
+    /// </summary>
+    /// <param name="name">The header name.</param>
+    /// <param name="value">The value the header must have.</param>
+    /// <remarks>
+    /// On a stub shared with other runs this is the only construct that gives truly isolated
+    /// evidence. The timeline cannot stamp a correlation id on the call — the application under test
+    /// makes it — but an application that forwards <c>traceparent</c> or a correlation header the
+    /// test already set can be waited on precisely.
+    /// </remarks>
+    public StubCalledEvent WithHeader(string name, string value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(value);
+
+        ((TestFramework.Core.IFreezable)this).EnsureNotFrozen();
+        _headerFilters[name] = value;
+        return this;
+    }
+
     /// <inheritdoc />
     public override string Name => "Stub Called";
 
@@ -104,6 +126,9 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
         if (_bodyContains is { } bodyContains)
             clone.WithBodyContaining(bodyContains);
 
+        foreach ((string name, string value) in _headerFilters)
+            clone._headerFilters[name] = value;
+
         return clone.WithClonedOptions(this);
     }
 
@@ -120,6 +145,10 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
         StubConfig config = StubConfigResolver.Resolve(serviceProvider, _stubIdentifier);
         StubAdminClient admin = StubConfigResolver.CreateAdminClient(serviceProvider, _stubIdentifier);
         string? expectedBody = _bodyContains?.GetRequiredValue(variableStore, "body text");
+
+        // Without the window, a wait on a shared stub can complete on a call another run made before
+        // this one even started.
+        DateTimeOffset? watermark = StubObservationScope.WatermarkFor(serviceProvider, _stubIdentifier);
         System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         // The step timeout is the only limit, so a caller controls how long to wait with
@@ -130,7 +159,7 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
 
             foreach (StubCall call in await admin.GetCallsAsync(cancellationToken).ConfigureAwait(false))
             {
-                if (!Matches(call, expectedBody))
+                if (!Matches(call, expectedBody, watermark))
                     continue;
 
                 stopwatch.Stop();
@@ -142,8 +171,10 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
         }
     }
 
-    private bool Matches(StubCall call, string? expectedBody)
-        => string.Equals(call.Method, _method, StringComparison.OrdinalIgnoreCase)
+    private bool Matches(StubCall call, string? expectedBody, DateTimeOffset? watermark)
+        => StubCallMatcher.IsInScope(call, watermark)
+        && string.Equals(call.Method, _method, StringComparison.OrdinalIgnoreCase)
         && string.Equals(call.Path, _path, StringComparison.OrdinalIgnoreCase)
+        && StubCallMatcher.HasHeaders(call, _headerFilters)
         && (expectedBody is null || call.Body?.Contains(expectedBody, StringComparison.Ordinal) == true);
 }

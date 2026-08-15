@@ -335,7 +335,7 @@ entirely; `{{request.body.amount}}` templating covers what a callback would othe
 
 ```csharp
 Timeline timeline = Timeline.Create()
-    .Trigger(WebExt.Stub.Reset("payments")).Name("clean")
+    .Trigger(WebExt.Stub.Reset("payments")).Name("clean")     // opens this run's observation window
     .Trigger(WebExt.Api.Http("orders").Post("api/orders").WithJsonBody(...).Call()).Name("create")
     .WaitForEvent(WebExt.Stub.Called("payments", HttpMethod.Post, "/api/charges")
         .WithBodyContaining(Var.Ref<string>("orderId")))            // wait for *this* call
@@ -345,15 +345,47 @@ Timeline timeline = Timeline.Create()
 
 run.StubCall("charged").Select(call => call.Body).Should().Contain("\"amount\":30");
 run.StubCalls("calls").Should().HaveCount(1);
-run.StubUnmatchedCalls("calls").Should().HaveCount(0);
+run.StubUnmatchedCalls("calls").Should().HaveCount(0);   // only trustworthy on a stub this run owns
 ```
 
-That last line is the one worth adopting: an unmatched call is the application asking a dependency
-for something the test never declared, and nothing else in a test would reveal it.
+An unmatched call is the application asking a dependency for something the test never declared, and
+nothing else in a test would reveal it — but read the next section before relying on the count.
 
-Verification reads the server's own request log over its admin surface, so it works against a stub
-this run started, one your team runs permanently, or one you started by hand. **This package declares
-and verifies; it does not host.** `TestFramework.Container.Web` hosts declarations in a container.
+### Who owns the stub decides what the evidence is worth
+
+Verification reads the server's own request log over its admin surface, so the same assertions work
+against a stub this run started, one your team runs permanently, or one you started by hand. The
+three are **not** equivalent:
+
+| Hosting | What the evidence means |
+|---|---|
+| A stub this run owns (a container started for it) | Fully isolated. Every logged call is this run's. Set `"ResetMode": "ClearServerLog"` and assert `StubUnmatchedCalls(...).HaveCount(0)` freely. |
+| A permanently running team stub | The log is shared. Other runs' calls are in it, and their calls arrive while yours do. `Reset` records a watermark instead of deleting, so older traffic is ignored — but nothing separates you from a *concurrent* run except a header filter. |
+| A stub started by hand | Same as a team stub, plus whatever you did to it earlier in the session. |
+
+- **`Reset` no longer deletes the server log by default.** It reads the log and records the newest
+  timestamp — from the stub's own clock, so no skew between the test host and the stub can shift the
+  boundary — and later steps ignore everything at or before it. Calls the stub logged *without* a
+  timestamp stay in scope and produce one warning naming the stub.
+- **`"ResetMode": "ClearServerLog"`** restores the old behaviour: `DELETE /__admin/requests`. It is
+  the right choice for a stub this run owns, and it deletes other runs' evidence on one it shares.
+- **`StubUnmatchedCalls` is advisory on a shared stub.** Another run's undeclared call lands in your
+  unmatched list if it arrives inside your window. Demote the assertion to a log inspection there, or
+  keep it strict only where the run owns the stub.
+- **A header filter is the only true isolation on a shared stub.** The timeline cannot stamp a
+  correlation id on the outbound call — the application makes it, not the test — but if the
+  application forwards `traceparent` or a correlation header your request already set, filter on it:
+
+```csharp
+.Trigger(WebExt.Stub.Calls("payments", HttpMethod.Post, "/api/charges")
+    .WithHeader("x-correlation-id", correlationId)).Name("calls")
+
+.WaitForEvent(WebExt.Stub.Called("payments", HttpMethod.Post, "/api/charges")
+    .WithHeader("x-correlation-id", correlationId))
+```
+
+**This package declares and verifies; it does not host.** `TestFramework.Container.Web` hosts
+declarations in a container.
 
 ## Troubleshooting
 
@@ -372,6 +404,9 @@ and verifies; it does not host.** `TestFramework.Container.Web` hosts declaratio
 | `No stub configuration was registered for identifier 'x'` | The `Stub:x` section is missing, or no environment published it. |
 | `The stub at '...' did not answer` | The stub server is gone. A container that exited takes its request log with it. |
 | A stub assertion sees no calls | Check `StubUnmatchedCalls` first: the application may have called a path no mapping covers. |
+| A stub assertion sees calls that are not this run's | `Reset` scopes by watermark, so calls logged *before* it are ignored — but a concurrent run against the same stub is not. Filter with `.WithHeader(...)` on a header the application forwards, or give the run its own stub. |
+| `Stub.Reset` no longer empties the request log | That is deliberate: on a shared stub, deleting the log destroys other runs' evidence. Set `"ResetMode": "ClearServerLog"` on a stub this run owns to get the old behaviour. |
+| `logs calls without a timestamp` warning | The stub's admin log has no `DateTime` on its entries, so the reset watermark cannot exclude them and they count as this run's. Treat the evidence as advisory on a shared stub. |
 
 ## Tuning
 

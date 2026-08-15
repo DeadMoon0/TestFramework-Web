@@ -130,6 +130,7 @@ disagree is a defect, not a feature.
 | Generated schema covers tables and keys only | Foreign keys, indexes and constraints belong to a schema someone owns. Generating them would imply this is a migration tool, which it is not. |
 | Stub mappings carry no delegates | The server that runs them may be in another process or container and cannot call back. Templating over the request covers what a callback would be for, and keeps one declaration valid wherever it runs. |
 | Stub verification polls the admin log | A push channel would require the stub to reach the test process, which a container cannot do without exposing a host listener. Polling works identically everywhere. |
+| Stub reset records a watermark instead of deleting the log | The request log is global. On a stub several runs share, `DELETE /__admin/requests` destroys evidence that is not this run's to destroy. The watermark uses the stub's own clock, which is the only clock comparable with the log's timestamps. Deleting stays available as `ResetMode: ClearServerLog` for a stub the run owns. |
 
 ## 10. Quality Requirements
 
@@ -150,8 +151,11 @@ disagree is a defect, not a feature.
   but it loses type information for non-string request parts.
 - Generated schema is derived from test-side models, so it can drift from a schema owned elsewhere
   without any test failing. Comparing a map against a live schema is the planned answer.
-- `WebExt.Stub.Calls(...)` filters on method and path only; a body predicate exists on the wait
+- `WebExt.Stub.Calls(...)` filters on method, path and headers; a body predicate exists on the wait
   event but not on the observation.
+- On a stub shared with other runs, the reset watermark separates this run from everything logged
+  *before* it, but nothing separates it from a run happening *at the same time* except a header
+  filter — and only when the application under test forwards a header the test set.
 - Stub verification depends on the shape of the stub server's admin request log. It is pinned by a
   test against a real container, so an upgrade that changes it fails loudly.
 
@@ -163,3 +167,5 @@ disagree is a defect, not a feature.
 | Aliveness level | Depth of a liveness probe: reachable, healthy, authenticated |
 | Sender | The `IHttpSender` that decides how a request travels |
 | Warmup status | A `404` or `503` from a host that is still starting |
+| Observation window | The part of a stub's request log that counts as this run's, opened by a reset |
+| Watermark | The newest stub-clock timestamp already in the log when the window opened |

@@ -66,7 +66,24 @@ public class DefaultStubConfigProvider : IStubConfigProvider
         if (ParseTimeSpan(identifier, nameof(StubConfig.PollInterval), section.GetSection(nameof(StubConfig.PollInterval)).Value) is { } pollInterval)
             config = config with { PollInterval = pollInterval };
 
+        if (ParseResetMode(identifier, section.GetSection(nameof(StubConfig.ResetMode)).Value) is { } resetMode)
+            config = config with { ResetMode = resetMode };
+
         return config;
+    }
+
+    private static StubResetMode? ParseResetMode(string identifier, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        if (Enum.TryParse(value, ignoreCase: true, out StubResetMode parsed) && Enum.IsDefined(parsed))
+            return parsed;
+
+        throw StubConfigurationValidationException.InvalidValue(
+            identifier,
+            nameof(StubConfig.ResetMode),
+            $"'{value}' is not a known mode. Use one of: {string.Join(", ", Enum.GetNames<StubResetMode>())}");
     }
 
     private static bool ParseBool(string identifier, string propertyName, string? value)
@@ -100,6 +117,10 @@ internal sealed class StubConfigLoader(IStubConfigProvider configProvider)
         // run time.
         WebConfigStore<StubConfig> store = new();
         serviceCollection.AddSingleton(store);
+
+        // Scoped to the run's service provider, not to the process: this is where a run records how
+        // much of a shared stub's request log predates it.
+        serviceCollection.AddSingleton(new StubObservationScope());
 
         foreach (string identifier in configProvider.LoadAllStubIdentifier(configuration))
             store.AddConfig(identifier, configProvider.LoadStubConfig(configuration, identifier));

@@ -34,4 +34,14 @@ public record StubConfig
     /// Accepts server certificates that fail validation. Intended for local hosts.
     /// </summary>
     public bool AllowInvalidCertificates { get; init; }
+
+    /// <summary>
+    /// What <c>WebExt.Stub.Reset(...)</c> does for this stub. Defaults to
+    /// <see cref="StubResetMode.Watermark"/>.
+    /// </summary>
+    /// <remarks>
+    /// Set it to <see cref="StubResetMode.ClearServerLog"/> only for a stub this run owns. On a
+    /// stub shared with other runs, clearing the log deletes their evidence too.
+    /// </remarks>
+    public StubResetMode ResetMode { get; init; } = StubResetMode.Watermark;
 }

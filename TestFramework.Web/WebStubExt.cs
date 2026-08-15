@@ -30,12 +30,19 @@ public class StubProxy
     /// <param name="identifier">The stub identifier.</param>
     /// <param name="method">The method to filter by, or <see langword="null"/> for any.</param>
     /// <param name="path">The path to filter by, or <see langword="null"/> for any.</param>
-    public Step<StubCallsResult> Calls(StubIdentifier identifier, HttpMethod? method = null, string? path = null)
-        => new StubCallsStep(identifier, method?.Method, path);
+    /// <returns>The step, which <c>WithHeader(...)</c> can narrow further.</returns>
+    public StubCallsStep Calls(StubIdentifier identifier, HttpMethod? method = null, string? path = null)
+        => new(identifier, method?.Method, path);
 
     /// <summary>
-    /// Clears the stub's request log, so later observations only see what happened after this point.
+    /// Starts this run's observation window on the stub, so later observations only see what
+    /// happened after this point.
     /// </summary>
     /// <param name="identifier">The stub identifier.</param>
+    /// <remarks>
+    /// By default nothing is deleted: the newest logged timestamp is recorded and everything at or
+    /// before it is ignored, which is the only safe behaviour on a stub other runs share. Set
+    /// <c>ResetMode</c> to <see cref="StubResetMode.ClearServerLog"/> for a stub this run owns.
+    /// </remarks>
     public Step<StubCallsResult> Reset(StubIdentifier identifier) => new StubResetStep(identifier);
 }

@@ -28,8 +28,10 @@
     The framework reaches SQL through a connection string and a model map, never through the application's own data access layer. The map comes from explicit registration, then DataAnnotations attributes, then convention.
     SqlSchema generates CREATE TABLE from a model map: schemas, tables, columns, nullability, identities and primary keys, and nothing else. It is scaffolding for a database the test owns, not a migration tool - a table generated from test-side models proves only that the models agree with themselves.
     A stub declaration is plain data with no delegates, because the server that runs it may be in another process or container and cannot call back into the test. Handlebars templating over the request covers what a callback would otherwise be for.
-    Stub verification and waiting go through the stub server's own admin request log, polled over HTTP. That is what lets the same assertions work against a stub this run started, one the team runs permanently, or one started by hand.
-    An unmatched stub call is the application asking a dependency for something the test never declared. Nothing else in a test reveals it, so assert that the unmatched list is empty.
+    Stub verification and waiting go through the stub server's own admin request log, polled over HTTP. The same assertions therefore run against a stub this run started, one the team runs permanently, or one started by hand - but those three are not equivalent, and the difference decides what the evidence is worth. Only a stub this run owns gives isolated evidence: on a shared stub the log also holds other runs' calls, made before this one and while it runs.
+    WebExt.Stub.Reset defaults to a watermark: it reads the log, records the newest ReceivedAt from the stub's own clock, and later steps ignore everything at or before it. It deletes nothing. Set ResetMode to ClearServerLog for a stub the run owns; on a shared stub that would delete other runs' evidence. A call the stub logged without a timestamp stays in scope and produces one warning naming the stub.
+    An unmatched stub call is the application asking a dependency for something the test never declared. Nothing else in a test reveals it. Assert the unmatched list is empty on a stub the run owns; on a shared stub the count is advisory, because another run's undeclared call lands in it.
+    WithHeader(name, value) on Calls and Called is the only construct giving true isolation on a shared stub. The timeline cannot stamp a correlation id on the outbound call - the application under test makes it - but any application that forwards traceparent or a correlation header the test already set can be filtered on.
 </key_concepts>
 
 <best_practices>
@@ -46,7 +48,7 @@
     Put additional secret-bearing header names in the Web:SensitiveHeaders configuration section rather than registering them in code.
     Turn on LogRequestHeaders through .ConfigureApiTrigger(...) when diagnosing authentication or routing; header values stay redacted.
     Declare lengths, precision, identities and required-ness on the model map when generating a schema; a CLR type cannot express them and the generator refuses to guess.
-    Assert run.StubUnmatchedCalls(label).Should().HaveCount(0) alongside the positive assertions; it catches calls to endpoints the test never declared.
+    Assert run.StubUnmatchedCalls(label).Should().HaveCount(0) alongside the positive assertions when the run owns the stub; it catches calls to endpoints the test never declared. Against a shared stub treat it as advisory and narrow the observation with WithHeader(...) instead.
     Narrow a stub wait with WithBodyContaining(...) when a run produces several calls to one endpoint, or the wait completes on the first one rather than the intended one.
 </best_practices>
 
@@ -75,10 +77,10 @@
     - SqlSchema.CreateTablesScript(types...) | CreateTable(map) | CreateTables(maps) -> DDL from a model map
     - Model map extras for generation: .Identity(x =&gt; x.Id), .MaxLength(x =&gt; x.Name, 200), .Precision(x =&gt; x.Total, 18, 2), .Required(x =&gt; x.Name), .ColumnType(x =&gt; x.Amount, "money")
     - StubDefinition with Configure(StubMappingBuilder): .OnGet|OnPost|OnPut|OnDelete(path).WithHeader|WithQuery|WithBodyContaining|WithPriority(...).RespondJson|RespondText|RespondStatus(...)
-    - WebExt.Stub.Called(identifier, method, path).WithBodyContaining(variable) as a WaitForEvent source
-    - WebExt.Stub.Calls(identifier, method?, path?) | WebExt.Stub.Reset(identifier)
+    - WebExt.Stub.Called(identifier, method, path).WithBodyContaining(variable).WithHeader(name, value) as a WaitForEvent source
+    - WebExt.Stub.Calls(identifier, method?, path?).WithHeader(name, value) | WebExt.Stub.Reset(identifier)
     - run.StubCall(label) | StubCalls(label) | StubUnmatchedCalls(label) -> ValueHandle&lt;T&gt;
-    - StubConfig: BaseUrl, AdminPath, PollInterval, AllowInvalidCertificates
+    - StubConfig: BaseUrl, AdminPath, PollInterval, AllowInvalidCertificates, ResetMode (Watermark by default, or ClearServerLog)
     - Extension points: IWebComponentFactory, IHttpSender, IApiConfigProvider, IApiAuthenticationProvider, ISqlExecutor, ISqlModelMapSource, ISqlCredentialProvider, ISqlConfigProvider, IStubConfigProvider
 </api_hints>
 
@@ -96,7 +98,7 @@
         "main": { "Server": "localhost,1433", "Database": "SampleDb", "IntegratedSecurity": true, "TrustServerCertificate": true }
       },
       "Stub": {
-        "payments": { "BaseUrl": "http://localhost:9091/" }
+        "payments": { "BaseUrl": "http://localhost:9091/", "ResetMode": "Watermark" }
       },
       "Web": {
         "SensitiveHeaders": [ "x-tenant-secret" ]
