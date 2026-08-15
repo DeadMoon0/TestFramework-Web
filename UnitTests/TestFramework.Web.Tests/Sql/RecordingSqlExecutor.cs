@@ -27,7 +27,12 @@ public sealed record RecordedSqlCall(string Identifier, string Statement, IReadO
 /// An executor that records statements and returns canned results, so the SQL surface can be tested
 /// end to end through real timelines without a database.
 /// </summary>
-public sealed class RecordingSqlExecutor : ISqlExecutor
+/// <remarks>
+/// It deliberately implements only the required interface members, so it also stands in for an
+/// external executor written before <c>ExecuteScriptAsync</c> existed: such an implementer keeps the
+/// old one-connection-per-batch semantics through the default interface body.
+/// </remarks>
+public class RecordingSqlExecutor : ISqlExecutor
 {
     private readonly List<RecordedSqlCall> _calls = [];
 

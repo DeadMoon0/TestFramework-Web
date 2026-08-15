@@ -102,6 +102,31 @@ public class SqlServerRoundTripTests
     }
 
     [Fact]
+    public async Task ScriptBatches_ShareOneConnection()
+    {
+        // A #temp table lives on the connection. If each GO batch opened its own, the second batch
+        // would fail with "Invalid object name '#seed'" - and pooling cannot rescue it, because the
+        // pool issues sp_reset_connection when a connection goes back.
+        SqlScript script = SqlScript.FromText("""
+            CREATE TABLE #seed ([Value] INT NOT NULL);
+            INSERT INTO #seed ([Value]) VALUES (41);
+            GO
+            UPDATE #seed SET [Value] = [Value] + 1;
+            GO
+            SELECT [Value] FROM #seed;
+            """);
+
+        Timeline timeline = Timeline.Create()
+            .Trigger(WebExt.Sql.Script("main", script)).Name("script")
+            .Build();
+
+        TimelineRun run = await timeline.SetupRun(CreateConfig()).RunAsync();
+
+        run.EnsureRanToCompletion();
+        run.Step("script").Should().HaveCompleted();
+    }
+
+    [Fact]
     public async Task SeededRow_IsUpsertedWhenTheRowAlreadyExists()
     {
         int id = Random.Shared.Next(100_000, 999_999);

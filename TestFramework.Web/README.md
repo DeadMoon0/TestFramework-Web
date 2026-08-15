@@ -246,7 +246,7 @@ run.SqlRow<Order>("order").Select(order => order.Quantity).Should().Be(3);
 | `.RegisterArtifact(id, WebExt.Artifact.Sql.Row<T>(...))` | adopt a row the application wrote: resolved by key, and **removed on teardown** |
 | `WebExt.ArtifactFinder.Sql.Where<T>(id, "...")` | locate rows; a predicate that matches nothing fails the step |
 | `WebExt.Sql.Execute(id, "...")` | `UPDATE` / `DELETE` |
-| `WebExt.Sql.Script(id, SqlScript.FromFile("seed.sql"))` | seeding, batch-aware (`GO` splits batches) |
+| `WebExt.Sql.Script(id, SqlScript.FromFile("seed.sql"))` | seeding, batch-aware (`GO` splits batches, `GO 3` repeats one) — all batches run on **one** connection, so `#temp` tables and `SET` options survive a `GO` |
 | `WebExt.Sql.Scalar<T>(id, "...")` | counts and aggregates |
 | `WebExt.Sql.IsLive(id, SqlAlivenessLevel.Database)` | wait for a database to answer |
 
@@ -403,6 +403,8 @@ declarations in a container.
 | `The response body could not be read as 'T'` | Assert the status first; error responses rarely use the success schema. |
 | `No stub configuration was registered for identifier 'x'` | The `Stub:x` section is missing, or no environment published it. |
 | `The stub at '...' did not answer` | The stub server is gone. A container that exited takes its request log with it. |
+| A script's second batch cannot see the `#temp` table from its first | Fixed as of this version: the batches of one script run over a single connection. A custom `ISqlExecutor` that does not override `ExecuteScriptAsync` keeps the old batch-per-connection behaviour. |
+| A script reports success but changed nothing | Look for the `left N transaction(s) open` warning: an unbalanced `BEGIN TRAN` is rolled back when the connection closes, without an error. |
 | A stub assertion sees no calls | Check `StubUnmatchedCalls` first: the application may have called a path no mapping covers. |
 | A stub assertion sees calls that are not this run's | `Reset` scopes by watermark, so calls logged *before* it are ignored — but a concurrent run against the same stub is not. Filter with `.WithHeader(...)` on a header the application forwards, or give the run its own stub. |
 | `Stub.Reset` no longer empties the request log | That is deliberate: on a shared stub, deleting the log destroys other runs' evidence. Set `"ResetMode": "ClearServerLog"` on a stub this run owns to get the old behaviour. |

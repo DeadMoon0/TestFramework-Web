@@ -96,8 +96,11 @@ public class SqlTimelineTests
     }
 
     [Fact]
-    public async Task Script_RunsEachBatchSeparately()
+    public async Task Script_KeepsPerBatchSemantics_ForAnExecutorThatDoesNotOverrideTheScriptMethod()
     {
+        // RecordingSqlExecutor implements only the required members, exactly like an external
+        // implementer written before ExecuteScriptAsync existed. The default interface body applies,
+        // so it still sees one call per batch.
         RecordingSqlExecutor executor = new();
         SqlScript script = SqlScript.FromText("DELETE FROM Orders;\nGO\nINSERT INTO Orders (Id) VALUES (1);");
 
@@ -110,6 +113,44 @@ public class SqlTimelineTests
         run.EnsureRanToCompletion();
         Assert.Equal(2, executor.Calls.Count);
         Assert.DoesNotContain(executor.Calls, call => call.Contains("GO"));
+    }
+
+    [Fact]
+    public async Task Script_HandsEveryBatchToTheExecutorAtOnce()
+    {
+        ScriptAwareSqlExecutor executor = new();
+        SqlScript script = SqlScript.FromText("DELETE FROM Orders;\nGO\nINSERT INTO Orders (Id) VALUES (1);");
+
+        Timeline timeline = Timeline.Create()
+            .Trigger(WebExt.Sql.Script("main", script)).Name("seed")
+            .Build();
+
+        TimelineRun run = await timeline.SetupRun(CreateConfig(executor)).RunAsync();
+
+        run.EnsureRanToCompletion();
+
+        // One call carrying both batches: that is what lets the executor keep them on one connection.
+        IReadOnlyList<string> batches = Assert.Single(executor.Scripts);
+        Assert.Equal(["DELETE FROM Orders;", "INSERT INTO Orders (Id) VALUES (1);"], batches);
+        Assert.Empty(executor.Calls);
+    }
+
+    [Fact]
+    public async Task Script_WarnsWhenABatchLeavesATransactionOpen()
+    {
+        ScriptAwareSqlExecutor executor = new() { OpenTransactionCount = 1 };
+        SqlScript script = SqlScript.FromText("BEGIN TRAN;\nGO\nINSERT INTO Orders (Id) VALUES (1);");
+
+        Timeline timeline = Timeline.Create()
+            .Trigger(WebExt.Sql.Script("main", script)).Name("seed")
+            .Build();
+
+        TimelineRun run = await timeline.SetupRun(CreateConfig(executor)).RunAsync();
+
+        // The step still completes - the server reported no error - which is precisely why the
+        // dangling transaction has to be said out loud.
+        run.EnsureRanToCompletion();
+        run.Step("seed").Should().HaveCompleted();
     }
 
     [Fact]
@@ -247,5 +288,27 @@ public class SqlTimelineTests
         run.Step("delete").Should().HaveThrown<TestFramework.Web.Sql.Exceptions.SqlConfigurationValidationException>();
         run.Assert(run.Step("delete").LastResult.Exception!.Message, "sql configuration failure")
             .Should().Contain("missing").And().Contain("main");
+    }
+
+    /// <summary>
+    /// An executor that takes the whole script, standing in for one that keeps a single connection.
+    /// </summary>
+    private sealed class ScriptAwareSqlExecutor : RecordingSqlExecutor, ISqlExecutor
+    {
+        private readonly List<IReadOnlyList<string>> _scripts = [];
+
+        public IReadOnlyList<IReadOnlyList<string>> Scripts => _scripts;
+
+        public int OpenTransactionCount { get; init; }
+
+        public Task<SqlScriptExecutionResult> ExecuteScriptAsync(
+            string identifier,
+            IReadOnlyList<string> batches,
+            IReadOnlyDictionary<string, object?> parameters,
+            System.Threading.CancellationToken cancellationToken)
+        {
+            _scripts.Add(batches);
+            return Task.FromResult(new SqlScriptExecutionResult(batches.Count, OpenTransactionCount));
+        }
     }
 }

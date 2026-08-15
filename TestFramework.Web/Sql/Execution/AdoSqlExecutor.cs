@@ -51,7 +51,87 @@ public sealed class AdoSqlExecutor : ISqlExecutor
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Every batch runs over one open connection, so connection state survives a <c>GO</c>: a
+    /// <c>#temp</c> table created in one batch is still there in the next, and so are <c>SET</c>
+    /// options and an explicit transaction.
+    /// </remarks>
+    public async Task<SqlScriptExecutionResult> ExecuteScriptAsync(
+        string identifier,
+        IReadOnlyList<string> batches,
+        IReadOnlyDictionary<string, object?> parameters,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(identifier);
+        ArgumentNullException.ThrowIfNull(batches);
+        ArgumentNullException.ThrowIfNull(parameters);
+
+        if (batches.Count == 0)
+            return new SqlScriptExecutionResult(0, 0);
+
+        SqlConfig config = SqlConfigResolver.Resolve(_serviceProvider, identifier);
+        string connectionString = ResolveConnectionString(identifier);
+        Stopwatch stopwatch = Stopwatch.StartNew();
+
+        int batchNumber = 0;
+        string currentBatch = batches[0];
+
+        try
+        {
+            using SqlConnection connection = new(connectionString);
+            await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+            int affected = 0;
+            foreach (string batch in batches)
+            {
+                batchNumber++;
+                currentBatch = batch;
+                affected += await connection.ExecuteAsync(CreateCommand(batch, parameters, config, cancellationToken)).ConfigureAwait(false);
+            }
+
+            // Read before the connection closes: a transaction left open here is rolled back on close
+            // without any error, which is exactly the failure that is worth naming out loud.
+            int openTransactions = await connection
+                .ExecuteScalarAsync<int>(CreateCommand("SELECT @@TRANCOUNT;", EmptyParameters, config, cancellationToken))
+                .ConfigureAwait(false);
+
+            return new SqlScriptExecutionResult(affected, openTransactions);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception) when (exception is SqlException or InvalidOperationException or TimeoutException)
+        {
+            stopwatch.Stop();
+            throw SqlExecutionFailedException.Statement(
+                identifier,
+                SqlConnectionStringFactory.Describe(connectionString),
+                currentBatch,
+                parameters.Keys,
+                stopwatch.Elapsed,
+                exception,
+                batchNumber,
+                batches.Count);
+        }
+    }
+
+    /// <inheritdoc />
     public string Describe(string identifier) => SqlConnectionStringFactory.Describe(ResolveConnectionString(identifier));
+
+    private static readonly IReadOnlyDictionary<string, object?> EmptyParameters = new Dictionary<string, object?>(StringComparer.Ordinal);
+
+    private static CommandDefinition CreateCommand(
+        string statement,
+        IReadOnlyDictionary<string, object?> parameters,
+        SqlConfig config,
+        CancellationToken cancellationToken)
+        => new(
+            statement,
+            ToDynamicParameters(parameters),
+            commandType: CommandType.Text,
+            commandTimeout: config.CommandTimeout is { } timeout ? (int)timeout.TotalSeconds : null,
+            cancellationToken: cancellationToken);
 
     private async Task<TResult> RunAsync<TResult>(
         string identifier,
@@ -73,14 +153,7 @@ public sealed class AdoSqlExecutor : ISqlExecutor
             using SqlConnection connection = new(connectionString);
             await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
 
-            CommandDefinition command = new(
-                statement,
-                ToDynamicParameters(parameters),
-                commandType: CommandType.Text,
-                commandTimeout: config.CommandTimeout is { } timeout ? (int)timeout.TotalSeconds : null,
-                cancellationToken: cancellationToken);
-
-            return await execute(connection, command).ConfigureAwait(false);
+            return await execute(connection, CreateCommand(statement, parameters, config, cancellationToken)).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

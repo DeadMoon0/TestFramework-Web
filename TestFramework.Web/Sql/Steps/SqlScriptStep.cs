@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -61,17 +61,49 @@ public sealed class SqlScript
         return new SqlScript(File.ReadAllText(fullPath), Path.GetFileName(fullPath));
     }
 
+    // A GO line may carry a repeat count and a trailing line comment, both of which SSMS and sqlcmd
+    // accept. Anchored per line so a GO inside a string literal or a block comment is left alone.
+    private static readonly Regex BatchSeparator = new(
+        @"^[ \t]*GO(?:[ \t]+(?<count>\d+))?[ \t]*(?:--[^\r\n]*)?[ \t]*\r?$",
+        RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture,
+        TimeSpan.FromSeconds(5));
+
     /// <summary>
     /// Splits the script on <c>GO</c> batch separators.
     /// </summary>
     /// <remarks>
     /// <c>GO</c> is a client-side separator, not a statement, so it must be removed before the text
-    /// reaches the server.
+    /// reaches the server. The repeat form <c>GO 3</c> is honoured by emitting the batch three
+    /// times, and a trailing <c>-- comment</c> on the separator line does not stop it being one.
     /// </remarks>
     public IReadOnlyList<string> SplitBatches()
-        => [.. Regex.Split(Text, @"^\s*GO\s*$", RegexOptions.Multiline | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5))
-            .Select(batch => batch.Trim())
-            .Where(batch => batch.Length > 0)];
+    {
+        List<string> batches = [];
+        int start = 0;
+
+        foreach (Match separator in BatchSeparator.Matches(Text))
+        {
+            AddBatch(batches, Text[start..separator.Index], separator.Groups["count"].Value);
+            start = separator.Index + separator.Length;
+        }
+
+        AddBatch(batches, Text[start..], string.Empty);
+        return batches;
+    }
+
+    private static void AddBatch(List<string> batches, string text, string repeatCount)
+    {
+        string trimmed = text.Trim();
+        if (trimmed.Length == 0)
+            return;
+
+        int repeats = int.TryParse(repeatCount, NumberStyles.None, CultureInfo.InvariantCulture, out int parsed) && parsed > 0
+            ? parsed
+            : 1;
+
+        for (int index = 0; index < repeats; index++)
+            batches.Add(trimmed);
+    }
 
     /// <summary>
     /// Returns the script description.
@@ -151,15 +183,27 @@ public sealed class SqlScriptStep : SqlStepBase<SqlScriptResult>
 
         IReadOnlyList<string> batches = _script.SplitBatches();
         System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        int affected = 0;
 
-        foreach (string batch in batches)
-            affected += await executor.ExecuteAsync(SqlIdentifier, batch, parameters, cancellationToken).ConfigureAwait(false);
+        // One call, not one per batch: the batches of a script share connection state, and splitting
+        // them across connections would drop every #temp table and SET option between them.
+        SqlScriptExecutionResult execution = await executor
+            .ExecuteScriptAsync(SqlIdentifier, batches, parameters, cancellationToken)
+            .ConfigureAwait(false);
 
         stopwatch.Stop();
         logger.LogInformation("SQL script '{0}' ran {1} batch(es) on '{2}' in {3}", _script.Description, batches.Count, SqlIdentifier.ToString(), stopwatch.Elapsed);
 
-        return new SqlScriptResult(SqlIdentifier, batches.Count, affected, stopwatch.Elapsed);
+        // An unbalanced BEGIN TRAN rolls back silently when the connection closes, so the script
+        // would appear to have succeeded while having changed nothing.
+        if (execution.OpenTransactionCount is > 0 and { } openTransactions)
+        {
+            logger.LogWarning(
+                $"SQL script '{_script.Description}' left {openTransactions} transaction(s) open on '{SqlIdentifier}'. "
+                + "Closing the connection rolls them back without an error, so the script's changes are discarded. "
+                + "Add the matching COMMIT or ROLLBACK.");
+        }
+
+        return new SqlScriptResult(SqlIdentifier, batches.Count, execution.AffectedRows, stopwatch.Elapsed);
     }
 
     private static SqlScript RequireScript(SqlScript script)
