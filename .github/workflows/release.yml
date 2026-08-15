@@ -1,0 +1,86 @@
+name: Release
+
+# Publishes TestFramework.Web to nuget.org.
+#
+# Trigger: push a tag matching the version being released, e.g.
+#     git tag v0.1.10 && git push origin v0.1.10
+#
+# The tag is the source of truth: the job refuses to publish unless every packed
+# project's <Version> matches it. That is what replaces the local artifacts/nuget-local
+# feed as the thing that decides which version ships.
+#
+# Secret required: NUGET_API_KEY, scoped to the TestFramework.* package glob.
+# Prefer nuget.org Trusted Publishing (GitHub OIDC, no long-lived key) if it is
+# enabled on the account - swap the push step for the OIDC exchange and drop the secret.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Required: the packed icon comes from Modules/TestFramework-Common.
+          # Without this the pack fails with NuGet's opaque "icon file does not exist".
+          submodules: recursive
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Verify tag matches every project version
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          echo "Tag version: $tag"
+          fail=0
+          for proj in \
+            TestFramework.Web/TestFramework.Web.csproj
+          do
+            version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' "$proj" | head -n1)"
+            if [ "$version" != "$tag" ]; then
+              echo "::error file=$proj::Version '$version' does not match tag '$tag'"
+              fail=1
+            else
+              echo "OK  $proj -> $version"
+            fi
+          done
+          exit $fail
+
+      - name: Test
+        run: |
+          dotnet test UnitTests/TestFramework.Web.Tests/TestFramework.Web.Tests.csproj --configuration Release --logger "trx"
+
+      - name: Pack
+        run: |
+          dotnet pack TestFramework.Web/TestFramework.Web.csproj -c Release -p:ContinuousIntegrationBuild=true -o out
+
+      - name: Push
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          # --skip-duplicate makes a re-run idempotent, which is also what lets a
+          # multi-package repo publish everything on one tag.
+          dotnet nuget push "out/*.nupkg" \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key "$NUGET_API_KEY" \
+            --skip-duplicate
