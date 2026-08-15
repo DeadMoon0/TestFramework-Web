@@ -95,3 +95,7 @@ dotnet test UnitTests/TestFramework.Web.Tests/TestFramework.Web.Tests.csproj -c 
 
 The integration tests start the sample API on an ephemeral loopback port, so they need no Docker, no
 external service and no configuration.
+
+The SQL Server round-trip tests are the one exception, and they skip themselves rather than fail:
+set `TESTFRAMEWORK_WEB_SQL` to a connection string to run them, or filter them out wholesale with
+`--filter "Category!=SqlServer"`.

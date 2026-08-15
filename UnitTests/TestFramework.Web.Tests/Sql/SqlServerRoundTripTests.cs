@@ -9,6 +9,7 @@ using TestFramework.Web.Extensions;
 using TestFramework.Web.Sql.Artifacts;
 using TestFramework.Web.Sql.Steps;
 using TestFramework.Web.Sql.Steps.IsLive;
+using TestFramework.Web.Tests.Shared;
 using Xunit;
 
 namespace TestFramework.Web.Tests.Sql;
@@ -17,15 +18,17 @@ namespace TestFramework.Web.Tests.Sql;
 /// Exercises the SQL surface against a real SQL Server.
 /// </summary>
 /// <remarks>
-/// Excluded from the default run because it needs a server. Point
-/// <c>TESTFRAMEWORK_WEB_SQL</c> at one and run with <c>--filter "Category=SqlServer"</c>. The
+/// Needs a server, so every test here is a <see cref="SqlServerFactAttribute"/>: without
+/// <c>TESTFRAMEWORK_WEB_SQL</c> they report as skipped rather than failing, which is what keeps a
+/// bare <c>dotnet test</c> green on a fresh clone. The <c>Category=SqlServer</c> trait is kept as
+/// well, because filtering on it is faster than discovering and skipping. Point
+/// <c>TESTFRAMEWORK_WEB_SQL</c> at a server and run with <c>--filter "Category=SqlServer"</c>. The
 /// statement generation and mapping these tests exercise are already covered without a database in
 /// the other SQL test classes; this is the confirmation that the composed statements really run.
 /// </remarks>
 [Trait("Category", "SqlServer")]
 public class SqlServerRoundTripTests
 {
-    private const string ConnectionStringVariable = "TESTFRAMEWORK_WEB_SQL";
     private const string TableName = "TestFrameworkWebRoundTrip";
 
     public sealed class RoundTripRow
@@ -36,8 +39,8 @@ public class SqlServerRoundTripTests
     }
 
     private static string ConnectionString =>
-        Environment.GetEnvironmentVariable(ConnectionStringVariable)
-        ?? throw new InvalidOperationException($"Set {ConnectionStringVariable} to a SQL Server connection string to run these tests.");
+        WebTestEnvironmentGate.SqlConnectionString
+        ?? throw new InvalidOperationException($"Set {WebTestEnvironmentGate.SqlConnectionStringVariable} to a SQL Server connection string to run these tests.");
 
     private static ConfigInstance CreateConfig()
         => ConfigInstance.Create()
@@ -54,7 +57,7 @@ public class SqlServerRoundTripTests
         CREATE TABLE [{TableName}] ([Id] INT NOT NULL PRIMARY KEY, [Name] NVARCHAR(200) NOT NULL, [Quantity] INT NOT NULL);
         """);
 
-    [Fact]
+    [SqlServerFact]
     public async Task IsLive_ReachesTheConfiguredDatabase()
     {
         Timeline timeline = Timeline.Create()
@@ -67,7 +70,7 @@ public class SqlServerRoundTripTests
         run.SqlProbe("live").Select(probe => probe.Success).Should().Be(true);
     }
 
-    [Fact]
+    [SqlServerFact]
     public async Task SeededRow_IsInsertedReadBackAndRemoved()
     {
         int id = Random.Shared.Next(100_000, 999_999);
@@ -101,7 +104,7 @@ public class SqlServerRoundTripTests
         verifyRun.SqlScalar<int>("count").Should().Be(0);
     }
 
-    [Fact]
+    [SqlServerFact]
     public async Task ScriptBatches_ShareOneConnection()
     {
         // A #temp table lives on the connection. If each GO batch opened its own, the second batch
@@ -126,7 +129,7 @@ public class SqlServerRoundTripTests
         run.Step("script").Should().HaveCompleted();
     }
 
-    [Fact]
+    [SqlServerFact]
     public async Task SeededRow_IsUpsertedWhenTheRowAlreadyExists()
     {
         int id = Random.Shared.Next(100_000, 999_999);
