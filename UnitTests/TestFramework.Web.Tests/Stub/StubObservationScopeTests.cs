@@ -145,6 +145,39 @@ public class StubObservationScopeTests
         Assert.Single(probe.Apply(log, Noon));
     }
 
+    [Theory]
+    [InlineData("/api/charges", "/api/charges", true)]
+    [InlineData("/API/Charges", "/api/charges", true)]
+    [InlineData("/api/charges/42", "/api/charges", false)]
+    [InlineData("/api/charges/42", "/api/charges/*", true)]
+    [InlineData("/api/charges/42/refunds", "/api/charges/*", true)]
+    [InlineData("/api/charges", "/api/charges/*", false)]
+    [InlineData("/api/v1.0/charges", "/api/v1.0/*", true)]
+    [InlineData("/api/vXY0/charges", "/api/v1.0/*", false)]
+    [InlineData("/anything", "*", true)]
+    public void PathFilters_UnderstandTheSameWildcardTheMappingsDo(string path, string pattern, bool expected)
+        => Assert.Equal(expected, StubPathMatcher.Matches(path, pattern));
+
+    [Fact]
+    public void APathFilterWithoutALeadingSlash_StillMatches()
+    {
+        // A logged path always has one; Called already normalized, Calls silently did not.
+        FilterProbe probe = new("payments", null, "api/charges");
+
+        Assert.Single(probe.Apply([Call("/api/charges", Noon)], watermark: null));
+    }
+
+    [Fact]
+    public void AWildcardPathFilter_MatchesTheCallsAMappingWouldHaveAnswered()
+    {
+        FilterProbe probe = new("payments", null, "/api/charges/*");
+
+        StubCall[] log = [Call("/api/charges/42", Noon), Call("/api/refunds/42", Noon)];
+
+        StubCall matching = Assert.Single(probe.Apply(log, watermark: null));
+        Assert.Equal("/api/charges/42", matching.Path);
+    }
+
     /// <summary>
     /// Exposes the protected filter of <see cref="StubStepBase{TResult}"/> so its rules can be
     /// asserted without a stub server in the loop.

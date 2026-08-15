@@ -57,7 +57,7 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
 
         _stubIdentifier = stubIdentifier;
         _method = method;
-        _path = path.StartsWith('/') ? path : $"/{path}";
+        _path = StubPathMatcher.Normalize(path)!;
     }
 
     /// <summary>
@@ -174,7 +174,7 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
     private bool Matches(StubCall call, string? expectedBody, DateTimeOffset? watermark)
         => StubCallMatcher.IsInScope(call, watermark)
         && string.Equals(call.Method, _method, StringComparison.OrdinalIgnoreCase)
-        && string.Equals(call.Path, _path, StringComparison.OrdinalIgnoreCase)
+        && StubPathMatcher.Matches(call.Path, _path)
         && StubCallMatcher.HasHeaders(call, _headerFilters)
         && (expectedBody is null || call.Body?.Contains(expectedBody, StringComparison.Ordinal) == true);
 }

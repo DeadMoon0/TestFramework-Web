@@ -372,6 +372,9 @@ three are **not** equivalent:
 - **`StubUnmatchedCalls` is advisory on a shared stub.** Another run's undeclared call lands in your
   unmatched list if it arrives inside your window. Demote the assertion to a log inspection there, or
   keep it strict only where the run owns the stub.
+- **`Calls(...)` and `Called(...)` accept the same `*` wildcard the mappings do**, so
+  `Stub.Calls("payments", path: "/api/charges/*")` finds what `OnPost("/api/charges/*")` answered. A
+  pattern without a `*` stays an exact comparison, and a leading slash is optional on both.
 - **A header filter is the only true isolation on a shared stub.** The timeline cannot stamp a
   correlation id on the outbound call — the application makes it, not the test — but if the
   application forwards `traceparent` or a correlation header your request already set, filter on it:

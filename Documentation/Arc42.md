@@ -153,8 +153,8 @@ disagree is a defect, not a feature.
   but it loses type information for non-string request parts.
 - Generated schema is derived from test-side models, so it can drift from a schema owned elsewhere
   without any test failing. Comparing a map against a live schema is the planned answer.
-- `WebExt.Stub.Calls(...)` filters on method, path and headers; a body predicate exists on the wait
-  event but not on the observation.
+- `WebExt.Stub.Calls(...)` filters on method, path (with `*` wildcards) and headers; a body
+  predicate exists on the wait event but not on the observation.
 - On a stub shared with other runs, the reset watermark separates this run from everything logged
   *before* it, but nothing separates it from a run happening *at the same time* except a header
   filter — and only when the application under test forwards a header the test set.

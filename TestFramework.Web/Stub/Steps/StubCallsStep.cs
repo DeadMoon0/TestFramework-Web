@@ -48,7 +48,11 @@ public abstract class StubStepBase<TResult> : Step<TResult>, IHasEnvironmentRequ
 
         StubIdentifier = stubIdentifier;
         Method = method;
-        Path = path;
+
+        // A logged path always starts with a slash. Accepting both spellings stops
+        // Calls("x", path: "api/charges") from silently matching nothing while the identical string
+        // works on Called.
+        Path = StubPathMatcher.Normalize(path);
     }
 
     /// <summary>
@@ -98,7 +102,7 @@ public abstract class StubStepBase<TResult> : Step<TResult>, IHasEnvironmentRequ
         return [.. calls.Where(call =>
             StubCallMatcher.IsInScope(call, watermark)
             && (Method is null || string.Equals(call.Method, Method, StringComparison.OrdinalIgnoreCase))
-            && (Path is null || string.Equals(call.Path, Path, StringComparison.OrdinalIgnoreCase))
+            && (Path is null || StubPathMatcher.Matches(call.Path, Path))
             && StubCallMatcher.HasHeaders(call, HeaderFilters))];
     }
 
@@ -230,11 +234,27 @@ public sealed class StubCallsStep : StubStepBase<StubCallsResult>
         logger.LogInformation("Stub '{0}' received {1} call(s) for {2}.", StubIdentifier.ToString(), matching.Count, FilterDescription);
 
         // An unmatched call is the application asking for something the test never declared, which
-        // is worth surfacing even when it is not what this step filtered for.
+        // is worth surfacing even when it is not what this step filtered for. Query and body come
+        // along because "no mapping answered this" is usually a one-character difference, and
+        // without them the next step is always another debugging round.
         foreach (StubCall call in unmatched)
-            logger.LogWarning($"Stub '{StubIdentifier}' had no mapping for {call.Method} {call.Path}.");
+            logger.LogWarning($"Stub '{StubIdentifier}' had no mapping for {Describe(call)}.");
 
         return new StubCallsResult(StubIdentifier, matching, unmatched);
+    }
+
+    private static string Describe(StubCall call)
+    {
+        string query = string.IsNullOrEmpty(call.Query) ? string.Empty : $"?{call.Query.TrimStart('?')}";
+        string body = string.IsNullOrWhiteSpace(call.Body) ? string.Empty : $" body: {Excerpt(call.Body)}";
+
+        return $"{call.Method} {call.Path}{query}{body}";
+    }
+
+    private static string Excerpt(string body)
+    {
+        string collapsed = string.Join(' ', body.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        return collapsed.Length <= 200 ? collapsed : collapsed[..200] + "...";
     }
 }
 

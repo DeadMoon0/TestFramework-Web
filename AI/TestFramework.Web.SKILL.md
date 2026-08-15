@@ -78,7 +78,7 @@
     - Model map extras for generation: .Identity(x =&gt; x.Id), .MaxLength(x =&gt; x.Name, 200), .Precision(x =&gt; x.Total, 18, 2), .Required(x =&gt; x.Name), .ColumnType(x =&gt; x.Amount, "money")
     - StubDefinition with Configure(StubMappingBuilder): .OnGet|OnPost|OnPut|OnDelete(path).WithHeader|WithQuery|WithBodyContaining|WithPriority(...).RespondJson|RespondText|RespondStatus(...)
     - WebExt.Stub.Called(identifier, method, path).WithBodyContaining(variable).WithHeader(name, value) as a WaitForEvent source
-    - WebExt.Stub.Calls(identifier, method?, path?).WithHeader(name, value) | WebExt.Stub.Reset(identifier)
+    - WebExt.Stub.Calls(identifier, method?, path?).WithHeader(name, value) | WebExt.Stub.Reset(identifier). The path filter takes the same * wildcard the mappings take, and a leading slash is optional.
     - run.StubCall(label) | StubCalls(label) | StubUnmatchedCalls(label) -> ValueHandle&lt;T&gt;
     - StubConfig: BaseUrl, AdminPath, PollInterval, AllowInvalidCertificates, ResetMode (Watermark by default, or ClearServerLog)
     - Extension points: IWebComponentFactory, IHttpSender, IApiConfigProvider, IApiAuthenticationProvider, ISqlExecutor, ISqlModelMapSource, ISqlCredentialProvider, ISqlConfigProvider, IStubConfigProvider
