@@ -19,7 +19,12 @@
 		<RepositoryUrl>https://github.com/DeadMoon0/TestFramework-Web.git</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<Copyright>Copyright (c) DeadMoon0 2026</Copyright>
-		<PackageReleaseNotes>Initial release: REST API and SQL Server testing, model-derived schema, and stubbed dependencies</PackageReleaseNotes>
+		<PackageReleaseNotes>Initial release: REST API and SQL Server testing, model-derived schema, and stubbed dependencies.
+Worth knowing up front:
+- A status code is a result, not a failure. Api.Get(...) returns 404 immediately rather than retrying. Put Api.IsLive(...) in front of a call when a locally started host may still be warming up - that step, not the call, absorbs the startup 404/503.
+- Cookies are off by default. The HTTP clients are pooled per identifier, so a cookie jar would be shared by every run against that identifier; set ApiConfig.UseCookies only for an API whose session really is a cookie, and expect that session to be shared.
+- Stub.Reset(...) records a watermark by default instead of deleting the stub's request log, so it is safe against a stub shared with other runs. Only ClearServerLog deletes evidence, and only a stub this run owns gives fully isolated verification - narrow waits with WithHeader(...) on a shared one.
+- A SQL script is executed as one session, so #temp tables, SET options and a transaction opened in one GO batch survive into the next, as they do in SSMS.</PackageReleaseNotes>
 	</PropertyGroup>
 
 	<ItemGroup>
