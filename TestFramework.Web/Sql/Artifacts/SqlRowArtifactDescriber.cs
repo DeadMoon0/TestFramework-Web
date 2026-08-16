@@ -1,8 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 using TestFramework.Core.Artifacts;
 using TestFramework.Core.Logging;
 using TestFramework.Core.Variables;
@@ -18,6 +19,38 @@ namespace TestFramework.Web.Sql.Artifacts;
 public sealed class SqlRowArtifactDescriber<TRow> : ArtifactDescriber<SqlRowArtifactDescriber<TRow>, SqlRowArtifactData<TRow>, SqlRowArtifactReference<TRow>>
     where TRow : class
 {
+    /// <summary>
+    /// The canonical key mirrored from <c>TestFramework.Core.Debugger.DebugValueSchemaKeys.SqlRow</c>.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately the same key the EF-backed SQL row artifact in TestFramework.Azure reports: both
+    /// present a database row, so a consumer should draw them with one icon and one inspector rather
+    /// than two that merely resemble each other. A literal rather than a reference because this
+    /// package builds against the published Core; <c>SqlRowSchemaTests</c> pins it.
+    /// </remarks>
+    internal const string SchemaKey = "tf.artifact.sql.row";
+
+    /// <summary>
+    /// Identifies this artifact's debug shape, so a consumer renders it as a database row instead of
+    /// falling back to a generic view keyed on the CLR type name.
+    /// </summary>
+    public override string DebugValueSchemaKey => SchemaKey;
+
+    /// <inheritdoc />
+    public override JToken? CreateDebugValueCustomPayload(ArtifactInstanceGeneric instance)
+    {
+        ArgumentNullException.ThrowIfNull(instance);
+
+        if (instance.Reference is not SqlRowArtifactReference<TRow> reference)
+            return null;
+
+        return new JObject
+        {
+            ["connection"] = reference.SqlIdentifier.ToString(),
+            ["rowType"] = typeof(TRow).Name
+        };
+    }
+
     /// <summary>
     /// Rows targeting one database are set up one at a time.
     /// </summary>
