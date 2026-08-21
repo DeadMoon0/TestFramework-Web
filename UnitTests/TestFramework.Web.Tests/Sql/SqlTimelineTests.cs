@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -219,9 +219,10 @@ public class SqlTimelineTests
     }
 
     [Fact]
-    public async Task FoundRows_AreNeverDeleted()
+    public async Task FoundRows_AreDeleted_BecauseThatIsTheDefault()
     {
-        // A test must not delete data the application created; only rows it seeded are its own.
+        // The finder no longer decides this for the author. A found row gets the same default as a
+        // seeded one - removed at teardown - and MarkReadonly() is how a test says "I only read it".
         RecordingSqlExecutor executor = new()
         {
             QueryResult = _ => new[] { new Order { Id = 99, Name = "test-order", Quantity = 3 } },
@@ -231,6 +232,30 @@ public class SqlTimelineTests
             .SetVariable("name", Var.Const("test-order"))
             .FindArtifact("order", WebExt.ArtifactFinder.Sql.Where<Order>("main", "Name = @name")
                 .WithParameter("name", Var.Ref<string>("name")))
+            .Build();
+
+        TimelineRun run = await timeline.SetupRun(CreateConfig(executor)).RunAsync();
+
+        run.EnsureRanToCompletion();
+        run.SqlRow<Order>("order").Select(order => order.Quantity).Should().Be(3);
+        Assert.Single(executor.CallsContaining("DELETE FROM"));
+    }
+
+    [Fact]
+    public async Task FoundRows_AreNeverDeleted_WhenTheTimelineMarksThemReadonly()
+    {
+        // The protection a test reaches for against a shared database, and it has to hold even though
+        // the reference reports itself perfectly capable of deleting the row.
+        RecordingSqlExecutor executor = new()
+        {
+            QueryResult = _ => new[] { new Order { Id = 99, Name = "test-order", Quantity = 3 } },
+        };
+
+        Timeline timeline = Timeline.Create()
+            .SetVariable("name", Var.Const("test-order"))
+            .FindArtifact("order", WebExt.ArtifactFinder.Sql.Where<Order>("main", "Name = @name")
+                .WithParameter("name", Var.Ref<string>("name")))
+            .MarkReadonly()
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig(executor)).RunAsync();
@@ -252,6 +277,8 @@ public class SqlTimelineTests
             .SetVariable("name", Var.Const("test-order"))
             .FindArtifact("order", WebExt.ArtifactFinder.Sql.Where<Order>("main", "Name = @name")
                 .WithParameter("name", Var.Ref<string>("name")))
+            // Readonly so teardown's DELETE, which addresses the same key, stays out of the counts below.
+            .MarkReadonly()
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig(executor)).RunAsync();

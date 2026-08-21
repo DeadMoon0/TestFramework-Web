@@ -277,7 +277,7 @@ Two rules worth knowing:
   differ only in who is responsible afterwards: `SetupArtifact` + `AddArtifact` creates and **owns**
   it; `RegisterArtifact` adopts an existing row by key and **also owns** it, so it is removed;
   `FindArtifact` only **observes**, and what it finds is left exactly where it was. Teardown records
-  that it passed over an observed artifact — an informational line, not a failure.
+  that it passed over an artifact marked readonly — an informational line, not a failure.
 - **Setup upserts.** A rerun against a database a previous run left dirty converges instead of
   failing on a duplicate key.
 

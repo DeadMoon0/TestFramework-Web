@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -87,7 +87,7 @@ public sealed class SqlRowWhereFinder<TRow> : ArtifactFinder<SqlRowArtifactDescr
 
         logger.LogInformation("SQL find '{0}' matched {1} row(s) in '{2}'.", map.ToString(), rows.Count, _sqlIdentifier.ToString());
 
-        return [.. rows.Select(row => SqlRowArtifactReference<TRow>.Observed(_sqlIdentifier, ReadKeyValues(map, row)))];
+        return [.. rows.Select(row => SqlRowArtifactReference<TRow>.Discovered(_sqlIdentifier, ReadKeyValues(map, row)))];
     }
 
     private static IReadOnlyList<string> ReadKeyValues(SqlModelMap map, TRow row)

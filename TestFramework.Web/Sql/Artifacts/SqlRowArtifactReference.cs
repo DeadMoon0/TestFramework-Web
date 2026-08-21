@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -16,8 +16,8 @@ namespace TestFramework.Web.Sql.Artifacts;
 /// </summary>
 /// <typeparam name="TRow">The row model type.</typeparam>
 /// <remarks>
-/// A reference the test creates owns its row and deletes it during teardown. A reference produced by
-/// a finder does not: a test must never delete data the application under test created.
+/// The reference can always address its row, so teardown deletes it - whether the test created the row
+/// or found it. Chain <c>MarkReadonly()</c> onto the declaring call for a row the run only reads.
 /// </remarks>
 public sealed class SqlRowArtifactReference<TRow> : ArtifactReference<SqlRowArtifactReference<TRow>, SqlRowArtifactDescriber<TRow>, SqlRowArtifactData<TRow>>, ISqlArtifactReference
     where TRow : class
@@ -31,11 +31,6 @@ public sealed class SqlRowArtifactReference<TRow> : ArtifactReference<SqlRowArti
     /// <param name="sqlIdentifier">The SQL identifier.</param>
     /// <param name="keyValues">The key values, in the key order declared by the model map.</param>
     public SqlRowArtifactReference(SqlIdentifier sqlIdentifier, params VariableReference<string>[] keyValues)
-        : this(sqlIdentifier, ownsRow: true, keyValues)
-    {
-    }
-
-    private SqlRowArtifactReference(SqlIdentifier sqlIdentifier, bool ownsRow, params VariableReference<string>[] keyValues)
     {
         ArgumentNullException.ThrowIfNull(sqlIdentifier);
         ArgumentNullException.ThrowIfNull(keyValues);
@@ -45,19 +40,22 @@ public sealed class SqlRowArtifactReference<TRow> : ArtifactReference<SqlRowArti
 
         SqlIdentifier = sqlIdentifier;
         _keyValues = keyValues;
-        CanDeconstruct = ownsRow;
+
+        // A key value is required above, so this reference can always address the row it deletes.
+        // Whether it may delete it is the timeline's call, through MarkReadonly().
+        CanDeconstruct = true;
     }
 
     /// <inheritdoc />
     public SqlIdentifier SqlIdentifier { get; }
 
     /// <summary>
-    /// Creates a reference to a row the test observed but does not own.
+    /// Creates a reference to a row a finder located, carrying the key values it already resolved.
     /// </summary>
     /// <param name="sqlIdentifier">The SQL identifier.</param>
     /// <param name="keyValues">The already-resolved key values.</param>
-    internal static SqlRowArtifactReference<TRow> Observed(SqlIdentifier sqlIdentifier, IReadOnlyList<string> keyValues)
-        => new(sqlIdentifier, ownsRow: false, [.. keyValues.Select(Var.Const)])
+    internal static SqlRowArtifactReference<TRow> Discovered(SqlIdentifier sqlIdentifier, IReadOnlyList<string> keyValues)
+        => new(sqlIdentifier, [.. keyValues.Select(Var.Const)])
         {
             _pinnedKeyValues = [.. keyValues],
         };
