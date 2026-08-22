@@ -16,12 +16,9 @@
 		<RepositoryUrl>https://github.com/DeadMoon0/TestFramework-Web.git</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<Copyright>Copyright (c) DeadMoon0 2026</Copyright>
-		<PackageReleaseNotes>Initial release: REST API and SQL Server testing, model-derived schema, and stubbed dependencies.
-Worth knowing up front:
-- A status code is a result, not a failure. Api.Get(...) returns 404 immediately rather than retrying. Put Api.IsLive(...) in front of a call when a locally started host may still be warming up - that step, not the call, absorbs the startup 404/503.
-- Cookies are off by default. The HTTP clients are pooled per identifier, so a cookie jar would be shared by every run against that identifier; set ApiConfig.UseCookies only for an API whose session really is a cookie, and expect that session to be shared.
-- Stub.Reset(...) records a watermark by default instead of deleting the stub's request log, so it is safe against a stub shared with other runs. Only ClearServerLog deletes evidence, and only a stub this run owns gives fully isolated verification - narrow waits with WithHeader(...) on a shared one.
-- A SQL script is executed as one session, so #temp tables, SET options and a transaction opened in one GO batch survive into the next, as they do in SSMS.</PackageReleaseNotes>
+		<PackageReleaseNotes>BREAKING - teardown now deletes a SQL row a finder located. Previously WebExt.ArtifactFinder.Sql produced observed references that teardown left in place; now the reference can address its row and the timeline decides whether it may be deleted. Chain MarkReadonly() onto the FindArtifact / FindArtifacts call for a row the run only reads. Requires TestFramework.Core 0.3.0 and TestFramework.Config 0.2.1.
+What to change: any timeline that locates existing rows - a row the application under test wrote, or a seeded fixture the suite shares - must add MarkReadonly() before upgrading. Without it, teardown deletes those rows. A row the test creates through SetupArtifact plus AddArtifact is unaffected: it was deleted before and still is.
+The SqlRowArtifactReference public constructor no longer takes ownership into account; ownership is expressed on the timeline step instead of on the reference.</PackageReleaseNotes>
 	</PropertyGroup>
 
 	<ItemGroup>
