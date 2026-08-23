@@ -24,4 +24,9 @@ public static class WebEnvironmentResourceKinds
     /// Stubbed dependency environment requirement kind.
     /// </summary>
     public const string Stub = "web.stub";
+
+    /// <summary>
+    /// Web site environment requirement kind.
+    /// </summary>
+    public const string Site = "web.site";
 }

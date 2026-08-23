@@ -403,6 +403,20 @@ three are **not** equivalent:
 **This package declares and verifies; it does not host.** `TestFramework.Container.Web` hosts
 declarations in a container.
 
+## Sites
+
+A site is the web application a browser loads. This package carries only its configuration home —
+the `Site` section fills `WebConfigStore<SiteConfig>`, and `web.site` is its environment requirement
+kind — so a browser package resolves the address by identifier, and a container environment has
+somewhere to publish it:
+
+```json
+{ "Site": { "shop": { "BaseUrl": "https://shop.test.example/" } } }
+```
+
+Like every resource here, whether the site is deployed or served by a container this run started is
+not visible to the timeline.
+
 ## Troubleshooting
 
 | Symptom | Cause and fix |

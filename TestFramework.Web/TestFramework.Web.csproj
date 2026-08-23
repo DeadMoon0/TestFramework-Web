@@ -11,14 +11,12 @@
 		<PackageTags>Test;UnitTest;IntegrationTest;Framework;Fluent;Timeline;Web;Rest;Api;Http;Sql;SqlServer;Stub;Mock;WireMock</PackageTags>
 		<PackageIcon>Icon.png</PackageIcon>
 		<Description>Test web applications from inside a TestFramework timeline: REST APIs, the SQL Server databases behind them, and the dependencies they call. Provides identifier-driven configuration, variable-backed HTTP requests and SQL statements, row artifacts with automatic teardown, liveness probes, stub declarations with request verification, and request authentication including Windows Negotiate.</Description>
-		<Version>0.3.0</Version>
+		<Version>0.4.0</Version>
 		<PackageProjectUrl>https://github.com/DeadMoon0/TestFramework-Web</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/DeadMoon0/TestFramework-Web.git</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<Copyright>Copyright (c) DeadMoon0 2026</Copyright>
-		<PackageReleaseNotes>BREAKING - teardown now deletes a SQL row a finder located. Previously WebExt.ArtifactFinder.Sql produced observed references that teardown left in place; now the reference can address its row and the timeline decides whether it may be deleted. Chain MarkReadonly() onto the FindArtifact / FindArtifacts call for a row the run only reads. Requires TestFramework.Core 0.3.0 and TestFramework.Config 0.2.1.
-What to change: any timeline that locates existing rows - a row the application under test wrote, or a seeded fixture the suite shares - must add MarkReadonly() before upgrading. Without it, teardown deletes those rows. A row the test creates through SetupArtifact plus AddArtifact is unaffected: it was deleted before and still is.
-The SqlRowArtifactReference public constructor no longer takes ownership into account; ownership is expressed on the timeline step instead of on the reference.</PackageReleaseNotes>
+		<PackageReleaseNotes>Adds the Site resource family for web sites a browser loads: SiteIdentifier, SiteConfig loaded from the new Site configuration section, and the web.site environment requirement kind. LoadWebConfig() now also registers WebConfigStore&lt;SiteConfig&gt;, so an environment that serves a site at run time has somewhere to publish its address. Requires TestFramework.Core 0.3.0 and TestFramework.Config 0.2.1.</PackageReleaseNotes>
 	</PropertyGroup>
 
 	<ItemGroup>

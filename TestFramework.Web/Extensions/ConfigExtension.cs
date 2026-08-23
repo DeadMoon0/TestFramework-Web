@@ -9,7 +9,7 @@ namespace TestFramework.Web.Extensions;
 public static class ConfigExtension
 {
     /// <summary>
-    /// Loads the <c>Api</c>, <c>Sql</c> and <c>Stub</c> configuration sections into the timeline config builder.
+    /// Loads the <c>Api</c>, <c>Sql</c>, <c>Stub</c> and <c>Site</c> configuration sections into the timeline config builder.
     /// </summary>
     /// <param name="builder">The config instance builder.</param>
     /// <param name="provider">Optional custom configuration provider. Uses <see cref="DefaultApiConfigProvider"/> when omitted.</param>
@@ -25,6 +25,7 @@ public static class ConfigExtension
             services.LoadWebConfigs(configuration, provider);
             services.LoadWebSqlConfigs(configuration);
             services.LoadWebStubConfigs(configuration);
+            services.LoadWebSiteConfigs(configuration);
         });
         return builder;
     }

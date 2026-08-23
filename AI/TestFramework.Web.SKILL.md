@@ -17,6 +17,7 @@
 <key_concepts>
     TestFramework.Web does not replace the Core timeline model. A request is an ordinary step and the response is an ordinary step result.
     APIs are addressed by logical identifier, never by a literal URL in the timeline. The identifier resolves through WebConfigStore&lt;ApiConfig&gt;, populated from the Api:&lt;identifier&gt; configuration section by LoadWebConfig().
+    Sites - the web applications a browser loads - follow the same contract: SiteIdentifier resolves through WebConfigStore&lt;SiteConfig&gt;, populated from the Site:&lt;identifier&gt; section, with the environment requirement kind "web.site". This package only carries their configuration; hosting is TestFramework.Container.Web (DockerSiteDefinition) and driving them is TestFramework.UI.
     A non-2xx status code is returned as data. Only transport failures - connection refused, DNS failure, timeout - raise ApiRequestFailedException. Assert the status with the in-house fluent assertions instead.
     Endpoints are addressed by explicit path and method. The framework deliberately does not derive routes from controller types, so the test never references the application project and a server-side route change fails the test.
     Every request part is variable-backed: path, route values, query, headers and body. The trigger declares identifier-backed inputs through DeclareIO.
