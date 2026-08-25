@@ -1,7 +1,7 @@
+﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
-using System.Text.Json;
 using TestFramework.Core.Variables;
 using TestFramework.Web.Auth;
 
@@ -12,8 +12,6 @@ namespace TestFramework.Web.Http;
 /// </summary>
 internal sealed class ApiRequestBuilderState
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-
     private readonly List<(string Name, VariableReference<string> Value)> _routeValues = [];
     private readonly List<(string Name, VariableReference<string> Value)> _query = [];
     private readonly List<(VariableReference<string> Key, VariableReference<string> Value)> _headers = [];
@@ -100,7 +98,7 @@ internal sealed class ApiRequestBuilderState
     {
         ArgumentNullException.ThrowIfNull(value);
         _bodyBytes = null;
-        _bodyTextFactory = store => JsonSerializer.Serialize(value.GetValue(store), JsonOptions);
+        _bodyTextFactory = store => JsonConvert.SerializeObject(value.GetValue(store), WebJson.Wire);
         _contentType = "application/json; charset=utf-8";
         Track(value);
     }

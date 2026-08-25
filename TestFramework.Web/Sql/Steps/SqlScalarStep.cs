@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -76,20 +76,15 @@ public sealed class SqlScalarStep<TValue> : SqlStepBase<SqlScalarResult<TValue>>
     public override StepInstance<Step<SqlScalarResult<TValue>>, SqlScalarResult<TValue>> GetInstance() => new(this);
 
     /// <inheritdoc />
-    public override async Task<SqlScalarResult<TValue>?> Execute(
-        IServiceProvider serviceProvider,
-        VariableStore variableStore,
-        ArtifactStore artifactStore,
-        ScopedLogger logger,
-        CancellationToken cancellationToken)
+    public override async Task<SqlScalarResult<TValue>?> Execute(RunContext context)
     {
-        (ISqlExecutor executor, IReadOnlyDictionary<string, object?> parameters) = Prepare(serviceProvider, variableStore, logger);
+        (ISqlExecutor executor, IReadOnlyDictionary<string, object?> parameters) = Prepare(context.Services, context.Variables, context.Logger);
 
         System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        TValue? value = await executor.ScalarAsync<TValue>(SqlIdentifier, Statement, parameters, cancellationToken).ConfigureAwait(false);
+        TValue? value = await executor.ScalarAsync<TValue>(SqlIdentifier, Statement, parameters, context.Deadline.Token).ConfigureAwait(false);
         stopwatch.Stop();
 
-        logger.LogInformation("SQL '{0}' <- {1} in {2}", SqlIdentifier.ToString(), value?.ToString() ?? "null", stopwatch.Elapsed);
+        context.Logger.LogInformation("SQL '{0}' <- {1} in {2}", SqlIdentifier.ToString(), value?.ToString() ?? "null", stopwatch.Elapsed);
         return new SqlScalarResult<TValue>(SqlIdentifier, value, stopwatch.Elapsed);
     }
 }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using TestFramework.Core.Steps;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -55,18 +56,18 @@ public sealed class SqlRowWhereFinder<TRow> : ArtifactFinder<SqlRowArtifactDescr
     /// <summary>
     /// Finds the first matching row.
     /// </summary>
-    public override async Task<ArtifactFinderResult?> FindAsync(IServiceProvider serviceProvider, VariableStore variableStore, ScopedLogger logger, CancellationToken cancellationToken)
+    public override async Task<ArtifactFinderResult?> FindAsync(RunContext context)
     {
-        IReadOnlyList<SqlRowArtifactReference<TRow>> references = await FindReferencesAsync(serviceProvider, variableStore, logger, cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<SqlRowArtifactReference<TRow>> references = await FindReferencesAsync(context.Services, context.Variables, context.Logger, context.Deadline.Token).ConfigureAwait(false);
         return references.Count == 0 ? null : new ArtifactFinderResult(references[0]);
     }
 
     /// <summary>
     /// Finds every matching row.
     /// </summary>
-    public override async Task<ArtifactFinderResultMulti> FindMultiAsync(IServiceProvider serviceProvider, VariableStore variableStore, ScopedLogger logger, CancellationToken cancellationToken)
+    public override async Task<ArtifactFinderResultMulti> FindMultiAsync(RunContext context)
     {
-        IReadOnlyList<SqlRowArtifactReference<TRow>> references = await FindReferencesAsync(serviceProvider, variableStore, logger, cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<SqlRowArtifactReference<TRow>> references = await FindReferencesAsync(context.Services, context.Variables, context.Logger, context.Deadline.Token).ConfigureAwait(false);
         return new ArtifactFinderResultMulti([.. references.Select(reference => new ArtifactFinderResult(reference))]);
     }
 

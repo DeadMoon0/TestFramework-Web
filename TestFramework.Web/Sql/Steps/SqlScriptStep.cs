@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -172,14 +172,9 @@ public sealed class SqlScriptStep : SqlStepBase<SqlScriptResult>
     public override StepInstance<Step<SqlScriptResult>, SqlScriptResult> GetInstance() => new(this);
 
     /// <inheritdoc />
-    public override async Task<SqlScriptResult?> Execute(
-        IServiceProvider serviceProvider,
-        VariableStore variableStore,
-        ArtifactStore artifactStore,
-        ScopedLogger logger,
-        CancellationToken cancellationToken)
+    public override async Task<SqlScriptResult?> Execute(RunContext context)
     {
-        (ISqlExecutor executor, IReadOnlyDictionary<string, object?> parameters) = Prepare(serviceProvider, variableStore, logger);
+        (ISqlExecutor executor, IReadOnlyDictionary<string, object?> parameters) = Prepare(context.Services, context.Variables, context.Logger);
 
         IReadOnlyList<string> batches = _script.SplitBatches();
         System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -187,17 +182,17 @@ public sealed class SqlScriptStep : SqlStepBase<SqlScriptResult>
         // One call, not one per batch: the batches of a script share connection state, and splitting
         // them across connections would drop every #temp table and SET option between them.
         SqlScriptExecutionResult execution = await executor
-            .ExecuteScriptAsync(SqlIdentifier, batches, parameters, cancellationToken)
+            .ExecuteScriptAsync(SqlIdentifier, batches, parameters, context.Deadline.Token)
             .ConfigureAwait(false);
 
         stopwatch.Stop();
-        logger.LogInformation("SQL script '{0}' ran {1} batch(es) on '{2}' in {3}", _script.Description, batches.Count, SqlIdentifier.ToString(), stopwatch.Elapsed);
+        context.Logger.LogInformation("SQL script '{0}' ran {1} batch(es) on '{2}' in {3}", _script.Description, batches.Count, SqlIdentifier.ToString(), stopwatch.Elapsed);
 
         // An unbalanced BEGIN TRAN rolls back silently when the connection closes, so the script
         // would appear to have succeeded while having changed nothing.
         if (execution.OpenTransactionCount is > 0 and { } openTransactions)
         {
-            logger.LogWarning(
+            context.Logger.LogWarning(
                 $"SQL script '{_script.Description}' left {openTransactions} transaction(s) open on '{SqlIdentifier}'. "
                 + "Closing the connection rolls them back without an error, so the script's changes are discarded. "
                 + "Add the matching COMMIT or ROLLBACK.");

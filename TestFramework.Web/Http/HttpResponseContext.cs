@@ -1,10 +1,10 @@
+﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using TestFramework.Core.Steps;
@@ -41,8 +41,6 @@ public sealed record HttpResponseContext(
 {
     private const int BodyExcerptLimit = 2048;
 
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-
     /// <summary>
     /// Headers surfaced in call summaries because they usually identify the call in server logs.
     /// </summary>
@@ -72,7 +70,7 @@ public sealed record HttpResponseContext(
 
         try
         {
-            return JsonSerializer.Deserialize<T>(Body, JsonOptions)
+            return JsonConvert.DeserializeObject<T>(Body, WebJson.Wire)
                 ?? throw ApiResponseFormatException.CannotDeserialize(typeof(T), StatusCode, ContentType, BodyExcerpt());
         }
         catch (JsonException exception)

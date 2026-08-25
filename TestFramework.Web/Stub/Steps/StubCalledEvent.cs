@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -133,41 +133,36 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
     }
 
     /// <inheritdoc />
-    public override async Task<StubCalledResult?> DoEventPolling(
-        IServiceProvider serviceProvider,
-        VariableStore variableStore,
-        ArtifactStore artifactStore,
-        ScopedLogger logger,
-        CancellationToken cancellationToken)
+    public override async Task<StubCalledResult?> DoEventPolling(RunContext context)
     {
-        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(context.Logger);
 
-        StubConfig config = StubConfigResolver.Resolve(serviceProvider, _stubIdentifier);
-        StubAdminClient admin = StubConfigResolver.CreateAdminClient(serviceProvider, _stubIdentifier);
-        string? expectedBody = _bodyContains?.GetRequiredValue(variableStore, "body text");
+        StubConfig config = StubConfigResolver.Resolve(context.Services, _stubIdentifier);
+        StubAdminClient admin = StubConfigResolver.CreateAdminClient(context.Services, _stubIdentifier);
+        string? expectedBody = _bodyContains?.GetRequiredValue(context.Variables, "body text");
 
         // Without the window, a wait on a shared stub can complete on a call another run made before
         // this one even started.
-        DateTimeOffset? watermark = StubObservationScope.WatermarkFor(serviceProvider, _stubIdentifier);
+        DateTimeOffset? watermark = StubObservationScope.WatermarkFor(context.Services, _stubIdentifier);
         System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         // The step timeout is the only limit, so a caller controls how long to wait with
         // WithTimeOut(...) rather than with a second competing setting here.
         while (true)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            context.Deadline.Token.ThrowIfCancellationRequested();
 
-            foreach (StubCall call in await admin.GetCallsAsync(cancellationToken).ConfigureAwait(false))
+            foreach (StubCall call in await admin.GetCallsAsync(context.Deadline.Token).ConfigureAwait(false))
             {
                 if (!Matches(call, expectedBody, watermark))
                     continue;
 
                 stopwatch.Stop();
-                logger.LogInformation("Stub '{0}' received {1} {2} after {3}.", _stubIdentifier.ToString(), _method, _path, stopwatch.Elapsed);
+                context.Logger.LogInformation("Stub '{0}' received {1} {2} after {3}.", _stubIdentifier.ToString(), _method, _path, stopwatch.Elapsed);
                 return new StubCalledResult(_stubIdentifier, call, stopwatch.Elapsed);
             }
 
-            await Task.Delay(config.PollInterval, cancellationToken).ConfigureAwait(false);
+            await Task.Delay(config.PollInterval, context.Deadline.Token).ConfigureAwait(false);
         }
     }
 

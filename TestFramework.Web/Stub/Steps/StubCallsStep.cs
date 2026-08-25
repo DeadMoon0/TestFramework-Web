@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -109,10 +109,10 @@ public abstract class StubStepBase<TResult> : Step<TResult>, IHasEnvironmentRequ
     /// <summary>
     /// Warns once per stub when a watermark is active but the server logs calls without a timestamp.
     /// </summary>
-    /// <param name="serviceProvider">The service provider for the current run.</param>
+    /// <param name="serviceProvider">The services, for the once-per-stub warning state.</param>
     /// <param name="calls">Every call the stub received.</param>
     /// <param name="watermark">The active watermark, or <see langword="null"/> when none is.</param>
-    /// <param name="logger">The logger of the running step.</param>
+    /// <param name="logger">The run's logger.</param>
     protected void WarnAboutUntimedCalls(
         IServiceProvider serviceProvider,
         IEnumerable<StubCall> calls,
@@ -211,34 +211,29 @@ public sealed class StubCallsStep : StubStepBase<StubCallsResult>
     public override StepInstance<Step<StubCallsResult>, StubCallsResult> GetInstance() => new(this);
 
     /// <inheritdoc />
-    public override async Task<StubCallsResult?> Execute(
-        IServiceProvider serviceProvider,
-        VariableStore variableStore,
-        ArtifactStore artifactStore,
-        ScopedLogger logger,
-        CancellationToken cancellationToken)
+    public override async Task<StubCallsResult?> Execute(RunContext context)
     {
-        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(context.Logger);
 
-        StubAdminClient admin = StubConfigResolver.CreateAdminClient(serviceProvider, StubIdentifier);
-        IReadOnlyList<StubCall> all = await admin.GetCallsAsync(cancellationToken).ConfigureAwait(false);
+        StubAdminClient admin = StubConfigResolver.CreateAdminClient(context.Services, StubIdentifier);
+        IReadOnlyList<StubCall> all = await admin.GetCallsAsync(context.Deadline.Token).ConfigureAwait(false);
 
         // Everything this step reports is bounded by the window the reset opened, so a shared stub's
         // older traffic is not read as this run's evidence.
-        DateTimeOffset? watermark = StubObservationScope.WatermarkFor(serviceProvider, StubIdentifier);
-        WarnAboutUntimedCalls(serviceProvider, all, watermark, logger);
+        DateTimeOffset? watermark = StubObservationScope.WatermarkFor(context.Services, StubIdentifier);
+        WarnAboutUntimedCalls(context.Services, all, watermark, context.Logger);
 
         IReadOnlyList<StubCall> matching = Filter(all, watermark);
         IReadOnlyList<StubCall> unmatched = [.. all.Where(call => !call.Matched && StubCallMatcher.IsInScope(call, watermark))];
 
-        logger.LogInformation("Stub '{0}' received {1} call(s) for {2}.", StubIdentifier.ToString(), matching.Count, FilterDescription);
+        context.Logger.LogInformation("Stub '{0}' received {1} call(s) for {2}.", StubIdentifier.ToString(), matching.Count, FilterDescription);
 
         // An unmatched call is the application asking for something the test never declared, which
         // is worth surfacing even when it is not what this step filtered for. Query and body come
         // along because "no mapping answered this" is usually a one-character difference, and
         // without them the next step is always another debugging round.
         foreach (StubCall call in unmatched)
-            logger.LogWarning($"Stub '{StubIdentifier}' had no mapping for {Describe(call)}.");
+            context.Logger.LogWarning($"Stub '{StubIdentifier}' had no mapping for {Describe(call)}.");
 
         return new StubCallsResult(StubIdentifier, matching, unmatched);
     }
@@ -295,44 +290,39 @@ public sealed class StubResetStep : StubStepBase<StubCallsResult>
     public override StepInstance<Step<StubCallsResult>, StubCallsResult> GetInstance() => new(this);
 
     /// <inheritdoc />
-    public override async Task<StubCallsResult?> Execute(
-        IServiceProvider serviceProvider,
-        VariableStore variableStore,
-        ArtifactStore artifactStore,
-        ScopedLogger logger,
-        CancellationToken cancellationToken)
+    public override async Task<StubCallsResult?> Execute(RunContext context)
     {
-        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(context.Logger);
 
-        StubConfig config = StubConfigResolver.Resolve(serviceProvider, StubIdentifier);
-        StubAdminClient admin = StubConfigResolver.CreateAdminClient(serviceProvider, StubIdentifier);
-        StubObservationScope? scope = StubObservationScope.Resolve(serviceProvider);
+        StubConfig config = StubConfigResolver.Resolve(context.Services, StubIdentifier);
+        StubAdminClient admin = StubConfigResolver.CreateAdminClient(context.Services, StubIdentifier);
+        StubObservationScope? scope = StubObservationScope.Resolve(context.Services);
 
         if (config.ResetMode == StubResetMode.ClearServerLog)
         {
-            await admin.ResetCallsAsync(cancellationToken).ConfigureAwait(false);
+            await admin.ResetCallsAsync(context.Deadline.Token).ConfigureAwait(false);
             scope?.ClearWatermark(StubIdentifier);
 
-            logger.LogInformation("Stub '{0}' request log deleted on the server.", StubIdentifier.ToString());
+            context.Logger.LogInformation("Stub '{0}' request log deleted on the server.", StubIdentifier.ToString());
             return new StubCallsResult(StubIdentifier, [], []);
         }
 
         // The watermark comes from the stub's own clock, so no skew between this host and the stub
         // can shift the boundary. DateTimeOffset.UtcNow here would be meaningless for a stub that
         // runs somewhere else.
-        IReadOnlyList<StubCall> existing = await admin.GetCallsAsync(cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<StubCall> existing = await admin.GetCallsAsync(context.Deadline.Token).ConfigureAwait(false);
         DateTimeOffset? watermark = StubCallMatcher.NewestTimestamp(existing);
         scope?.SetWatermark(StubIdentifier, watermark);
 
         if (scope is null)
         {
-            logger.LogWarning(
+            context.Logger.LogWarning(
                 $"Stub '{StubIdentifier}' could not record an observation watermark: no stub configuration was loaded into the run. "
                 + "Later observations will see the whole request log.");
         }
         else if (watermark is { } cutoff)
         {
-            logger.LogInformation(
+            context.Logger.LogInformation(
                 "Stub '{0}' observation window starts after {1}; the {2} call(s) already logged are ignored.",
                 StubIdentifier.ToString(),
                 cutoff.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
@@ -340,7 +330,7 @@ public sealed class StubResetStep : StubStepBase<StubCallsResult>
         }
         else
         {
-            logger.LogInformation("Stub '{0}' has no timestamped calls logged; every call counts as this run's.", StubIdentifier.ToString());
+            context.Logger.LogInformation("Stub '{0}' has no timestamped calls logged; every call counts as this run's.", StubIdentifier.ToString());
         }
 
         return new StubCallsResult(StubIdentifier, [], []);

@@ -1,9 +1,11 @@
+﻿using TestFramework.Core.Json;
+using TestFramework.Web.Http;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using TestFramework.Web.Stub.Exceptions;
@@ -53,8 +55,8 @@ public sealed class StubAdminClient(HttpClient client, string adminPath)
     {
         string payload = await ReadAsync($"{Trimmed}/requests", cancellationToken).ConfigureAwait(false);
 
-        JsonNode? node = Parse(payload);
-        if (node is not JsonArray entries)
+        JToken? node = Parse(payload);
+        if (node is not JArray entries)
             return [];
 
         List<StubCall> calls = [.. entries.Select(ToCall).Where(call => call is not null).Select(call => call!)];
@@ -73,7 +75,7 @@ public sealed class StubAdminClient(HttpClient client, string adminPath)
     public async Task<int> GetMappingCountAsync(CancellationToken cancellationToken)
     {
         string payload = await ReadAsync($"{Trimmed}/mappings", cancellationToken).ConfigureAwait(false);
-        return Parse(payload) is JsonArray mappings ? mappings.Count : 0;
+        return Parse(payload) is JArray mappings ? mappings.Count : 0;
     }
 
     /// <summary>
@@ -113,11 +115,11 @@ public sealed class StubAdminClient(HttpClient client, string adminPath)
         }
     }
 
-    private static JsonNode? Parse(string payload)
+    private static JToken? Parse(string payload)
     {
         try
         {
-            return JsonNode.Parse(payload);
+            return WireJson.Parse(payload);
         }
         catch (JsonException exception)
         {
@@ -125,9 +127,9 @@ public sealed class StubAdminClient(HttpClient client, string adminPath)
         }
     }
 
-    private static StubCall? ToCall(JsonNode? entry)
+    private static StubCall? ToCall(JToken? entry)
     {
-        if (entry is not JsonObject logEntry || logEntry["Request"] is not JsonObject request)
+        if (entry is not JObject logEntry || logEntry["Request"] is not JObject request)
             return null;
 
         return new StubCall(
@@ -140,45 +142,55 @@ public sealed class StubAdminClient(HttpClient client, string adminPath)
             ReadMatched(logEntry));
     }
 
-    private static bool ReadMatched(JsonObject logEntry)
+    private static bool ReadMatched(JObject logEntry)
     {
         // A log entry that names no mapping is a request nothing answered.
-        if (logEntry["MappingGuid"] is JsonValue mapping && mapping.TryGetValue(out string? guid) && !string.IsNullOrWhiteSpace(guid))
+        if (!string.IsNullOrWhiteSpace(ReadString(logEntry, "MappingGuid")))
             return true;
 
-        if (logEntry["RequestMatchResult"] is JsonObject match
-            && match["IsPerfectMatch"] is JsonValue flag
-            && flag.TryGetValue(out bool isPerfectMatch))
+        if (logEntry["RequestMatchResult"] is JObject match
+            && match["IsPerfectMatch"] is { Type: JTokenType.Boolean } flag)
         {
-            return isPerfectMatch;
+            return flag.Value<bool>();
         }
 
         return false;
     }
 
-    private static string? ReadString(JsonObject source, string name)
-        => source[name] is JsonValue value && value.TryGetValue(out string? text) ? text : null;
+    /// <summary>
+    /// Reads a property that is a JSON string, and nothing else.
+    /// </summary>
+    /// <remarks>
+    /// The type check is deliberate rather than a call to <c>Value&lt;string&gt;()</c>, which would happily
+    /// render a number or a boolean as text. A field that is not a string is a field this client does not
+    /// understand, and quietly stringifying it would hide that.
+    /// </remarks>
+    /// <param name="source">The object to read from.</param>
+    /// <param name="name">The property name.</param>
+    /// <returns>The string, or null when the property is absent or is not a string.</returns>
+    private static string? ReadString(JObject source, string name)
+        => source[name] is { Type: JTokenType.String } value ? value.Value<string>() : null;
 
-    private static string? ReadBody(JsonObject request)
-        => ReadString(request, "Body") ?? request["BodyAsJson"]?.ToJsonString();
+    private static string? ReadBody(JObject request)
+        => ReadString(request, "Body") ?? request["BodyAsJson"]?.ToString(Formatting.None);
 
-    private static DateTimeOffset? ReadTimestamp(JsonObject request)
+    private static DateTimeOffset? ReadTimestamp(JObject request)
     {
         string? raw = ReadString(request, "DateTime");
         return DateTimeOffset.TryParse(raw, System.Globalization.CultureInfo.InvariantCulture, out DateTimeOffset parsed) ? parsed : null;
     }
 
-    private static IReadOnlyDictionary<string, string> ReadHeaders(JsonObject request)
+    private static IReadOnlyDictionary<string, string> ReadHeaders(JObject request)
     {
         Dictionary<string, string> headers = new(StringComparer.OrdinalIgnoreCase);
-        if (request["Headers"] is not JsonObject source)
+        if (request["Headers"] is not JObject source)
             return headers;
 
-        foreach ((string name, JsonNode? value) in source)
+        foreach ((string name, JToken? value) in source)
         {
             headers[name] = value switch
             {
-                JsonArray array => string.Join(", ", array.Select(item => item?.ToString() ?? string.Empty)),
+                JArray array => string.Join(", ", array.Select(item => item?.ToString() ?? string.Empty)),
                 null => string.Empty,
                 _ => value.ToString(),
             };

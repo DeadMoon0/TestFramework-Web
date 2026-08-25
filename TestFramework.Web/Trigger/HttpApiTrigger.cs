@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Http;
@@ -58,29 +58,24 @@ internal sealed class HttpApiTrigger(ApiIdentifier identifier, ComposedRequestVa
     public IReadOnlyCollection<EnvironmentRequirement> GetEnvironmentRequirements(VariableStore variableStore)
         => [new EnvironmentRequirement(WebEnvironmentResourceKinds.RestApi, identifier)];
 
-    public override async Task<HttpResponseContext?> Execute(
-        IServiceProvider serviceProvider,
-        VariableStore variableStore,
-        ArtifactStore artifactStore,
-        ScopedLogger logger,
-        CancellationToken cancellationToken)
+    public override async Task<HttpResponseContext?> Execute(RunContext context)
     {
-        ArgumentNullException.ThrowIfNull(serviceProvider);
-        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(context.Services);
+        ArgumentNullException.ThrowIfNull(context.Logger);
 
-        HttpRequestSpec spec = request.GetRequiredValue(variableStore, "API request");
-        ApiConfig config = ApiConfigResolver.Resolve(serviceProvider, identifier);
-        ApiTriggerConfig triggerConfig = serviceProvider.GetService<ApiTriggerConfig>() ?? new ApiTriggerConfig();
+        HttpRequestSpec spec = request.GetRequiredValue(context.Variables, "API request");
+        ApiConfig config = ApiConfigResolver.Resolve(context.Services, identifier);
+        ApiTriggerConfig triggerConfig = context.Services.GetService<ApiTriggerConfig>() ?? new ApiTriggerConfig();
 
         Uri requestUri = spec.ResolveUri(identifier, config.BaseUrl);
-        IHttpSender sender = serviceProvider.GetWebComponentFactory().CreateSender(identifier, config);
-        IApiAuthenticationProvider authentication = ResolveAuthentication(spec, variableStore, config);
+        IHttpSender sender = context.Services.GetWebComponentFactory().CreateSender(identifier, config);
+        IApiAuthenticationProvider authentication = ResolveAuthentication(spec, context.Variables, config);
 
         if (triggerConfig.LogRequests)
-            logger.LogInformation("API '{0}' -> {1} {2}", identifier, spec.Method, requestUri);
+            context.Logger.LogInformation("API '{0}' -> {1} {2}", identifier, spec.Method, requestUri);
 
         if (triggerConfig.LogRequestHeaders && spec.Headers.Count > 0)
-            logger.LogInformation("API '{0}' request headers: {1}", identifier, HttpHeaderRedactor.Resolve(serviceProvider).Describe(spec.Headers));
+            context.Logger.LogInformation("API '{0}' request headers: {1}", identifier, HttpHeaderRedactor.Resolve(context.Services).Describe(spec.Headers));
 
         Stopwatch stopwatch = Stopwatch.StartNew();
         HttpResponseMessage? response = null;
@@ -89,14 +84,14 @@ internal sealed class HttpApiTrigger(ApiIdentifier identifier, ComposedRequestVa
         {
             using (HttpRequestMessage message = spec.CreateMessage(requestUri))
             {
-                await authentication.ApplyAsync(message, cancellationToken).ConfigureAwait(false);
-                response = await sender.SendAsync(message, cancellationToken).ConfigureAwait(false);
+                await authentication.ApplyAsync(message, context.Deadline.Token).ConfigureAwait(false);
+                response = await sender.SendAsync(message, context.Deadline.Token).ConfigureAwait(false);
             }
 
             stopwatch.Stop();
 
             if (triggerConfig.LogRequests)
-                logger.LogInformation("API '{0}' <- {1} in {2}", identifier, response.StatusCode, stopwatch.Elapsed);
+                context.Logger.LogInformation("API '{0}' <- {1} in {2}", identifier, response.StatusCode, stopwatch.Elapsed);
 
             return await HttpResponseContext.FromHttpResponseAsync(
                 identifier,
@@ -104,9 +99,9 @@ internal sealed class HttpApiTrigger(ApiIdentifier identifier, ComposedRequestVa
                 requestUri,
                 response,
                 stopwatch.Elapsed,
-                cancellationToken).ConfigureAwait(false);
+                context.Deadline.Token).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (context.Deadline.Token.IsCancellationRequested)
         {
             throw;
         }

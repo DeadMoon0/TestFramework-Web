@@ -1,8 +1,8 @@
+﻿using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 
 namespace TestFramework.Web.Stub.Mappings;
 
@@ -25,7 +25,7 @@ public static class StubMappingJson
     public static string Write(StubMapping mapping)
     {
         ArgumentNullException.ThrowIfNull(mapping);
-        return ToNode(mapping).ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+        return ToNode(mapping).ToString(Formatting.Indented);
     }
 
     /// <summary>
@@ -36,19 +36,19 @@ public static class StubMappingJson
     {
         ArgumentNullException.ThrowIfNull(mappings);
 
-        JsonArray array = [];
+        JArray array = [];
         foreach (StubMapping mapping in mappings)
             array.Add(ToNode(mapping));
 
-        return array.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+        return array.ToString(Formatting.Indented);
     }
 
-    private static JsonObject ToNode(StubMapping mapping)
+    private static JObject ToNode(StubMapping mapping)
     {
-        JsonObject request = new()
+        JObject request = new()
         {
             ["Path"] = mapping.Path,
-            ["Methods"] = new JsonArray(mapping.Method),
+            ["Methods"] = new JArray(mapping.Method),
         };
 
         if (mapping.Headers.Count > 0)
@@ -59,20 +59,20 @@ public static class StubMappingJson
 
         if (!string.IsNullOrEmpty(mapping.BodyContains))
         {
-            request["Body"] = new JsonObject
+            request["Body"] = new JObject
             {
-                ["Matchers"] = new JsonArray(Matcher($"*{mapping.BodyContains}*", ignoreCase: false)),
+                ["Matchers"] = new JArray(Matcher($"*{mapping.BodyContains}*", ignoreCase: false)),
             };
         }
 
-        JsonObject response = new()
+        JObject response = new()
         {
             ["StatusCode"] = mapping.Response.StatusCode,
         };
 
         if (mapping.Response.Headers.Count > 0)
         {
-            JsonObject headers = [];
+            JObject headers = [];
             foreach ((string name, string value) in mapping.Response.Headers)
                 headers[name] = value;
 
@@ -90,7 +90,7 @@ public static class StubMappingJson
         if (mapping.Response.Delay is { } delay)
             response["Delay"] = (int)delay.TotalMilliseconds;
 
-        return new JsonObject
+        return new JObject
         {
             ["Priority"] = mapping.Priority,
             ["Title"] = $"{mapping.Method} {mapping.Path}",
@@ -99,22 +99,22 @@ public static class StubMappingJson
         };
     }
 
-    private static JsonArray ToMatcherArray(IReadOnlyDictionary<string, string> values, bool ignoreCase)
+    private static JArray ToMatcherArray(IReadOnlyDictionary<string, string> values, bool ignoreCase)
     {
-        JsonArray array = [];
+        JArray array = [];
         foreach ((string name, string pattern) in values)
         {
-            array.Add(new JsonObject
+            array.Add(new JObject
             {
                 ["Name"] = name,
-                ["Matchers"] = new JsonArray(Matcher(pattern, ignoreCase)),
+                ["Matchers"] = new JArray(Matcher(pattern, ignoreCase)),
             });
         }
 
         return array;
     }
 
-    private static JsonObject Matcher(string pattern, bool ignoreCase) => new()
+    private static JObject Matcher(string pattern, bool ignoreCase) => new()
     {
         ["Name"] = WildcardMatcher,
         ["Pattern"] = pattern,

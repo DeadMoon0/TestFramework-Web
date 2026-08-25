@@ -1,8 +1,8 @@
+﻿using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Text.Json.Nodes;
 using TestFramework.Web.Stub;
 using TestFramework.Web.Stub.Mappings;
 using Xunit;
@@ -54,16 +54,16 @@ public class StubMappingTests
     {
         StubMapping mapping = new PaymentsStubDefinition().Build()[1];
 
-        JsonNode node = JsonNode.Parse(StubMappingJson.Write(mapping))!;
+        JToken node = JToken.Parse(StubMappingJson.Write(mapping))!;
 
-        Assert.Equal(2, node["Priority"]!.GetValue<int>());
-        Assert.Equal("/api/charges", node["Request"]!["Path"]!.GetValue<string>());
-        Assert.Equal(["POST"], node["Request"]!["Methods"]!.AsArray().Select(method => method!.GetValue<string>()));
-        Assert.Equal("Idempotency-Key", node["Request"]!["Headers"]![0]!["Name"]!.GetValue<string>());
-        Assert.Equal("*\"amount\"*", node["Request"]!["Body"]!["Matchers"]![0]!["Pattern"]!.GetValue<string>());
-        Assert.Equal(201, node["Response"]!["StatusCode"]!.GetValue<int>());
-        Assert.Equal("application/json", node["Response"]!["Headers"]!["Content-Type"]!.GetValue<string>());
-        Assert.True(node["Response"]!["UseTransformer"]!.GetValue<bool>());
+        Assert.Equal(2, node["Priority"]!.Value<int>());
+        Assert.Equal("/api/charges", node["Request"]!["Path"]!.Value<string>());
+        Assert.Equal(["POST"], node["Request"]!["Methods"]!.Select(method => method!.Value<string>()));
+        Assert.Equal("Idempotency-Key", node["Request"]!["Headers"]![0]!["Name"]!.Value<string>());
+        Assert.Equal("*\"amount\"*", node["Request"]!["Body"]!["Matchers"]![0]!["Pattern"]!.Value<string>());
+        Assert.Equal(201, node["Response"]!["StatusCode"]!.Value<int>());
+        Assert.Equal("application/json", node["Response"]!["Headers"]!["Content-Type"]!.Value<string>());
+        Assert.True(node["Response"]!["UseTransformer"]!.Value<bool>());
     }
 
     [Fact]
@@ -71,19 +71,19 @@ public class StubMappingTests
     {
         StubMapping mapping = new PaymentsStubDefinition().Build()[2];
 
-        JsonNode node = JsonNode.Parse(StubMappingJson.Write(mapping))!;
+        JToken node = JToken.Parse(StubMappingJson.Write(mapping))!;
 
-        Assert.Equal(2000, node["Response"]!["Delay"]!.GetValue<int>());
-        Assert.Equal("ok", node["Response"]!["Body"]!.GetValue<string>());
+        Assert.Equal(2000, node["Response"]!["Delay"]!.Value<int>());
+        Assert.Equal("ok", node["Response"]!["Body"]!.Value<string>());
     }
 
     [Fact]
     public void WriteAll_ProducesOneArrayInDeclarationOrder()
     {
-        JsonNode node = JsonNode.Parse(StubMappingJson.WriteAll(new PaymentsStubDefinition().Build()))!;
+        JToken node = JToken.Parse(StubMappingJson.WriteAll(new PaymentsStubDefinition().Build()))!;
 
-        Assert.Equal(3, node.AsArray().Count);
-        Assert.Equal("/api/rates/EUR", node[0]!["Request"]!["Path"]!.GetValue<string>());
+        Assert.Equal(3, Assert.IsType<JArray>(node).Count);
+        Assert.Equal("/api/rates/EUR", node[0]!["Request"]!["Path"]!.Value<string>());
     }
 
     [Fact]

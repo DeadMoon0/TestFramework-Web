@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -67,20 +67,15 @@ public sealed class SqlExecuteStep : SqlStepBase<SqlExecuteResult>
     public override StepInstance<Step<SqlExecuteResult>, SqlExecuteResult> GetInstance() => new(this);
 
     /// <inheritdoc />
-    public override async Task<SqlExecuteResult?> Execute(
-        IServiceProvider serviceProvider,
-        VariableStore variableStore,
-        ArtifactStore artifactStore,
-        ScopedLogger logger,
-        CancellationToken cancellationToken)
+    public override async Task<SqlExecuteResult?> Execute(RunContext context)
     {
-        (ISqlExecutor executor, IReadOnlyDictionary<string, object?> parameters) = Prepare(serviceProvider, variableStore, logger);
+        (ISqlExecutor executor, IReadOnlyDictionary<string, object?> parameters) = Prepare(context.Services, context.Variables, context.Logger);
 
         System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        int affected = await executor.ExecuteAsync(SqlIdentifier, Statement, parameters, cancellationToken).ConfigureAwait(false);
+        int affected = await executor.ExecuteAsync(SqlIdentifier, Statement, parameters, context.Deadline.Token).ConfigureAwait(false);
         stopwatch.Stop();
 
-        logger.LogInformation("SQL '{0}' <- {1} row(s) in {2}", SqlIdentifier.ToString(), affected, stopwatch.Elapsed);
+        context.Logger.LogInformation("SQL '{0}' <- {1} row(s) in {2}", SqlIdentifier.ToString(), affected, stopwatch.Elapsed);
         return new SqlExecuteResult(SqlIdentifier, affected, stopwatch.Elapsed);
     }
 }

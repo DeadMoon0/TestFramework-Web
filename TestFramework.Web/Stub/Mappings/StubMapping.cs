@@ -1,6 +1,7 @@
+﻿using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Text.Json.Nodes;
 
 namespace TestFramework.Web.Stub.Mappings;
 
@@ -19,7 +20,7 @@ public sealed record StubResponse(
     int StatusCode,
     IReadOnlyDictionary<string, string> Headers,
     string? Body,
-    JsonNode? BodyAsJson,
+    JToken? BodyAsJson,
     TimeSpan? Delay,
     bool UseTemplating);
 

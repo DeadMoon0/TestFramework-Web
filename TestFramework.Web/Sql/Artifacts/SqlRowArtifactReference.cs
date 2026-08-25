@@ -1,4 +1,5 @@
-﻿using System;
+﻿using TestFramework.Core.Steps;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -72,12 +73,12 @@ public sealed class SqlRowArtifactReference<TRow> : ArtifactReference<SqlRowArti
     /// A reference a finder produced already carries resolved values, so pinning it again would
     /// re-resolve variables that only exist to describe what was found.
     /// </remarks>
-    public override void OnPinReference(VariableStore variableStore, ScopedLogger logger)
+    public override void OnPinReference(RunContext context)
     {
         if (_pinnedKeyValues.Length > 0)
             return;
 
-        _pinnedKeyValues = [.. _keyValues.Select((value, index) => value.GetRequiredValue(variableStore, $"key value {index}"))];
+        _pinnedKeyValues = [.. _keyValues.Select((value, index) => value.GetRequiredValue(context.Variables, $"key value {index}"))];
     }
 
     /// <summary>
@@ -97,22 +98,18 @@ public sealed class SqlRowArtifactReference<TRow> : ArtifactReference<SqlRowArti
     /// <summary>
     /// Reads the current state of the row.
     /// </summary>
-    public override async Task<ArtifactResolveResult<SqlRowArtifactDescriber<TRow>, SqlRowArtifactData<TRow>, SqlRowArtifactReference<TRow>>> ResolveToDataAsync(
-        IServiceProvider serviceProvider,
-        ArtifactVersionIdentifier versionIdentifier,
-        VariableStore variableStore,
-        ScopedLogger logger)
+    public override async Task<ArtifactResolveResult<SqlRowArtifactDescriber<TRow>, SqlRowArtifactData<TRow>, SqlRowArtifactReference<TRow>>> ResolveToDataAsync(RunContext context, ArtifactVersionIdentifier versionIdentifier)
     {
-        ArgumentNullException.ThrowIfNull(serviceProvider);
+        ArgumentNullException.ThrowIfNull(context.Services);
 
-        SqlModelMap map = SqlConfigResolver.ResolveModelRegistry(serviceProvider).Resolve<TRow>();
-        ISqlExecutor executor = SqlConfigResolver.ResolveExecutor(serviceProvider);
+        SqlModelMap map = SqlConfigResolver.ResolveModelRegistry(context.Services).Resolve<TRow>();
+        ISqlExecutor executor = SqlConfigResolver.ResolveExecutor(context.Services);
         SqlStatement statement = SqlStatementBuilder.SelectByKey(map);
 
         IReadOnlyList<TRow> rows = await executor.QueryAsync<TRow>(
             SqlIdentifier,
             statement.Text,
-            BuildKeyParameters(map, variableStore),
+            BuildKeyParameters(map, context.Variables),
             System.Threading.CancellationToken.None).ConfigureAwait(false);
 
         return rows.Count == 0
@@ -128,7 +125,8 @@ public sealed class SqlRowArtifactReference<TRow> : ArtifactReference<SqlRowArti
     /// Builds the key parameters for a statement produced by <see cref="SqlStatementBuilder"/>.
     /// </summary>
     /// <param name="map">The model map.</param>
-    /// <param name="variableStore">The variable store, used when the reference was not pinned yet.</param>
+    /// <param name="variableStore">The variables the key values resolve against.</param>
+    /// <returns>The key parameters.</returns>
     internal IReadOnlyDictionary<string, object?> BuildKeyParameters(SqlModelMap map, VariableStore variableStore)
     {
         ArgumentNullException.ThrowIfNull(map);

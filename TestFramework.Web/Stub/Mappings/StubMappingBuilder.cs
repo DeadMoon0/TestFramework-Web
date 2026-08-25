@@ -1,9 +1,10 @@
+﻿using TestFramework.Web.Http;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 
 namespace TestFramework.Web.Stub.Mappings;
 
@@ -155,7 +156,9 @@ public sealed class StubRequestBuilder
     {
         ArgumentNullException.ThrowIfNull(body);
 
-        JsonNode node = JsonSerializer.SerializeToNode(body)
+        // Through the wire serializer, so a response body a test hands over is named the same way a
+        // request body is.
+        JToken node = JToken.FromObject(body, WebJson.WireSerializer)
             ?? throw new ArgumentException("The response body serialized to nothing.", nameof(body));
 
         return Respond(new StubResponse(

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -117,21 +117,16 @@ public sealed class SqlIsLiveTrigger : Step<SqlIsLiveResult>, IHasEnvironmentReq
         => [new EnvironmentRequirement(WebEnvironmentResourceKinds.Sql, _sqlIdentifier)];
 
     /// <inheritdoc />
-    public override async Task<SqlIsLiveResult?> Execute(
-        IServiceProvider serviceProvider,
-        VariableStore variableStore,
-        ArtifactStore artifactStore,
-        ScopedLogger logger,
-        CancellationToken cancellationToken)
+    public override async Task<SqlIsLiveResult?> Execute(RunContext context)
     {
-        ArgumentNullException.ThrowIfNull(serviceProvider);
-        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(context.Services);
+        ArgumentNullException.ThrowIfNull(context.Logger);
 
-        SqlAlivenessLevel level = _alivenessLevel.GetValue(variableStore);
-        ISqlExecutor executor = SqlConfigResolver.ResolveExecutor(serviceProvider);
+        SqlAlivenessLevel level = _alivenessLevel.GetValue(context.Variables);
+        ISqlExecutor executor = SqlConfigResolver.ResolveExecutor(context.Services);
         string connection = executor.Describe(_sqlIdentifier);
 
-        logger.LogInformation("SQL IsLive '{0}' probing {1} at level {2}.", _sqlIdentifier.ToString(), connection, level);
+        context.Logger.LogInformation("SQL IsLive '{0}' probing {1} at level {2}.", _sqlIdentifier.ToString(), connection, level);
 
         System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
@@ -141,10 +136,10 @@ public sealed class SqlIsLiveTrigger : Step<SqlIsLiveResult>, IHasEnvironmentReq
             ? "SELECT 1;"
             : "SELECT DB_NAME();";
 
-        await executor.ScalarAsync<string>(_sqlIdentifier, statement, new Dictionary<string, object?>(StringComparer.Ordinal), cancellationToken).ConfigureAwait(false);
+        await executor.ScalarAsync<string>(_sqlIdentifier, statement, new Dictionary<string, object?>(StringComparer.Ordinal), context.Deadline.Token).ConfigureAwait(false);
         stopwatch.Stop();
 
-        logger.LogInformation("SQL IsLive '{0}' succeeded in {1}.", _sqlIdentifier.ToString(), stopwatch.Elapsed);
+        context.Logger.LogInformation("SQL IsLive '{0}' succeeded in {1}.", _sqlIdentifier.ToString(), stopwatch.Elapsed);
         return new SqlIsLiveResult(_sqlIdentifier, level, connection, true, stopwatch.Elapsed);
     }
 }

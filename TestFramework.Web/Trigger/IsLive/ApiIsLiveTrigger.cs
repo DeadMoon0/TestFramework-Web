@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
@@ -57,23 +57,18 @@ internal sealed class ApiIsLiveTrigger(ApiIdentifier identifier, VariableReferen
     public IReadOnlyCollection<EnvironmentRequirement> GetEnvironmentRequirements(VariableStore variableStore)
         => [new EnvironmentRequirement(WebEnvironmentResourceKinds.RestApi, identifier)];
 
-    public override async Task<ApiIsLiveResult?> Execute(
-        IServiceProvider serviceProvider,
-        VariableStore variableStore,
-        ArtifactStore artifactStore,
-        ScopedLogger logger,
-        CancellationToken cancellationToken)
+    public override async Task<ApiIsLiveResult?> Execute(RunContext context)
     {
-        ArgumentNullException.ThrowIfNull(serviceProvider);
-        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(context.Services);
+        ArgumentNullException.ThrowIfNull(context.Logger);
 
-        ApiAlivenessLevel level = alivenessLevel.GetValue(variableStore);
-        ApiConfig config = ApiConfigResolver.Resolve(serviceProvider, identifier);
-        ApiTriggerConfig triggerConfig = serviceProvider.GetService<ApiTriggerConfig>() ?? new ApiTriggerConfig();
+        ApiAlivenessLevel level = alivenessLevel.GetValue(context.Variables);
+        ApiConfig config = ApiConfigResolver.Resolve(context.Services, identifier);
+        ApiTriggerConfig triggerConfig = context.Services.GetService<ApiTriggerConfig>() ?? new ApiTriggerConfig();
         Uri probeUri = BuildProbeUri(config, level);
-        IHttpSender sender = serviceProvider.GetWebComponentFactory().CreateSender(identifier, config);
+        IHttpSender sender = context.Services.GetWebComponentFactory().CreateSender(identifier, config);
 
-        logger.LogInformation("API IsLive '{0}' probing '{1}' at level {2}.", identifier, probeUri, level);
+        context.Logger.LogInformation("API IsLive '{0}' probing '{1}' at level {2}.", identifier, probeUri, level);
 
         Stopwatch stopwatch = Stopwatch.StartNew();
         HttpResponseMessage? response = null;
@@ -86,17 +81,17 @@ internal sealed class ApiIsLiveTrigger(ApiIdentifier identifier, VariableReferen
                 level,
                 probeUri,
                 triggerConfig,
-                logger,
-                cancellationToken).ConfigureAwait(false);
+                context.Logger,
+                context.Deadline.Token).ConfigureAwait(false);
 
             stopwatch.Stop();
 
             EnsureProbeSucceeded(level, response.StatusCode, probeUri);
-            logger.LogInformation("API IsLive '{0}' returned {1} in {2}.", identifier, response.StatusCode, stopwatch.Elapsed);
+            context.Logger.LogInformation("API IsLive '{0}' returned {1} in {2}.", identifier, response.StatusCode, stopwatch.Elapsed);
 
             return new ApiIsLiveResult(identifier, level, probeUri, true, response.StatusCode, stopwatch.Elapsed);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (context.Deadline.Token.IsCancellationRequested)
         {
             throw;
         }

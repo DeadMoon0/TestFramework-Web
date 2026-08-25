@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -197,12 +197,7 @@ public class StubObservationScopeTests
 
         public IReadOnlyList<StubCall> Apply(IEnumerable<StubCall> calls, DateTimeOffset? watermark) => Filter(calls, watermark);
 
-        public override Task<StubCallsResult?> Execute(
-            IServiceProvider serviceProvider,
-            VariableStore variableStore,
-            ArtifactStore artifactStore,
-            ScopedLogger logger,
-            CancellationToken cancellationToken)
+        public override Task<StubCallsResult?> Execute(RunContext context)
             => Task.FromResult<StubCallsResult?>(new StubCallsResult(StubIdentifier, [], []));
     }
 }

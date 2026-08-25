@@ -1,4 +1,5 @@
-﻿using System;
+﻿using TestFramework.Core.Steps;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -75,21 +76,16 @@ public sealed class SqlRowArtifactDescriber<TRow> : ArtifactDescriber<SqlRowArti
     /// Setup upserts rather than inserts so a rerun against a database left dirty by a previous run
     /// converges instead of failing on a duplicate key.
     /// </remarks>
-    public override async Task Setup(
-        IServiceProvider serviceProvider,
-        SqlRowArtifactData<TRow> data,
-        SqlRowArtifactReference<TRow> reference,
-        VariableStore variableStore,
-        ScopedLogger logger)
+    public override async Task Setup(RunContext context, SqlRowArtifactData<TRow> data, SqlRowArtifactReference<TRow> reference)
     {
-        ArgumentNullException.ThrowIfNull(serviceProvider);
+        ArgumentNullException.ThrowIfNull(context.Services);
         ArgumentNullException.ThrowIfNull(data);
         ArgumentNullException.ThrowIfNull(reference);
-        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(context.Logger);
 
-        SqlModelMap map = SqlConfigResolver.ResolveModelRegistry(serviceProvider).Resolve<TRow>();
-        ISqlExecutor executor = SqlConfigResolver.ResolveExecutor(serviceProvider);
-        IReadOnlyDictionary<string, object?> keyParameters = reference.BuildKeyParameters(map, variableStore);
+        SqlModelMap map = SqlConfigResolver.ResolveModelRegistry(context.Services).Resolve<TRow>();
+        ISqlExecutor executor = SqlConfigResolver.ResolveExecutor(context.Services);
+        IReadOnlyDictionary<string, object?> keyParameters = reference.BuildKeyParameters(map, context.Variables);
 
         SqlStatement exists = SqlStatementBuilder.ExistsByKey(map);
         int found = await executor.ScalarAsync<int>(reference.SqlIdentifier, exists.Text, keyParameters, CancellationToken.None).ConfigureAwait(false);
@@ -99,7 +95,7 @@ public sealed class SqlRowArtifactDescriber<TRow> : ArtifactDescriber<SqlRowArti
             SqlStatement update = SqlStatementBuilder.UpdateByKey(map);
             if (update.Text.Length == 0)
             {
-                logger.LogInformation("SQL row '{0}' already exists and has no updatable columns.", map.ToString());
+                context.Logger.LogInformation("SQL row '{0}' already exists and has no updatable columns.", map.ToString());
                 return;
             }
 
@@ -109,7 +105,7 @@ public sealed class SqlRowArtifactDescriber<TRow> : ArtifactDescriber<SqlRowArti
                 BuildUpdateParameters(map, data.Row, keyParameters),
                 CancellationToken.None).ConfigureAwait(false);
 
-            logger.LogInformation("SQL row '{0}' updated in '{1}'.", map.ToString(), reference.SqlIdentifier.ToString());
+            context.Logger.LogInformation("SQL row '{0}' updated in '{1}'.", map.ToString(), reference.SqlIdentifier.ToString());
             return;
         }
 
@@ -120,33 +116,29 @@ public sealed class SqlRowArtifactDescriber<TRow> : ArtifactDescriber<SqlRowArti
             BuildInsertParameters(map, data.Row),
             CancellationToken.None).ConfigureAwait(false);
 
-        logger.LogInformation("SQL row '{0}' inserted into '{1}'.", map.ToString(), reference.SqlIdentifier.ToString());
+        context.Logger.LogInformation("SQL row '{0}' inserted into '{1}'.", map.ToString(), reference.SqlIdentifier.ToString());
     }
 
     /// <summary>
     /// Removes the row, treating an already-deleted row as success.
     /// </summary>
-    public override async Task Deconstruct(
-        IServiceProvider serviceProvider,
-        SqlRowArtifactReference<TRow> reference,
-        VariableStore variableStore,
-        ScopedLogger logger)
+    public override async Task Deconstruct(RunContext context, SqlRowArtifactReference<TRow> reference)
     {
-        ArgumentNullException.ThrowIfNull(serviceProvider);
+        ArgumentNullException.ThrowIfNull(context.Services);
         ArgumentNullException.ThrowIfNull(reference);
-        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(context.Logger);
 
-        SqlModelMap map = SqlConfigResolver.ResolveModelRegistry(serviceProvider).Resolve<TRow>();
-        ISqlExecutor executor = SqlConfigResolver.ResolveExecutor(serviceProvider);
+        SqlModelMap map = SqlConfigResolver.ResolveModelRegistry(context.Services).Resolve<TRow>();
+        ISqlExecutor executor = SqlConfigResolver.ResolveExecutor(context.Services);
         SqlStatement delete = SqlStatementBuilder.DeleteByKey(map);
 
         int affected = await executor.ExecuteAsync(
             reference.SqlIdentifier,
             delete.Text,
-            reference.BuildKeyParameters(map, variableStore),
+            reference.BuildKeyParameters(map, context.Variables),
             CancellationToken.None).ConfigureAwait(false);
 
-        logger.LogInformation(
+        context.Logger.LogInformation(
             affected > 0 ? "SQL row '{0}' deleted from '{1}'." : "SQL row '{0}' was already gone in '{1}'.",
             map.ToString(),
             reference.SqlIdentifier.ToString());
