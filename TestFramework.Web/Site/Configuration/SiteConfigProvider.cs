@@ -1,7 +1,8 @@
-using System;
+﻿using System;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using TestFramework.Config.Configuration;
 using TestFramework.Web.Configuration;
 using TestFramework.Web.Site.Exceptions;
 
@@ -83,5 +84,9 @@ internal sealed class SiteConfigLoader(ISiteConfigProvider configProvider)
 
         foreach (string identifier in configProvider.LoadAllSiteIdentifier(configuration))
             store.AddConfig(identifier, configProvider.LoadSiteConfig(configuration, identifier));
+
+        // The same entries as resources the run's graph knows about, so anything asking where this is gets one
+        // answer whether a person wrote it down or a container published it later.
+        serviceCollection.AddConfigShape(new SiteShape(configProvider));
     }
 }

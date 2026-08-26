@@ -49,4 +49,15 @@ public class ConventionTests(ITestOutputHelper output)
             "System.Text.Json",
             typeof(StubMapping).Assembly.GetReferencedAssemblies().Select(static reference => reference.Name));
     }
+
+    [Fact]
+    public void ThisPackageKeepsItsInternalsToItself()
+    {
+        // Every package is a stranger to every other. A grant to another package is a private handshake:
+        // two packages understand each other and a third cannot join, so what the favoured one may do stops
+        // being what any of them may do - and the grant hides the fact that a surface is missing.
+        ConventionReport report = StepConventions.AssertNoPackageSeesAnothersInternals(typeof(StubMapping).Assembly);
+
+        output.WriteLine(report.ToString());
+    }
 }

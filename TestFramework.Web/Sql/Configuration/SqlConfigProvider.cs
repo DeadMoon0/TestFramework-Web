@@ -1,8 +1,9 @@
-using System;
+﻿using System;
 using System.Globalization;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using TestFramework.Config.Configuration;
 using TestFramework.Web.Configuration;
 using TestFramework.Web.Sql.Exceptions;
 
@@ -107,5 +108,9 @@ internal sealed class SqlConfigLoader(ISqlConfigProvider configProvider)
 
         foreach (string identifier in configProvider.LoadAllSqlIdentifier(configuration))
             store.AddConfig(identifier, configProvider.LoadSqlConfig(configuration, identifier));
+
+        // The same entries as resources the run's graph knows about, so anything asking where this is gets one
+        // answer whether a person wrote it down or a container published it later.
+        serviceCollection.AddConfigShape(new SqlShape(configProvider));
     }
 }
