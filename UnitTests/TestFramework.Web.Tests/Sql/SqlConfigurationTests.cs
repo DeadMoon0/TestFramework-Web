@@ -1,10 +1,11 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using TestFramework.Web.Configuration;
 using TestFramework.Web.Extensions;
+using TestFramework.Core.Steps;
 using TestFramework.Web.Sql;
 using TestFramework.Web.Sql.Configuration;
 using TestFramework.Web.Sql.Exceptions;
@@ -81,7 +82,7 @@ public class SqlConfigurationTests
         services.LoadWebSqlConfigs(BuildConfiguration(("Sql:main:Server", "localhost"), ("Sql:main:Database", "SampleDb")));
 
         SqlConfigurationValidationException exception = Assert.Throws<SqlConfigurationValidationException>(
-            () => SqlConfigResolver.Resolve(services.BuildServiceProvider(), "other"));
+            () => SqlConfigResolver.Resolve(RunContext.Detached(services.BuildServiceProvider()), "other"));
 
         Assert.Contains("other", exception.Message, StringComparison.Ordinal);
         Assert.Contains("main", exception.Message, StringComparison.Ordinal);

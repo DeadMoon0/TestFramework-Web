@@ -103,7 +103,7 @@ public sealed class SqlRowArtifactReference<TRow> : ArtifactReference<SqlRowArti
         ArgumentNullException.ThrowIfNull(context.Services);
 
         SqlModelMap map = SqlConfigResolver.ResolveModelRegistry(context.Services).Resolve<TRow>();
-        ISqlExecutor executor = SqlConfigResolver.ResolveExecutor(context.Services);
+        ISqlExecutor executor = SqlConfigResolver.ResolveExecutor(context);
         SqlStatement statement = SqlStatementBuilder.SelectByKey(map);
 
         IReadOnlyList<TRow> rows = await executor.QueryAsync<TRow>(

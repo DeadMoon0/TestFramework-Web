@@ -215,7 +215,7 @@ public sealed class StubCallsStep : StubStepBase<StubCallsResult>
     {
         ArgumentNullException.ThrowIfNull(context.Logger);
 
-        StubAdminClient admin = StubConfigResolver.CreateAdminClient(context.Services, StubIdentifier);
+        StubAdminClient admin = StubConfigResolver.CreateAdminClient(context, StubIdentifier);
         IReadOnlyList<StubCall> all = await admin.GetCallsAsync(context.Deadline.Token).ConfigureAwait(false);
 
         // Everything this step reports is bounded by the window the reset opened, so a shared stub's
@@ -294,8 +294,8 @@ public sealed class StubResetStep : StubStepBase<StubCallsResult>
     {
         ArgumentNullException.ThrowIfNull(context.Logger);
 
-        StubConfig config = StubConfigResolver.Resolve(context.Services, StubIdentifier);
-        StubAdminClient admin = StubConfigResolver.CreateAdminClient(context.Services, StubIdentifier);
+        StubConfig config = StubConfigResolver.Resolve(context, StubIdentifier);
+        StubAdminClient admin = StubConfigResolver.CreateAdminClient(context, StubIdentifier);
         StubObservationScope? scope = StubObservationScope.Resolve(context.Services);
 
         if (config.ResetMode == StubResetMode.ClearServerLog)

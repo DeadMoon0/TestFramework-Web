@@ -84,7 +84,7 @@ public sealed class SqlRowArtifactDescriber<TRow> : ArtifactDescriber<SqlRowArti
         ArgumentNullException.ThrowIfNull(context.Logger);
 
         SqlModelMap map = SqlConfigResolver.ResolveModelRegistry(context.Services).Resolve<TRow>();
-        ISqlExecutor executor = SqlConfigResolver.ResolveExecutor(context.Services);
+        ISqlExecutor executor = SqlConfigResolver.ResolveExecutor(context);
         IReadOnlyDictionary<string, object?> keyParameters = reference.BuildKeyParameters(map, context.Variables);
 
         SqlStatement exists = SqlStatementBuilder.ExistsByKey(map);
@@ -129,7 +129,7 @@ public sealed class SqlRowArtifactDescriber<TRow> : ArtifactDescriber<SqlRowArti
         ArgumentNullException.ThrowIfNull(context.Logger);
 
         SqlModelMap map = SqlConfigResolver.ResolveModelRegistry(context.Services).Resolve<TRow>();
-        ISqlExecutor executor = SqlConfigResolver.ResolveExecutor(context.Services);
+        ISqlExecutor executor = SqlConfigResolver.ResolveExecutor(context);
         SqlStatement delete = SqlStatementBuilder.DeleteByKey(map);
 
         int affected = await executor.ExecuteAsync(

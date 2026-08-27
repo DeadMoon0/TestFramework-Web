@@ -1,0 +1,227 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using TestFramework.Core.Environment;
+using TestFramework.Core.Environment.Graph;
+using TestFramework.Core.Exceptions;
+using TestFramework.Core.Steps;
+using TestFramework.Core.Steps.Options;
+using TestFramework.Core.Timelines;
+using TestFramework.Core.Timelines.Builder.TimelineRunBuilder;
+using TestFramework.Web.Extensions;
+using TestFramework.Web.Sql;
+using Xunit;
+using Xunit.Abstractions;
+
+namespace TestFramework.Web.Tests.Sql;
+
+/// <summary>
+/// Where a database is, when a container knows and the file does not.
+/// </summary>
+/// <remarks>
+/// <para>
+/// The last of Web's three resources to move onto the run, and the one whose seam looked like it would have
+/// to change. It did not: <see cref="Execution.ISqlExecutor"/> keeps every signature, because the executor is
+/// built per run and holds it rather than being handed a run per call. An implementation somebody else wrote
+/// is unaffected.
+/// </para>
+/// <para>
+/// Same five questions asked of the stub and the API, so the three stay comparable.
+/// </para>
+/// </remarks>
+public class SqlResourceTests(ITestOutputHelper output)
+{
+    private const string Declared = "Server=localhost,14333;Database=orders;Integrated Security=True";
+
+    [Fact]
+    public async Task WhatAContainerPublishesWinsOverWhatTheFileSaid()
+    {
+        TimelineRun run = await Run(
+            new PublishingEnvironment("orders-db", "Server=127.0.0.1,49999;Database=orders;User Id=sa;Password=x"),
+            configured: [("Sql:orders-db:Server", "localhost,14333"), ("Sql:orders-db:Database", "orders"), ("Sql:orders-db:IntegratedSecurity", "true")]);
+
+        run.EnsureRanToCompletion();
+
+        Assert.Equal("Server=127.0.0.1,49999;Database=orders;User Id=sa;Password=x", run.VariableStore.GetVariable<string>("connection"));
+
+        // Not published, so it still comes from the declaration - a produced value replaces one value, not
+        // the entry.
+        Assert.Equal("orders", run.VariableStore.GetVariable<string>("database"));
+    }
+
+    [Fact]
+    public async Task WithNothingPublishedTheDeclarationStillAnswers()
+    {
+        // A deployed database: the file is the only source, and reading through the run has to work exactly
+        // as well as reading the store did.
+        TimelineRun run = await Run(
+            environment: null,
+            configured: [("Sql:orders-db:Server", "localhost,14333"), ("Sql:orders-db:Database", "orders"), ("Sql:orders-db:IntegratedSecurity", "true")]);
+
+        run.EnsureRanToCompletion();
+
+        // The graph carries the *composed* coordinate, because SqlShape asks the package's own factory what
+        // the entry amounts to. So a reader gets one connection string whether the file spelled one out or
+        // gave a server and a database - which is the point of asking the run rather than reading the record.
+        // The record's own ConnectionString was null here; this is the graph's declared value overlaid on it.
+        string connection = run.VariableStore.GetVariable<string>("connection")!;
+
+        Assert.Contains("localhost,14333", connection, StringComparison.Ordinal);
+        Assert.Contains("orders", connection, StringComparison.Ordinal);
+
+        // Integrated security came off the entry too, which is the other half of the point: the composition
+        // is the package's own, so the graph carries what a connection would actually have been opened with.
+        Assert.Contains("Integrated Security=True", connection, StringComparison.Ordinal);
+
+        // Credentials, certificate and timeout settings are still applied afterwards by the factory, from
+        // the parts of the record this does not touch - so composing early changes nothing about them.
+        Assert.Equal("orders", run.VariableStore.GetVariable<string>("database"));
+        Assert.Equal("localhost,14333", run.VariableStore.GetVariable<string>("server"));
+    }
+
+    [Fact]
+    public async Task TheShapeAndTheResolverAgreeOnEveryValue()
+    {
+        // The two directions of one mapping, written in different files: SqlShape composes an entry into the
+        // graph, SqlConfigResolver reads one back out.
+        TimelineRun run = await Run(
+            new PublishingEnvironment("orders-db", "Server=127.0.0.1,49999;Database=shadow", database: "shadow"),
+            configured: [("Sql:orders-db:Server", "localhost,14333"), ("Sql:orders-db:Database", "orders"), ("Sql:orders-db:IntegratedSecurity", "true")]);
+
+        run.EnsureRanToCompletion();
+
+        Assert.Equal("Server=127.0.0.1,49999;Database=shadow", run.VariableStore.GetVariable<string>("connection"));
+        Assert.Equal("shadow", run.VariableStore.GetVariable<string>("database"));
+    }
+
+    [Fact]
+    public async Task ADatabaseTheRunStartedNeedsNoConfigurationEntryAtAll()
+    {
+        // Entry 21's case, and for SQL it is the sharpest one: the package's own provider refuses an entry
+        // with neither a connection string nor a server while *loading*, so a container-only database cannot
+        // be written down at all. A produced connection string is complete on its own.
+        TimelineRun run = await Run(new PublishingEnvironment("orders-db", "Server=127.0.0.1,49999;Database=orders", database: "orders"));
+
+        run.EnsureRanToCompletion();
+
+        Assert.Equal("Server=127.0.0.1,49999;Database=orders", run.VariableStore.GetVariable<string>("connection"));
+        Assert.Equal("orders", run.VariableStore.GetVariable<string>("database"));
+    }
+
+    [Fact]
+    public async Task ADatabaseNobodyDeclaredAndNothingStartedIsStillARefusal()
+    {
+        TimelineRun run = await Run(
+            environment: null,
+            resolves: "invoices-db",
+            configured: [("Sql:orders-db:Server", "localhost,14333"), ("Sql:orders-db:Database", "orders"), ("Sql:orders-db:IntegratedSecurity", "true")]);
+
+        TimelineRunFailedException failure = Assert.Throws<TimelineRunFailedException>(run.EnsureRanToCompletion);
+
+        // Names the one that does exist, so a typo is a sentence rather than a hunt.
+        Assert.Contains("orders-db", failure.ToString(), StringComparison.Ordinal);
+    }
+
+    private async Task<TimelineRun> Run(PublishingEnvironment? environment, string resolves = "orders-db", params (string Key, string Value)[] configured)
+    {
+        Timeline timeline = Timeline.Create()
+            .Trigger(new ResolvesDatabaseStep(resolves)).Name("resolves")
+            .Build();
+
+        ITimelineRunBuilder builder = timeline.SetupRun(Configured(configured), output);
+
+        if (environment is not null)
+        {
+            builder = builder.SetEnv(environment);
+        }
+
+        return await builder.RunAsync();
+    }
+
+    private static IServiceProvider Configured(params (string Key, string Value)[] values)
+    {
+        List<KeyValuePair<string, string?>> entries = [];
+
+        foreach ((string key, string value) in values)
+        {
+            entries.Add(new KeyValuePair<string, string?>(key, value));
+        }
+
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(entries).Build();
+
+        ServiceCollection services = new ServiceCollection();
+        services.AddSingleton(configuration);
+        services.LoadWebSqlConfigs(configuration);
+
+        return services.BuildServiceProvider();
+    }
+
+    /// <summary>Stands in for a database container: it starts, then it knows its port.</summary>
+    private sealed class PublishingEnvironment(string identifier, string connectionString, string? database = null) : EnvironmentProviderBase
+    {
+        private readonly EnvComponentIdentifier component = "sql";
+
+        public override IReadOnlyCollection<EnvComponentIdentifier> ResolveComponents(
+            IEnumerable<Core.Artifacts.ArtifactInstanceGeneric> artifacts,
+            IEnumerable<EnvironmentRequirement> requirements)
+        {
+            this.AddComponent(new PublishingComponent(this.component, identifier, connectionString, database));
+
+            return [this.component];
+        }
+    }
+
+    private sealed class PublishingComponent(EnvComponentIdentifier id, string identifier, string connectionString, string? database) : EnvComponent
+    {
+        public override EnvComponentIdentifier Id => id;
+
+        public override Task<object?> CreateAsync(IEnvironmentProvider environment, RunContext context)
+        {
+            EnvironmentResources resources = PublishOn(context);
+
+            resources.Produce(WebEnvironmentResourceKinds.SqlKind, identifier, ValueNames.ConnectionString, ResourceVantage.Host, connectionString);
+            resources.Produce(WebEnvironmentResourceKinds.SqlKind, identifier, ValueNames.ConnectionString, ResourceVantage.Network, "Server=sql,1433;Database=orders");
+
+            if (database is not null)
+            {
+                resources.Produce(WebEnvironmentResourceKinds.SqlKind, identifier, WebEnvironmentResourceKinds.DatabaseNameValue, database);
+            }
+
+            return Task.FromResult<object?>(null);
+        }
+
+        public override Task DeconstructAsync(object? state, IEnvironmentProvider environment, RunContext context)
+            => Task.CompletedTask;
+    }
+
+    /// <summary>Resolves the database the way every SQL step and executor now does.</summary>
+    private sealed class ResolvesDatabaseStep(string identifier) : Step<EmptyStepResultContext>
+    {
+        public override string Name => "Resolves a database";
+
+        public override string Description => "Resolves a database's configuration through the run.";
+
+        public override bool DoesReturn => false;
+
+        public override Step<EmptyStepResultContext> Clone() => new ResolvesDatabaseStep(identifier).WithClonedOptions(this);
+
+        public override StepInstance<Step<EmptyStepResultContext>, EmptyStepResultContext> GetInstance() => new(this);
+
+        public override void DeclareIO(StepIOContract contract)
+        {
+        }
+
+        public override Task<EmptyStepResultContext?> Execute(RunContext context)
+        {
+            SqlConfig resolved = SqlConfigResolver.Resolve(context, identifier);
+
+            context.Variables.SetVariable("connection", resolved.ConnectionString);
+            context.Variables.SetVariable("database", resolved.Database);
+            context.Variables.SetVariable("server", resolved.Server);
+
+            return Task.FromResult<EmptyStepResultContext?>(EmptyStepResultContext.Instance);
+        }
+    }
+}

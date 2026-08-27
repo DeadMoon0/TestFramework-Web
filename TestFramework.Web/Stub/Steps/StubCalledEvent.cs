@@ -137,8 +137,8 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
     {
         ArgumentNullException.ThrowIfNull(context.Logger);
 
-        StubConfig config = StubConfigResolver.Resolve(context.Services, _stubIdentifier);
-        StubAdminClient admin = StubConfigResolver.CreateAdminClient(context.Services, _stubIdentifier);
+        StubConfig config = StubConfigResolver.Resolve(context, _stubIdentifier);
+        StubAdminClient admin = StubConfigResolver.CreateAdminClient(context, _stubIdentifier);
         string? expectedBody = _bodyContains?.GetRequiredValue(context.Variables, "body text");
 
         // Without the window, a wait on a shared stub can complete on a call another run made before

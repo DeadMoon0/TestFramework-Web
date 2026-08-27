@@ -63,7 +63,7 @@ internal sealed class ApiIsLiveTrigger(ApiIdentifier identifier, VariableReferen
         ArgumentNullException.ThrowIfNull(context.Logger);
 
         ApiAlivenessLevel level = alivenessLevel.GetValue(context.Variables);
-        ApiConfig config = ApiConfigResolver.Resolve(context.Services, identifier);
+        ApiConfig config = ApiConfigResolver.Resolve(context, identifier);
         ApiTriggerConfig triggerConfig = context.Services.GetService<ApiTriggerConfig>() ?? new ApiTriggerConfig();
         Uri probeUri = BuildProbeUri(config, level);
         IHttpSender sender = context.Services.GetWebComponentFactory().CreateSender(identifier, config);

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Dapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
+using TestFramework.Core.Steps;
 using TestFramework.Web.Sql.Exceptions;
 
 namespace TestFramework.Web.Sql.Execution;
@@ -17,16 +18,22 @@ namespace TestFramework.Web.Sql.Execution;
 /// </summary>
 public sealed class AdoSqlExecutor : ISqlExecutor
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly RunContext _context;
 
     /// <summary>
-    /// Creates an executor bound to a run's services.
+    /// Creates an executor bound to one run.
     /// </summary>
-    /// <param name="serviceProvider">The service provider for the current run.</param>
-    public AdoSqlExecutor(IServiceProvider serviceProvider)
+    /// <remarks>
+    /// The run, not its services: a container's connection string is a value the run produced when the
+    /// database started, and it exists nowhere a service provider can reach. A constructor taking one could
+    /// therefore never be made correct for a containerised database - it would return the placeholder from
+    /// the configuration file and the failure would look like a timeout - so there is only this one.
+    /// </remarks>
+    /// <param name="context">The run.</param>
+    public AdoSqlExecutor(RunContext context)
     {
-        ArgumentNullException.ThrowIfNull(serviceProvider);
-        _serviceProvider = serviceProvider;
+        ArgumentNullException.ThrowIfNull(context);
+        _context = context;
     }
 
     /// <inheritdoc />
@@ -69,7 +76,7 @@ public sealed class AdoSqlExecutor : ISqlExecutor
         if (batches.Count == 0)
             return new SqlScriptExecutionResult(0, 0);
 
-        SqlConfig config = SqlConfigResolver.Resolve(_serviceProvider, identifier);
+        SqlConfig config = SqlConfigResolver.Resolve(_context, identifier);
         string connectionString = ResolveConnectionString(identifier);
         Stopwatch stopwatch = Stopwatch.StartNew();
 
@@ -144,7 +151,7 @@ public sealed class AdoSqlExecutor : ISqlExecutor
         ArgumentException.ThrowIfNullOrWhiteSpace(statement);
         ArgumentNullException.ThrowIfNull(parameters);
 
-        SqlConfig config = SqlConfigResolver.Resolve(_serviceProvider, identifier);
+        SqlConfig config = SqlConfigResolver.Resolve(_context, identifier);
         string connectionString = ResolveConnectionString(identifier);
         Stopwatch stopwatch = Stopwatch.StartNew();
 
@@ -174,8 +181,8 @@ public sealed class AdoSqlExecutor : ISqlExecutor
 
     private string ResolveConnectionString(string identifier)
     {
-        SqlConfig config = SqlConfigResolver.Resolve(_serviceProvider, identifier);
-        SqlCredentials? credentials = _serviceProvider.GetService<ISqlCredentialProvider>()?.GetCredentials(identifier);
+        SqlConfig config = SqlConfigResolver.Resolve(_context, identifier);
+        SqlCredentials? credentials = _context.Services.GetService<ISqlCredentialProvider>()?.GetCredentials(identifier);
         return SqlConnectionStringFactory.Create(identifier, config, credentials);
     }
 

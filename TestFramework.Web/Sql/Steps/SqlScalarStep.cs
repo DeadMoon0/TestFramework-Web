@@ -78,7 +78,7 @@ public sealed class SqlScalarStep<TValue> : SqlStepBase<SqlScalarResult<TValue>>
     /// <inheritdoc />
     public override async Task<SqlScalarResult<TValue>?> Execute(RunContext context)
     {
-        (ISqlExecutor executor, IReadOnlyDictionary<string, object?> parameters) = Prepare(context.Services, context.Variables, context.Logger);
+        (ISqlExecutor executor, IReadOnlyDictionary<string, object?> parameters) = Prepare(context);
 
         System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
         TValue? value = await executor.ScalarAsync<TValue>(SqlIdentifier, Statement, parameters, context.Deadline.Token).ConfigureAwait(false);

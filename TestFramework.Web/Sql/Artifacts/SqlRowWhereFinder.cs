@@ -58,7 +58,7 @@ public sealed class SqlRowWhereFinder<TRow> : ArtifactFinder<SqlRowArtifactDescr
     /// </summary>
     public override async Task<ArtifactFinderResult?> FindAsync(RunContext context)
     {
-        IReadOnlyList<SqlRowArtifactReference<TRow>> references = await FindReferencesAsync(context.Services, context.Variables, context.Logger, context.Deadline.Token).ConfigureAwait(false);
+        IReadOnlyList<SqlRowArtifactReference<TRow>> references = await FindReferencesAsync(context).ConfigureAwait(false);
         return references.Count == 0 ? null : new ArtifactFinderResult(references[0]);
     }
 
@@ -67,17 +67,25 @@ public sealed class SqlRowWhereFinder<TRow> : ArtifactFinder<SqlRowArtifactDescr
     /// </summary>
     public override async Task<ArtifactFinderResultMulti> FindMultiAsync(RunContext context)
     {
-        IReadOnlyList<SqlRowArtifactReference<TRow>> references = await FindReferencesAsync(context.Services, context.Variables, context.Logger, context.Deadline.Token).ConfigureAwait(false);
+        IReadOnlyList<SqlRowArtifactReference<TRow>> references = await FindReferencesAsync(context).ConfigureAwait(false);
         return new ArtifactFinderResultMulti([.. references.Select(reference => new ArtifactFinderResult(reference))]);
     }
 
-    private async Task<IReadOnlyList<SqlRowArtifactReference<TRow>>> FindReferencesAsync(IServiceProvider serviceProvider, VariableStore variableStore, ScopedLogger logger, CancellationToken cancellationToken)
+    /// <remarks>
+    /// The run rather than four pieces of one. It needed the run anyway - a database this run started has a
+    /// connection string that exists nowhere else - and taking the pieces is how a caller ends up with no
+    /// deadline to read; see §7 of the guardrails.
+    /// </remarks>
+    private async Task<IReadOnlyList<SqlRowArtifactReference<TRow>>> FindReferencesAsync(RunContext context)
     {
-        ArgumentNullException.ThrowIfNull(serviceProvider);
-        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(context);
 
-        SqlModelMap map = SqlConfigResolver.ResolveModelRegistry(serviceProvider).Resolve<TRow>();
-        ISqlExecutor executor = SqlConfigResolver.ResolveExecutor(serviceProvider);
+        VariableStore variableStore = context.Variables;
+        ScopedLogger logger = context.Logger;
+        CancellationToken cancellationToken = context.Deadline.Token;
+
+        SqlModelMap map = SqlConfigResolver.ResolveModelRegistry(context.Services).Resolve<TRow>();
+        ISqlExecutor executor = SqlConfigResolver.ResolveExecutor(context);
         SqlStatement statement = SqlStatementBuilder.SelectWhere(map, _whereClause, _parameters.Names);
 
         IReadOnlyList<TRow> rows = await executor.QueryAsync<TRow>(

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
@@ -72,19 +72,21 @@ public abstract class SqlStepBase<TResult> : Step<TResult>, IHasEnvironmentRequi
     /// <summary>
     /// Resolves the executor, the step configuration and the parameters, and logs the statement.
     /// </summary>
-    /// <param name="serviceProvider">The service provider for the current run.</param>
-    /// <param name="variableStore">The variable store for the current run.</param>
-    /// <param name="logger">The scoped logger.</param>
-    protected (ISqlExecutor Executor, IReadOnlyDictionary<string, object?> Parameters) Prepare(
-        IServiceProvider serviceProvider,
-        VariableStore variableStore,
-        ScopedLogger logger)
+    /// <remarks>
+    /// One context rather than three of its pieces. The executor is now built per run - a database this run
+    /// started has a connection string that no service provider can reach - so the run has to arrive here,
+    /// and once it does the other two parameters were only ever pieces of it.
+    /// </remarks>
+    /// <param name="context">The run.</param>
+    protected (ISqlExecutor Executor, IReadOnlyDictionary<string, object?> Parameters) Prepare(RunContext context)
     {
-        ArgumentNullException.ThrowIfNull(serviceProvider);
-        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(context);
 
-        ISqlExecutor executor = SqlConfigResolver.ResolveExecutor(serviceProvider);
-        SqlStepConfig stepConfig = serviceProvider.GetService<SqlStepConfig>() ?? new SqlStepConfig();
+        VariableStore variableStore = context.Variables;
+        ScopedLogger logger = context.Logger;
+
+        ISqlExecutor executor = SqlConfigResolver.ResolveExecutor(context);
+        SqlStepConfig stepConfig = context.Services.GetService<SqlStepConfig>() ?? new SqlStepConfig();
         IReadOnlyDictionary<string, object?> parameters = Parameters.Resolve(variableStore);
 
         if (stepConfig.LogStatements)

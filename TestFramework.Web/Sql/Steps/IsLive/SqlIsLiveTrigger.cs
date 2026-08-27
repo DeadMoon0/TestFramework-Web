@@ -123,7 +123,7 @@ public sealed class SqlIsLiveTrigger : Step<SqlIsLiveResult>, IHasEnvironmentReq
         ArgumentNullException.ThrowIfNull(context.Logger);
 
         SqlAlivenessLevel level = _alivenessLevel.GetValue(context.Variables);
-        ISqlExecutor executor = SqlConfigResolver.ResolveExecutor(context.Services);
+        ISqlExecutor executor = SqlConfigResolver.ResolveExecutor(context);
         string connection = executor.Describe(_sqlIdentifier);
 
         context.Logger.LogInformation("SQL IsLive '{0}' probing {1} at level {2}.", _sqlIdentifier.ToString(), connection, level);

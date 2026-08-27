@@ -1,9 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using TestFramework.Web.Auth;
+using TestFramework.Core.Steps;
 using TestFramework.Web.Configuration;
 using TestFramework.Web.Exceptions;
 using TestFramework.Web.Extensions;
@@ -112,7 +113,7 @@ public class ApiConfigurationTests
         IServiceProvider provider = services.BuildServiceProvider();
 
         ApiConfigurationValidationException exception = Assert.Throws<ApiConfigurationValidationException>(
-            () => ApiConfigResolver.Resolve(provider, "invoices"));
+            () => ApiConfigResolver.Resolve(RunContext.Detached(provider), "invoices"));
 
         Assert.Contains("invoices", exception.Message, StringComparison.Ordinal);
         Assert.Contains("orders", exception.Message, StringComparison.Ordinal);
@@ -124,7 +125,7 @@ public class ApiConfigurationTests
         ServiceCollection services = new();
         services.LoadWebConfigs(BuildConfiguration(("Api:orders:BaseUrl", "http://localhost:5080/")));
 
-        ApiConfig config = ApiConfigResolver.Resolve(services.BuildServiceProvider(), "orders");
+        ApiConfig config = ApiConfigResolver.Resolve(RunContext.Detached(services.BuildServiceProvider()), "orders");
 
         Assert.Equal("http://localhost:5080/", config.BaseUrl);
     }
