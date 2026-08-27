@@ -38,25 +38,39 @@ public static class SqlConfigResolver
         ArgumentException.ThrowIfNullOrWhiteSpace(identifier);
 
         SqlConfig? declared = Declared(context.Services, identifier);
-        string? connectionString = Value(context, identifier, ValueNames.ConnectionString);
+        ResolvedValue? connection = Connection(context, identifier);
         string? database = Value(context, identifier, WebEnvironmentResourceKinds.DatabaseNameValue);
+
+        if (connection?.Origin == ValueOrigin.Produced)
+        {
+            // Something this run started supplied the whole connection, so it is taken whole. A container
+            // owns its port *and* its credentials, and the rest of an entry describes reaching a database
+            // somewhere else: a developer's integrated-security flag applied on top of this string would
+            // strip out the very user and password the container just handed over.
+            //
+            // The timeouts stay, because they are the caller's patience rather than a way of connecting.
+            return (declared ?? new SqlConfig()) with
+            {
+                ConnectionString = connection.Value,
+                Database = database ?? declared?.Database,
+                Server = null,
+                IntegratedSecurity = false,
+                UserName = null,
+                Password = null,
+            };
+        }
 
         if (declared is null)
         {
-            // Nothing wrote this database down, so it exists only because this run started one. A produced
-            // connection string is complete on its own - it is what the container handed over - so there is
-            // nothing here to compose out of a server and a name.
-            if (connectionString is null)
-                throw SqlConfigurationValidationException.MissingIdentifier(identifier, KnownIdentifiers(context.Services));
-
-            return new SqlConfig { ConnectionString = connectionString, Database = database };
+            // Nothing wrote this database down and nothing started one either.
+            throw SqlConfigurationValidationException.MissingIdentifier(identifier, KnownIdentifiers(context.Services));
         }
 
-        // Only the coordinate is overlaid. Credentials, timeouts and the certificate settings are the
-        // author's and stay theirs, which is why this is a `with` rather than a replacement.
+        // A declared coordinate is a person's description of a database they cannot see, so the rest of their
+        // entry still qualifies it - which is why this is a `with` rather than a replacement.
         return declared with
         {
-            ConnectionString = connectionString ?? declared.ConnectionString,
+            ConnectionString = connection?.Value ?? declared.ConnectionString,
             Database = database ?? declared.Database,
         };
     }
@@ -104,6 +118,21 @@ public static class SqlConfigResolver
     /// </summary>
     private static IReadOnlyCollection<string> KnownIdentifiers(IServiceProvider serviceProvider)
         => serviceProvider.GetService<WebConfigStore<SqlConfig>>() is { } store ? [.. store.Snapshot().Keys] : [];
+
+    /// <summary>
+    /// The connection string the run holds, with where it came from.
+    /// </summary>
+    /// <remarks>
+    /// The origin is the whole reason this one is read differently from the others: it decides whether the
+    /// value is complete on its own or is qualified by the entry around it.
+    /// </remarks>
+    private static ResolvedValue? Connection(RunContext context, string identifier)
+        => context.Values.TryResolve(
+            ValueRef.For(WebEnvironmentResourceKinds.Sql, identifier, ValueNames.ConnectionString),
+            ResourceVantage.Host,
+            out ResolvedValue? resolved)
+            ? resolved
+            : null;
 
     /// <summary>
     /// One value from the run, from the viewpoint of the process asking.

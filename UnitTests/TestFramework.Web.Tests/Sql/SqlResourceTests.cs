@@ -220,8 +220,45 @@ public class SqlResourceTests(ITestOutputHelper output)
             context.Variables.SetVariable("connection", resolved.ConnectionString);
             context.Variables.SetVariable("database", resolved.Database);
             context.Variables.SetVariable("server", resolved.Server);
+            context.Variables.SetVariable("integrated", resolved.IntegratedSecurity);
 
             return Task.FromResult<EmptyStepResultContext?>(EmptyStepResultContext.Instance);
         }
+    }
+
+    [Fact]
+    public async Task AProducedConnectionStringIsTakenWholeAndNotQualifiedByTheEntry()
+    {
+        // The case the store write used to handle by clearing fields, and the reason Core gained an
+        // origin-aware read. A container owns its port and its credentials; the entry describes reaching a
+        // database somewhere else. Integrated security applied on top of the container's own connection
+        // string strips out the user and password it just handed over.
+        TimelineRun run = await Run(
+            new PublishingEnvironment("orders-db", "Server=127.0.0.1,49999;Database=orders;User Id=sa;Password=secret"),
+            configured: [("Sql:orders-db:Server", "localhost,14333"), ("Sql:orders-db:Database", "orders"), ("Sql:orders-db:IntegratedSecurity", "true")]);
+
+        run.EnsureRanToCompletion();
+
+        Assert.Equal("Server=127.0.0.1,49999;Database=orders;User Id=sa;Password=secret", run.VariableStore.GetVariable<string>("connection"));
+
+        // The declared way of connecting is dropped along with it, which is what a produced coordinate being
+        // "complete" means. A declared server left in place is how a run silently reaches the wrong database.
+        Assert.Null(run.VariableStore.GetVariable<string>("server"));
+        Assert.False(run.VariableStore.GetVariable<bool>("integrated"));
+    }
+
+    [Fact]
+    public async Task ADeclaredEntryStillQualifiesItsOwnCoordinate()
+    {
+        // The other side of the same rule: nothing started this database, so the entry is all there is and
+        // every part of it still applies.
+        TimelineRun run = await Run(
+            environment: null,
+            configured: [("Sql:orders-db:Server", "localhost,14333"), ("Sql:orders-db:Database", "orders"), ("Sql:orders-db:IntegratedSecurity", "true")]);
+
+        run.EnsureRanToCompletion();
+
+        Assert.Equal("localhost,14333", run.VariableStore.GetVariable<string>("server"));
+        Assert.True(run.VariableStore.GetVariable<bool>("integrated"));
     }
 }
