@@ -1,5 +1,7 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
+using TestFramework.Core.Exceptions;
+using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using TestFramework.Config.Configuration;
 using TestFramework.Core.Environment.Graph;
@@ -41,8 +43,15 @@ internal sealed class StubShape(IStubConfigProvider provider) : ConfigShape<Stub
 
     /// <inheritdoc />
     /// <remarks>
-    /// The admin path is published once rather than per viewpoint: it is a path on whichever address you
-    /// reached the stub at, so saying it differs between viewpoints would say something untrue of it.
+    /// <para>
+    /// The whole entry, not only its coordinates, because the run is where a step reads its configuration
+    /// from now. Only the address is published per viewpoint: a path is a path on whichever address you
+    /// reached the stub at, and how long a run is willing to poll does not change with where it stands.
+    /// </para>
+    /// <para>
+    /// Written to be read back by <see cref="Read(IReadOnlyDictionary{string, string}, string)"/>, and the
+    /// two are guarded together - a name written here and not read there is a value nothing can ever see.
+    /// </para>
     /// </remarks>
     public override IReadOnlyDictionary<ValueKey, string> Values(StubConfig config)
     {
@@ -61,6 +70,87 @@ internal sealed class StubShape(IStubConfigProvider provider) : ConfigShape<Stub
             values[new ValueKey(WebEnvironmentResourceKinds.AdminPathValue)] = adminPath;
         }
 
+        // Round-trip formats, not display ones: a duration goes out as ISO-8601 and a flag as "true" or
+        // "false", so what comes back is what went in whatever the machine's culture is.
+        values[new ValueKey(WebEnvironmentResourceKinds.PollIntervalValue)] = config.PollInterval.ToString("c", CultureInfo.InvariantCulture);
+        values[new ValueKey(WebEnvironmentResourceKinds.AllowInvalidCertificatesValue)] = config.AllowInvalidCertificates ? "true" : "false";
+        values[new ValueKey(WebEnvironmentResourceKinds.ResetModeValue)] = config.ResetMode.ToString();
+
         return values;
     }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// Every value is optional except the address, and an absent one leaves the record's own default in
+    /// place - which is what keeps §5 true: the default is documented where the value is introduced, and
+    /// this does not restate it.
+    /// </para>
+    /// <para>
+    /// A value that is present and unparseable is a refusal rather than a silent fall back to the default.
+    /// Something put it there deliberately, and quietly ignoring it would mean a run behaving differently
+    /// from what it was told with nothing to show why.
+    /// </para>
+    /// </remarks>
+    public override StubConfig Read(IReadOnlyDictionary<string, string> values, string identifier)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        ArgumentException.ThrowIfNullOrWhiteSpace(identifier);
+
+        if (!values.TryGetValue(ValueNames.BaseUrl, out string? baseUrl) || string.IsNullOrWhiteSpace(baseUrl))
+        {
+            throw new FrameworkConfigurationException(
+                $"The run has no address for stub '{identifier}'.",
+                [
+                    $"Set 'Stub:{identifier}:BaseUrl', or include the stub definition that starts one.",
+                ],
+                [.. values.Keys]);
+        }
+
+        StubConfig config = new StubConfig { BaseUrl = baseUrl };
+
+        if (values.TryGetValue(WebEnvironmentResourceKinds.AdminPathValue, out string? adminPath) && adminPath is { Length: > 0 })
+        {
+            config = config with { AdminPath = adminPath };
+        }
+
+        if (values.TryGetValue(WebEnvironmentResourceKinds.PollIntervalValue, out string? pollInterval))
+        {
+            config = config with { PollInterval = ParseTimeSpan(pollInterval, identifier, WebEnvironmentResourceKinds.PollIntervalValue) };
+        }
+
+        if (values.TryGetValue(WebEnvironmentResourceKinds.AllowInvalidCertificatesValue, out string? allowInvalid))
+        {
+            config = config with { AllowInvalidCertificates = ParseBool(allowInvalid, identifier, WebEnvironmentResourceKinds.AllowInvalidCertificatesValue) };
+        }
+
+        if (values.TryGetValue(WebEnvironmentResourceKinds.ResetModeValue, out string? resetMode))
+        {
+            config = config with { ResetMode = ParseResetMode(resetMode, identifier) };
+        }
+
+        return config;
+    }
+
+    private static TimeSpan ParseTimeSpan(string value, string identifier, string valueName)
+        => TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out TimeSpan parsed)
+            ? parsed
+            : throw Unparseable(value, identifier, valueName, "a duration such as '00:00:00.250'");
+
+    private static bool ParseBool(string value, string identifier, string valueName)
+        => bool.TryParse(value, out bool parsed)
+            ? parsed
+            : throw Unparseable(value, identifier, valueName, "'true' or 'false'");
+
+    private static StubResetMode ParseResetMode(string value, string identifier)
+        => Enum.TryParse(value, ignoreCase: true, out StubResetMode parsed)
+            ? parsed
+            : throw Unparseable(value, identifier, WebEnvironmentResourceKinds.ResetModeValue, string.Join(" or ", Enum.GetNames<StubResetMode>()));
+
+    private static FrameworkConfigurationException Unparseable(string value, string identifier, string valueName, string expected)
+        => new FrameworkConfigurationException(
+            $"The run holds '{value}' as {valueName} for stub '{identifier}', which cannot be read as {expected}.",
+            [
+                $"Correct 'Stub:{identifier}:{valueName}', or the environment component that publishes it.",
+            ]);
 }

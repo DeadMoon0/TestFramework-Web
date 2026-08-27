@@ -75,18 +75,9 @@ public class SqlConfigurationTests
         Assert.Empty(store.Snapshot());
     }
 
-    [Fact]
-    public void Resolve_Throws_WithKnownIdentifiersListed_WhenIdentifierIsUnknown()
-    {
-        ServiceCollection services = new();
-        services.LoadWebSqlConfigs(BuildConfiguration(("Sql:main:Server", "localhost"), ("Sql:main:Database", "SampleDb")));
-
-        SqlConfigurationValidationException exception = Assert.Throws<SqlConfigurationValidationException>(
-            () => SqlConfigResolver.Resolve(RunContext.Detached(services.BuildServiceProvider()), "other"));
-
-        Assert.Contains("other", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("main", exception.Message, StringComparison.Ordinal);
-    }
+    // The unknown-identifier case moved to SqlResourceTests and could not stay here: it resolved against
+    // RunContext.Detached, which has no resources by construction, and a database is read from the run now.
+    // The refusal it checked is the shared reader's, listing what the run does know.
 
     [Fact]
     public void ConnectionString_IsComposedFromTheStructuredParts()

@@ -76,7 +76,7 @@ public sealed class AdoSqlExecutor : ISqlExecutor
         if (batches.Count == 0)
             return new SqlScriptExecutionResult(0, 0);
 
-        SqlConfig config = SqlConfigResolver.Resolve(_context, identifier);
+        SqlConfig config = _context.Configured<SqlConfig>(identifier);
         string connectionString = ResolveConnectionString(identifier);
         Stopwatch stopwatch = Stopwatch.StartNew();
 
@@ -151,7 +151,7 @@ public sealed class AdoSqlExecutor : ISqlExecutor
         ArgumentException.ThrowIfNullOrWhiteSpace(statement);
         ArgumentNullException.ThrowIfNull(parameters);
 
-        SqlConfig config = SqlConfigResolver.Resolve(_context, identifier);
+        SqlConfig config = _context.Configured<SqlConfig>(identifier);
         string connectionString = ResolveConnectionString(identifier);
         Stopwatch stopwatch = Stopwatch.StartNew();
 
@@ -181,7 +181,7 @@ public sealed class AdoSqlExecutor : ISqlExecutor
 
     private string ResolveConnectionString(string identifier)
     {
-        SqlConfig config = SqlConfigResolver.Resolve(_context, identifier);
+        SqlConfig config = _context.Configured<SqlConfig>(identifier);
         SqlCredentials? credentials = _context.Services.GetService<ISqlCredentialProvider>()?.GetCredentials(identifier);
         return SqlConnectionStringFactory.Create(identifier, config, credentials);
     }

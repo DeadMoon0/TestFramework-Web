@@ -12,6 +12,7 @@ using TestFramework.Core.Timelines;
 using TestFramework.Core.Timelines.Builder.TimelineRunBuilder;
 using TestFramework.Web.Extensions;
 using TestFramework.Web.Stub;
+using TestFramework.Web.Stub.Exceptions;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -110,6 +111,96 @@ public class StubResourceTests(ITestOutputHelper output)
         Assert.Contains("payments", failure.ToString(), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task ASettingTravelsThroughTheRunAsWellAsAnAddress()
+    {
+        // The whole entry now, not only its coordinates. A poll interval and a reset mode are declared in a
+        // file, read into resource values when the run composes them, and turned back into a typed record -
+        // so nothing asks a service provider for the configuration a run was set up with.
+        TimelineRun run = await Run(
+            environment: null,
+            configured:
+            [
+                ("Stub:payments:BaseUrl", "http://localhost:8080/"),
+                ("Stub:payments:PollInterval", "00:00:00.750"),
+                ("Stub:payments:ResetMode", "ClearServerLog"),
+                ("Stub:payments:AllowInvalidCertificates", "true"),
+            ]);
+
+        run.EnsureRanToCompletion();
+
+        Assert.Equal(TimeSpan.FromMilliseconds(750), run.VariableStore.GetVariable<TimeSpan>("poll"));
+        Assert.Equal(StubResetMode.ClearServerLog, run.VariableStore.GetVariable<StubResetMode>("reset"));
+        Assert.True(run.VariableStore.GetVariable<bool>("allow-invalid"));
+    }
+
+    [Fact]
+    public async Task AbsentSettingsLeaveTheRecordsOwnDefaults()
+    {
+        // §5: a default is documented where the value is introduced, so rebuilding a record must not
+        // restate one. An entry that says nothing about polling gets the record's answer, not the shape's.
+        TimelineRun run = await Run(environment: null, configured: [("Stub:payments:BaseUrl", "http://localhost:8080/")]);
+
+        run.EnsureRanToCompletion();
+
+        Assert.Equal(new StubConfig { BaseUrl = "x" }.PollInterval, run.VariableStore.GetVariable<TimeSpan>("poll"));
+        Assert.Equal(new StubConfig { BaseUrl = "x" }.ResetMode, run.VariableStore.GetVariable<StubResetMode>("reset"));
+        Assert.Equal("/__admin", run.VariableStore.GetVariable<string>("admin"));
+    }
+
+    [Fact]
+    public async Task SomethingThatStartedCanOverrideASettingAndNotOnlyAnAddress()
+    {
+        // New capability, and the reason one channel is worth having: a stub image that knows its own
+        // minimum poll interval can say so, and a run believes the thing that is running over the file that
+        // guessed. Impossible while settings lived in a store only a person wrote.
+        TimelineRun run = await Run(
+            new PublishingEnvironment(
+                "payments",
+                "http://127.0.0.1:49812/",
+                settings: [(WebEnvironmentResourceKinds.PollIntervalValue, "00:00:02")]),
+            configured: [("Stub:payments:BaseUrl", "http://localhost:8080/"), ("Stub:payments:PollInterval", "00:00:00.250")]);
+
+        run.EnsureRanToCompletion();
+
+        Assert.Equal(TimeSpan.FromSeconds(2), run.VariableStore.GetVariable<TimeSpan>("poll"));
+    }
+
+    [Fact]
+    public async Task AValueThatCannotBeReadIsRefusedRatherThanDefaulted()
+    {
+        // Published by something that started, not written in a file - because a file cannot get here. The
+        // package's own provider refuses an unusable entry while *loading*, with a better message than this
+        // one, and that validation is untouched by configuration moving onto the run. What this guards is
+        // the other road in: a component publishing something nothing validated.
+        //
+        // Falling back to the default would mean a run behaving differently from what it was told with
+        // nothing to show why.
+        TimelineRun run = await Run(
+            new PublishingEnvironment(
+                "payments",
+                "http://127.0.0.1:49812/",
+                settings: [(WebEnvironmentResourceKinds.PollIntervalValue, "soon")]),
+            configured: [("Stub:payments:BaseUrl", "http://localhost:8080/")]);
+
+        TimelineRunFailedException failure = Assert.Throws<TimelineRunFailedException>(run.EnsureRanToCompletion);
+
+        Assert.Contains("PollInterval", failure.ToString(), StringComparison.Ordinal);
+        Assert.Contains("soon", failure.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AnUnusableEntryIsStillRefusedWhileLoading()
+    {
+        // The half that did not move. Configuration reaching a step through the run changes where the record
+        // is built, not who validates the file - and this is the load-time refusal proving it, because a
+        // value this bad never reaches the shape's reader at all.
+        StubConfigurationValidationException failure = Assert.Throws<StubConfigurationValidationException>(
+            () => Configured(("Stub:payments:BaseUrl", "http://localhost:8080/"), ("Stub:payments:PollInterval", "soon")));
+
+        Assert.Contains("PollInterval", failure.Message, StringComparison.Ordinal);
+    }
+
     private async Task<TimelineRun> Run(PublishingEnvironment? environment, string resolves = "payments", params (string Key, string Value)[] configured)
     {
         Timeline timeline = Timeline.Create()
@@ -145,7 +236,7 @@ public class StubResourceTests(ITestOutputHelper output)
     }
 
     /// <summary>Stands in for a stub container: something that starts and then knows where it is.</summary>
-    private sealed class PublishingEnvironment(string identifier, string baseUrl, string? adminPath = null) : EnvironmentProviderBase
+    private sealed class PublishingEnvironment(string identifier, string baseUrl, string? adminPath = null, (string Name, string Value)[]? settings = null) : EnvironmentProviderBase
     {
         private readonly EnvComponentIdentifier component = "stub";
 
@@ -153,19 +244,24 @@ public class StubResourceTests(ITestOutputHelper output)
             IEnumerable<Core.Artifacts.ArtifactInstanceGeneric> artifacts,
             IEnumerable<EnvironmentRequirement> requirements)
         {
-            this.AddComponent(new PublishingComponent(this.component, identifier, baseUrl, adminPath));
+            this.AddComponent(new PublishingComponent(this.component, identifier, baseUrl, adminPath, settings));
 
             return [this.component];
         }
     }
 
-    private sealed class PublishingComponent(EnvComponentIdentifier id, string identifier, string baseUrl, string? adminPath) : EnvComponent
+    private sealed class PublishingComponent(EnvComponentIdentifier id, string identifier, string baseUrl, string? adminPath, (string Name, string Value)[]? settings = null) : EnvComponent
     {
         public override EnvComponentIdentifier Id => id;
 
         public override Task<object?> CreateAsync(IEnvironmentProvider environment, RunContext context)
         {
             EnvironmentResources resources = PublishOn(context);
+
+            foreach ((string name, string value) in settings ?? [])
+            {
+                resources.Produce(WebEnvironmentResourceKinds.StubKind, identifier, name, value);
+            }
 
             resources.Produce(WebEnvironmentResourceKinds.StubKind, identifier, ValueNames.BaseUrl, ResourceVantage.Host, baseUrl);
 
@@ -200,10 +296,13 @@ public class StubResourceTests(ITestOutputHelper output)
 
         public override Task<EmptyStepResultContext?> Execute(RunContext context)
         {
-            StubConfig resolved = StubConfigResolver.Resolve(context, identifier);
+            StubConfig resolved = context.Configured<StubConfig>(identifier);
 
             context.Variables.SetVariable("address", resolved.BaseUrl);
             context.Variables.SetVariable("admin", resolved.AdminPath);
+            context.Variables.SetVariable("poll", resolved.PollInterval);
+            context.Variables.SetVariable("reset", resolved.ResetMode);
+            context.Variables.SetVariable("allow-invalid", resolved.AllowInvalidCertificates);
 
             return Task.FromResult<EmptyStepResultContext?>(EmptyStepResultContext.Instance);
         }

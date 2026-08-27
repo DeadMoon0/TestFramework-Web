@@ -105,28 +105,14 @@ public class ApiConfigurationTests
         Assert.Empty(store.Snapshot());
     }
 
-    [Fact]
-    public void Resolve_Throws_WithKnownIdentifiersListed_WhenIdentifierIsUnknown()
-    {
-        ServiceCollection services = new();
-        services.LoadWebConfigs(BuildConfiguration(("Api:orders:BaseUrl", "http://localhost:5080/")));
-        IServiceProvider provider = services.BuildServiceProvider();
-
-        ApiConfigurationValidationException exception = Assert.Throws<ApiConfigurationValidationException>(
-            () => ApiConfigResolver.Resolve(RunContext.Detached(provider), "invoices"));
-
-        Assert.Contains("invoices", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("orders", exception.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Resolve_ReturnsConfig_WhenIdentifierIsRegistered()
-    {
-        ServiceCollection services = new();
-        services.LoadWebConfigs(BuildConfiguration(("Api:orders:BaseUrl", "http://localhost:5080/")));
-
-        ApiConfig config = ApiConfigResolver.Resolve(RunContext.Detached(services.BuildServiceProvider()), "orders");
-
-        Assert.Equal("http://localhost:5080/", config.BaseUrl);
-    }
+    // The two resolution cases that used to live here have moved to ApiResourceTests, and could not stay.
+    // They resolved against RunContext.Detached, which has no resources by construction - and configuration
+    // is read from the run now, so a test about resolving it needs a run. What replaced them covers more:
+    // a declaration answering alone, a container's address winning over it, an entry nobody wrote, and a
+    // refusal naming what does exist.
+    //
+    // One behaviour changed with them, and it is public. "No configuration for this identifier" used to be
+    // an ApiConfigurationValidationException from this package; it is now a FrameworkConfigurationException
+    // from the one reader the whole family shares. Both derive from TimelineFrameworkException, so a caller
+    // catching that still catches it - one catching the specific type no longer does.
 }

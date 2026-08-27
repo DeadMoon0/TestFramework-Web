@@ -137,7 +137,7 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
     {
         ArgumentNullException.ThrowIfNull(context.Logger);
 
-        StubConfig config = StubConfigResolver.Resolve(context, _stubIdentifier);
+        StubConfig config = context.Configured<StubConfig>(_stubIdentifier);
         StubAdminClient admin = StubConfigResolver.CreateAdminClient(context, _stubIdentifier);
         string? expectedBody = _bodyContains?.GetRequiredValue(context.Variables, "body text");
 

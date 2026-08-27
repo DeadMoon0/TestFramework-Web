@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using TestFramework.Config.Configuration;
 using TestFramework.Core.Environment.Graph;
@@ -68,8 +69,61 @@ internal sealed class SqlShape(ISqlConfigProvider provider) : ConfigShape<SqlCon
             values[new ValueKey(WebEnvironmentResourceKinds.DatabaseNameValue)] = database;
         }
 
+        // The one property that is not already inside the composed string: it bounds a command rather than a
+        // connection, so nothing would carry it otherwise.
+        if (config.CommandTimeout is { } commandTimeout)
+        {
+            values[new ValueKey(WebEnvironmentResourceKinds.CommandTimeoutValue)] = commandTimeout.ToString("c", CultureInfo.InvariantCulture);
+        }
+
         return values;
     }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// The record that comes back holds a connection string and not the parts it was composed from, which is
+    /// the point rather than a loss: a server and a password are ingredients, and the composed string already
+    /// contains them. Anything that connects takes the string; anything that wants to know which database it
+    /// is takes the name.
+    /// </para>
+    /// <para>
+    /// It also settles a rule structurally that used to need care. A connection string something started
+    /// publishes wins over the declared one, and because the declared credentials were never separate values
+    /// there is nothing left to layer on top of it - so a run cannot end up dialling a container with a
+    /// developer's integrated security.
+    /// </para>
+    /// </remarks>
+    public override SqlConfig Read(IReadOnlyDictionary<string, string> values, string identifier)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        ArgumentException.ThrowIfNullOrWhiteSpace(identifier);
+
+        SqlConfig config = new SqlConfig
+        {
+            ConnectionString = Text(values, ValueNames.ConnectionString),
+            Database = Text(values, WebEnvironmentResourceKinds.DatabaseNameValue),
+        };
+
+        if (values.TryGetValue(WebEnvironmentResourceKinds.CommandTimeoutValue, out string? commandTimeout))
+        {
+            config = config with
+            {
+                CommandTimeout = TimeSpan.TryParse(commandTimeout, CultureInfo.InvariantCulture, out TimeSpan parsed)
+                    ? parsed
+                    : throw new FrameworkConfigurationException(
+                        $"The run holds '{commandTimeout}' as {WebEnvironmentResourceKinds.CommandTimeoutValue} for database '{identifier}', which cannot be read as a duration such as '00:00:30'.",
+                        [
+                            $"Correct 'Sql:{identifier}:{WebEnvironmentResourceKinds.CommandTimeoutValue}', or the environment component that publishes it.",
+                        ]),
+            };
+        }
+
+        return config;
+    }
+
+    private static string? Text(IReadOnlyDictionary<string, string> values, string valueName)
+        => values.TryGetValue(valueName, out string? value) && value is { Length: > 0 } ? value : null;
 
     /// <summary>
     /// The connection string this entry amounts to, or null when it does not amount to one yet.

@@ -1,5 +1,7 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
+using TestFramework.Web.Auth;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -106,6 +108,65 @@ public class ApiResourceTests(ITestOutputHelper output)
         Assert.Contains("orders", failure.ToString(), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task SettingsAndCredentialsTravelWithTheAddress()
+    {
+        // The whole entry now. An auth mode is an enum, a timeout is a TimeSpan, a key is a secret - all of
+        // them declared in a file, carried as resource values, and handed back as the typed record a client
+        // is built from. Nothing asked a service provider for any of it.
+        TimelineRun run = await Run(
+            environment: null,
+            configured:
+            [
+                ("Api:orders:BaseUrl", "http://localhost:5080/"),
+                ("Api:orders:Auth", "ApiKey"),
+                ("Api:orders:ApiKeyHeaderName", "X-Api-Key"),
+                ("Api:orders:ApiKey", "hunter2"),
+                ("Api:orders:RequestTimeout", "00:00:30"),
+            ]);
+
+        run.EnsureRanToCompletion();
+
+        Assert.Equal(ApiAuthMode.ApiKey, run.VariableStore.GetVariable<ApiAuthMode>("auth"));
+        Assert.Equal(TimeSpan.FromSeconds(30), run.VariableStore.GetVariable<TimeSpan?>("timeout"));
+
+        // The point read hands over the real key, because that is what asking for it means.
+        Assert.Equal("hunter2", run.VariableStore.GetVariable<string>("api-key"));
+    }
+
+    [Fact]
+    public async Task ACredentialIsRedactedInTheListingAndStillReachesTheClient()
+    {
+        // Both halves of the secret rule, in the one place that can show them together. The listing is what
+        // failure messages, log lines and the frozen run are built from, so a key must not be in it - and the
+        // record a client is built from must have it, or nothing could authenticate.
+        TimelineRun run = await Run(
+            environment: null,
+            configured:
+            [
+                ("Api:orders:BaseUrl", "http://localhost:5080/"),
+                ("Api:orders:Auth", "ApiKey"),
+                ("Api:orders:ApiKeyHeaderName", "X-Api-Key"),
+                ("Api:orders:ApiKey", "hunter2"),
+            ]);
+
+        run.EnsureRanToCompletion();
+
+        Assert.Equal("hunter2", run.VariableStore.GetVariable<string>("api-key"));
+
+        string listing = run.VariableStore.GetVariable<string>("listing")!;
+
+        Assert.DoesNotContain("hunter2", listing, StringComparison.Ordinal);
+        Assert.Contains("ApiKey=(secret)", listing, StringComparison.Ordinal);
+
+        // And the same listing off the frozen run, which is where §5's "readable from the finished run"
+        // lands - a reader can see that a key was configured without being shown it.
+        Assert.DoesNotContain("hunter2", string.Join(" ", run.Values.Snapshot().Select(static value => value.Value)), StringComparison.Ordinal);
+
+        // Not a blanket: the header name says which key was expected and is no use to anybody without it.
+        Assert.Contains("X-Api-Key", listing, StringComparison.Ordinal);
+    }
+
     private async Task<TimelineRun> Run(PublishingEnvironment? environment, string resolves = "orders", params (string Key, string Value)[] configured)
     {
         Timeline timeline = Timeline.Create()
@@ -197,10 +258,14 @@ public class ApiResourceTests(ITestOutputHelper output)
 
         public override Task<EmptyStepResultContext?> Execute(RunContext context)
         {
-            ApiConfig resolved = ApiConfigResolver.Resolve(context, identifier);
+            ApiConfig resolved = context.Configured<ApiConfig>(identifier);
 
             context.Variables.SetVariable("address", resolved.BaseUrl);
             context.Variables.SetVariable("health", resolved.HealthPath);
+            context.Variables.SetVariable("auth", resolved.Auth);
+            context.Variables.SetVariable("timeout", resolved.RequestTimeout);
+            context.Variables.SetVariable("api-key", resolved.ApiKey);
+            context.Variables.SetVariable("listing", string.Join(" | ", context.Values.Snapshot().Select(static value => $"{value.Key}={value.Value}")));
 
             return Task.FromResult<EmptyStepResultContext?>(EmptyStepResultContext.Instance);
         }

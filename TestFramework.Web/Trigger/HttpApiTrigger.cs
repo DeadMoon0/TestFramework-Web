@@ -64,7 +64,7 @@ internal sealed class HttpApiTrigger(ApiIdentifier identifier, ComposedRequestVa
         ArgumentNullException.ThrowIfNull(context.Logger);
 
         HttpRequestSpec spec = request.GetRequiredValue(context.Variables, "API request");
-        ApiConfig config = ApiConfigResolver.Resolve(context, identifier);
+        ApiConfig config = context.Configured<ApiConfig>(identifier);
         ApiTriggerConfig triggerConfig = context.Services.GetService<ApiTriggerConfig>() ?? new ApiTriggerConfig();
 
         Uri requestUri = spec.ResolveUri(identifier, config.BaseUrl);

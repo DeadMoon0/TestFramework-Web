@@ -294,7 +294,7 @@ public sealed class StubResetStep : StubStepBase<StubCallsResult>
     {
         ArgumentNullException.ThrowIfNull(context.Logger);
 
-        StubConfig config = StubConfigResolver.Resolve(context, StubIdentifier);
+        StubConfig config = context.Configured<StubConfig>(StubIdentifier);
         StubAdminClient admin = StubConfigResolver.CreateAdminClient(context, StubIdentifier);
         StubObservationScope? scope = StubObservationScope.Resolve(context.Services);
 

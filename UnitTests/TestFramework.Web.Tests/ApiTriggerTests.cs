@@ -1,9 +1,10 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using TestFramework.Config;
+using TestFramework.Core.Exceptions;
 using TestFramework.Core.Timelines;
 using TestFramework.Core.Timelines.Assertions;
 using TestFramework.Core.Variables;
@@ -305,8 +306,11 @@ public class ApiTriggerTests(SampleApiFixture fixture)
 
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
 
-        run.Step("unknown").Should().HaveThrown<ApiConfigurationValidationException>();
-        run.Assert(run.Step("unknown").LastResult.Exception!.Message, "configuration failure message")
+        // The one reader the family shares throws its own type now, not this package's - and it puts the
+        // identifiers that do exist in the exception's Available list rather than in the sentence, which is
+        // where every other failure in the family puts them.
+        run.Step("unknown").Should().HaveThrown<FrameworkConfigurationException>();
+        run.Assert(run.Step("unknown").LastResult.Exception!.ToString(), "configuration failure message")
             .Should().Contain("not-registered").And().Contain("sample");
     }
 

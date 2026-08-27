@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -75,10 +76,7 @@ public class SqlResourceTests(ITestOutputHelper output)
         // is the package's own, so the graph carries what a connection would actually have been opened with.
         Assert.Contains("Integrated Security=True", connection, StringComparison.Ordinal);
 
-        // Credentials, certificate and timeout settings are still applied afterwards by the factory, from
-        // the parts of the record this does not touch - so composing early changes nothing about them.
         Assert.Equal("orders", run.VariableStore.GetVariable<string>("database"));
-        Assert.Equal("localhost,14333", run.VariableStore.GetVariable<string>("server"));
     }
 
     [Fact]
@@ -215,12 +213,11 @@ public class SqlResourceTests(ITestOutputHelper output)
 
         public override Task<EmptyStepResultContext?> Execute(RunContext context)
         {
-            SqlConfig resolved = SqlConfigResolver.Resolve(context, identifier);
+            SqlConfig resolved = context.Configured<SqlConfig>(identifier);
 
             context.Variables.SetVariable("connection", resolved.ConnectionString);
             context.Variables.SetVariable("database", resolved.Database);
-            context.Variables.SetVariable("server", resolved.Server);
-            context.Variables.SetVariable("integrated", resolved.IntegratedSecurity);
+            context.Variables.SetVariable("command-timeout", resolved.CommandTimeout);
 
             return Task.FromResult<EmptyStepResultContext?>(EmptyStepResultContext.Instance);
         }
@@ -229,36 +226,89 @@ public class SqlResourceTests(ITestOutputHelper output)
     [Fact]
     public async Task AProducedConnectionStringIsTakenWholeAndNotQualifiedByTheEntry()
     {
-        // The case the store write used to handle by clearing fields, and the reason Core gained an
-        // origin-aware read. A container owns its port and its credentials; the entry describes reaching a
+        // The case the store write used to handle by clearing fields, then an origin-aware read, and now
+        // nothing at all: a container owns its port and its credentials, and the entry describes reaching a
         // database somewhere else. Integrated security applied on top of the container's own connection
-        // string strips out the user and password it just handed over.
+        // string would strip out the user and password it just handed over.
+        //
+        // What changed is that there is no longer a decision to get right. The entry's server, user and
+        // integrated-security flag are ingredients composed into *its* connection string before publishing,
+        // so they are never separate values - and a produced string simply wins the one slot they share.
         TimelineRun run = await Run(
             new PublishingEnvironment("orders-db", "Server=127.0.0.1,49999;Database=orders;User Id=sa;Password=secret"),
             configured: [("Sql:orders-db:Server", "localhost,14333"), ("Sql:orders-db:Database", "orders"), ("Sql:orders-db:IntegratedSecurity", "true")]);
 
         run.EnsureRanToCompletion();
 
-        Assert.Equal("Server=127.0.0.1,49999;Database=orders;User Id=sa;Password=secret", run.VariableStore.GetVariable<string>("connection"));
+        string connection = run.VariableStore.GetVariable<string>("connection")!;
 
-        // The declared way of connecting is dropped along with it, which is what a produced coordinate being
-        // "complete" means. A declared server left in place is how a run silently reaches the wrong database.
-        Assert.Null(run.VariableStore.GetVariable<string>("server"));
-        Assert.False(run.VariableStore.GetVariable<bool>("integrated"));
+        Assert.Equal("Server=127.0.0.1,49999;Database=orders;User Id=sa;Password=secret", connection);
+
+        // Nothing of the declared way of connecting survived into it, which is what a produced coordinate
+        // being "complete" means. A declared server left in place is how a run silently reaches the wrong
+        // database.
+        Assert.DoesNotContain("localhost,14333", connection, StringComparison.Ordinal);
+        Assert.DoesNotContain("Integrated Security", connection, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task ADeclaredEntryStillQualifiesItsOwnCoordinate()
+    public async Task ADeclaredEntrysIngredientsEndUpInsideItsConnectionString()
     {
-        // The other side of the same rule: nothing started this database, so the entry is all there is and
-        // every part of it still applies.
+        // The other side of the same rule, and it reads differently now. A server and an integrated-security
+        // flag are not values a reader gets back - they are ingredients this package's own factory composes
+        // into the connection string before it is published. So "every part of the entry still applies" is
+        // visible in the string rather than in six properties beside it.
         TimelineRun run = await Run(
             environment: null,
             configured: [("Sql:orders-db:Server", "localhost,14333"), ("Sql:orders-db:Database", "orders"), ("Sql:orders-db:IntegratedSecurity", "true")]);
 
         run.EnsureRanToCompletion();
 
-        Assert.Equal("localhost,14333", run.VariableStore.GetVariable<string>("server"));
-        Assert.True(run.VariableStore.GetVariable<bool>("integrated"));
+        string connection = run.VariableStore.GetVariable<string>("connection")!;
+
+        Assert.Contains("localhost,14333", connection, StringComparison.Ordinal);
+        Assert.Contains("Integrated Security=True", connection, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ACommandTimeoutTravelsBesideTheConnectionString()
+    {
+        // The one property that is genuinely not inside the string: it bounds a command rather than a
+        // connection, so it would be lost if the string were the only thing carried.
+        TimelineRun run = await Run(
+            environment: null,
+            configured:
+            [
+                ("Sql:orders-db:Server", "localhost,14333"),
+                ("Sql:orders-db:Database", "orders"),
+                ("Sql:orders-db:IntegratedSecurity", "true"),
+                ("Sql:orders-db:CommandTimeout", "00:01:30"),
+            ]);
+
+        run.EnsureRanToCompletion();
+
+        Assert.Equal(TimeSpan.FromSeconds(90), run.VariableStore.GetVariable<TimeSpan?>("command-timeout"));
+    }
+
+    [Fact]
+    public async Task AConnectionStringIsNeverPrintedInTheListing()
+    {
+        // The only value in the family that is an address and a credential in one indivisible text - so it
+        // has to travel, and a listing must never show it.
+        TimelineRun run = await Run(
+            environment: null,
+            configured: [("Sql:orders-db:Server", "localhost,14333"), ("Sql:orders-db:Database", "orders"), ("Sql:orders-db:UserName", "sa"), ("Sql:orders-db:Password", "hunter2")]);
+
+        run.EnsureRanToCompletion();
+
+        Assert.Contains("hunter2", run.VariableStore.GetVariable<string>("connection")!, StringComparison.Ordinal);
+
+        string listed = string.Join(" ", run.Values.Snapshot().Select(static value => $"{value.Key}={value.Value}"));
+
+        Assert.DoesNotContain("hunter2", listed, StringComparison.Ordinal);
+        Assert.Contains("ConnectionString (Host)=(secret)", listed, StringComparison.Ordinal);
+
+        // The database name is not a credential and stays readable, so a failure can still say which one.
+        Assert.Contains("orders", listed, StringComparison.Ordinal);
     }
 }

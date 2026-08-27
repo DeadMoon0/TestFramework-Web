@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using TestFramework.Config;
 using TestFramework.Config.Builder.InstanceBuilder;
+using TestFramework.Core.Exceptions;
 using TestFramework.Core.Timelines;
 using TestFramework.Core.Timelines.Assertions;
 using TestFramework.Core.Variables;
@@ -312,8 +313,10 @@ public class SqlTimelineTests
 
         TimelineRun run = await timeline.SetupRun(config).RunAsync();
 
-        run.Step("delete").Should().HaveThrown<TestFramework.Web.Sql.Exceptions.SqlConfigurationValidationException>();
-        run.Assert(run.Step("delete").LastResult.Exception!.Message, "sql configuration failure")
+        // The one reader the family shares throws its own type now rather than this package's, and puts the
+        // identifiers that do exist in the exception's Available list rather than in the sentence.
+        run.Step("delete").Should().HaveThrown<FrameworkConfigurationException>();
+        run.Assert(run.Step("delete").LastResult.Exception!.ToString(), "sql configuration failure")
             .Should().Contain("missing").And().Contain("main");
     }
 
