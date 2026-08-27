@@ -1,3 +1,5 @@
+﻿using TestFramework.Core.Steps;
+using TestFramework.Core.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -81,26 +83,33 @@ public class SiteConfigurationTests
     }
 
     [Fact]
-    public void LoadWebSiteConfigs_RegistersTheStore_EvenWithoutASiteSection()
+    public void LoadWebSiteConfigs_LeavesARunAbleToAnswer_EvenWithoutASiteSection()
     {
         ServiceCollection services = new();
+        IConfiguration configuration = BuildConfiguration();
 
-        services.LoadWebSiteConfigs(BuildConfiguration());
+        services.LoadWebSiteConfigs(configuration);
+        services.AddSingleton(configuration);
 
         using ServiceProvider provider = services.BuildServiceProvider();
-        WebConfigStore<SiteConfig> store = Assert.IsType<WebConfigStore<SiteConfig>>(provider.GetService<WebConfigStore<SiteConfig>>());
-        Assert.Empty(store.Snapshot());
+
+        FrameworkConfigurationException exception = Assert.Throws<FrameworkConfigurationException>(
+            () => RunContext.Detached(provider).Configured<SiteConfig>("shop"));
+
+        Assert.Contains("Nothing in this run supplies", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void LoadWebSiteConfigs_FillsTheStoreFromTheSection()
+    public void LoadWebSiteConfigs_LetsARunReadTheSection()
     {
         ServiceCollection services = new();
+        IConfiguration configuration = BuildConfiguration(("Site:shop:BaseUrl", "http://localhost:5090/"));
 
-        services.LoadWebSiteConfigs(BuildConfiguration(("Site:shop:BaseUrl", "http://localhost:5090/")));
+        services.LoadWebSiteConfigs(configuration);
+        services.AddSingleton(configuration);
 
         using ServiceProvider provider = services.BuildServiceProvider();
-        WebConfigStore<SiteConfig> store = provider.GetRequiredService<WebConfigStore<SiteConfig>>();
-        Assert.Equal("http://localhost:5090/", store.GetConfig("shop").BaseUrl);
+
+        Assert.Equal("http://localhost:5090/", RunContext.Detached(provider).Configured<SiteConfig>("shop").BaseUrl);
     }
 }

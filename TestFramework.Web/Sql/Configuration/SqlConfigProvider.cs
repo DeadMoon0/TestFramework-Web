@@ -101,14 +101,6 @@ internal sealed class SqlConfigLoader(ISqlConfigProvider configProvider)
 {
     internal void LoadAllConfigs(IConfiguration configuration, IServiceCollection serviceCollection)
     {
-        // Registered even when the section is absent, so an environment can hydrate identifiers at
-        // run time.
-        WebConfigStore<SqlConfig> store = new();
-        serviceCollection.AddSingleton(store);
-
-        foreach (string identifier in configProvider.LoadAllSqlIdentifier(configuration))
-            store.AddConfig(identifier, configProvider.LoadSqlConfig(configuration, identifier));
-
         // The same entries as resources the run's graph knows about, so anything asking where this is gets one
         // answer whether a person wrote it down or a container published it later.
         serviceCollection.AddConfigShape(new SqlShape(configProvider));

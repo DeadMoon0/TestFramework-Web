@@ -1,4 +1,5 @@
-﻿using System;
+﻿using TestFramework.Core.Exceptions;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
@@ -92,17 +93,28 @@ public class ApiConfigurationTests
         Assert.Equal(["invoices", "orders"], identifiers.OrderBy(x => x, StringComparer.Ordinal));
     }
 
+    /// <summary>
+    /// A missing section reads as "nothing is configured", not as "this package is not loaded".
+    /// </summary>
+    /// <remarks>
+    /// This used to assert that an empty store was registered, because an environment could hydrate it later.
+    /// Nothing hydrates a store any more, so what matters is that the package is still able to answer - and
+    /// that the answer names the section rather than the package.
+    /// </remarks>
     [Fact]
-    public void LoadWebConfigs_RegistersTheStore_EvenWithoutAnApiSection()
+    public void LoadWebConfigs_LeavesARunAbleToAnswer_EvenWithoutAnApiSection()
     {
         ServiceCollection services = new();
         services.LoadWebConfigs(BuildConfiguration());
+        services.AddSingleton(BuildConfiguration());
 
-        WebConfigStore<ApiConfig> store = services.BuildServiceProvider().GetRequiredService<WebConfigStore<ApiConfig>>();
+        using ServiceProvider provider = services.BuildServiceProvider();
 
-        // An environment hydrates identifiers at run time, so the store must exist even when the
-        // static configuration declares nothing.
-        Assert.Empty(store.Snapshot());
+        FrameworkConfigurationException exception = Assert.Throws<FrameworkConfigurationException>(
+            () => RunContext.Detached(provider).Configured<ApiConfig>("orders"));
+
+        Assert.Contains("Nothing in this run supplies", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("Api:orders", exception.ToString(), StringComparison.Ordinal);
     }
 
     // The two resolution cases that used to live here have moved to ApiResourceTests, and could not stay.

@@ -23,7 +23,7 @@ deployed API, an in-process host and a container, with only the environment diff
 ```
 Timeline (Core)
   -> HttpApiTrigger / ApiIsLiveTrigger        steps
-       -> WebConfigStore<ApiConfig>           what to call
+       -> the run's resource values          what to call
        -> IHttpSender                         how to call it
             -> real endpoint | in-process host | container
 ```
@@ -36,7 +36,7 @@ need is met.
 
 | Concern | Decision |
 |---|---|
-| Addressing an API | Logical identifier resolved through `WebConfigStore<ApiConfig>`, never a literal URL in a timeline |
+| Addressing an API | Logical identifier resolved against the run, never a literal URL in a timeline |
 | Transport indirection | `IHttpSender`, resolved from `IWebComponentFactory` |
 | Endpoint selection | Explicit path and method; deliberately not derived from application types |
 | Request composition | One `HttpRequestSpec` owns URI composition, escaping and message creation |
@@ -45,7 +45,7 @@ need is met.
 
 ## 5. Building Block View
 
-**`Configuration/`** — `ApiConfig` plus `WebConfigStore<TConfig>`, `IApiConfigProvider` and its
+**`Configuration/`** — `ApiConfig` plus `ApiShape`, `IApiConfigProvider` and its
 default reading the `Api:<identifier>` section. `ApiConfigResolver` centralizes lookup so the
 "unknown identifier" message is identical everywhere. The store is registered even when no `Api`
 section exists, so a future environment can hydrate identifiers at run time.
@@ -122,7 +122,7 @@ disagree is a defect, not a feature.
 | No route analyzer over controller types | An API is tested at its edge. Reflecting over `[Route]` couples the test to the implementation and would let a route rename pass silently. It would also force a project reference to the application. |
 | Non-2xx is not an exception | Tests routinely assert error behaviour. Throwing would make the common case awkward and the rare case no clearer. |
 | Own HTTP primitives rather than reusing `TestFramework.Azure` | The Azure package carries Cosmos, Service Bus and EF Core. Consolidating the duplicated primitives into a shared package is planned once the shape settles. |
-| Own `WebConfigStore<T>` | `ConfigStore<T>` lives in `TestFramework.Azure`. A distinct name lets both be imported in one test file. |
+| No configuration store | Both this package's store and Azure's were filled and never read once a run answered for its own configuration. `Configured<T>` is the one reader. |
 | Assertions reuse Core asserters rather than adding module-specific ones | The assertion infrastructure - debug signalling and scope collection - is internal to Core. Wrapping values into `ValueHandle<T>` keeps web assertions first-class instead of a parallel mechanism that bypasses the debugging UI. |
 | Warmup retry lives in the liveness probe, and only for local hosts | A transient `404` while a local route table warms up is infrastructure noise, and waiting it out is exactly what `IsLive` is for. Putting the same retry on every call would make each deliberate `404` assertion pay the full window. On a remote host the status is a real answer and must not be hidden. |
 | Pooled clients keyed by connection-relevant settings | Connection reuse across steps, while a run that rewrites the endpoint still gets a fresh client. |

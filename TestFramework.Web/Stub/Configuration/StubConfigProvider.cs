@@ -114,17 +114,9 @@ internal sealed class StubConfigLoader(IStubConfigProvider configProvider)
 {
     internal void LoadAllConfigs(IConfiguration configuration, IServiceCollection serviceCollection)
     {
-        // Registered even when the section is absent, so an environment can hydrate identifiers at
-        // run time.
-        WebConfigStore<StubConfig> store = new();
-        serviceCollection.AddSingleton(store);
-
         // Scoped to the run's service provider, not to the process: this is where a run records how
         // much of a shared stub's request log predates it.
         serviceCollection.AddSingleton(new StubObservationScope());
-
-        foreach (string identifier in configProvider.LoadAllStubIdentifier(configuration))
-            store.AddConfig(identifier, configProvider.LoadStubConfig(configuration, identifier));
 
         // The same entries as resources the run's graph knows about, so anything asking where this is gets one
         // answer whether a person wrote it down or a container published it later.

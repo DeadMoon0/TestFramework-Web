@@ -1,4 +1,5 @@
-﻿using System;
+﻿using TestFramework.Core.Exceptions;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
@@ -65,14 +66,20 @@ public class SqlConfigurationTests
     }
 
     [Fact]
-    public void LoadWebSqlConfigs_RegistersTheStore_EvenWithoutASqlSection()
+    public void LoadWebSqlConfigs_LeavesARunAbleToAnswer_EvenWithoutASqlSection()
     {
         ServiceCollection services = new();
-        services.LoadWebSqlConfigs(BuildConfiguration());
+        IConfiguration configuration = BuildConfiguration();
 
-        WebConfigStore<SqlConfig> store = services.BuildServiceProvider().GetRequiredService<WebConfigStore<SqlConfig>>();
+        services.LoadWebSqlConfigs(configuration);
+        services.AddSingleton(configuration);
 
-        Assert.Empty(store.Snapshot());
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        FrameworkConfigurationException exception = Assert.Throws<FrameworkConfigurationException>(
+            () => RunContext.Detached(provider).Configured<SqlConfig>("main"));
+
+        Assert.Contains("Nothing in this run supplies", exception.Message, StringComparison.Ordinal);
     }
 
     // The unknown-identifier case moved to SqlResourceTests and could not stay here: it resolved against

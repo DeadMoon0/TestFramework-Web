@@ -77,8 +77,9 @@ public class ApiResourceGraphTests(ITestOutputHelper output)
 
         run.EnsureRanToCompletion();
 
+        // Read back the same way the step did, so this asserts a round trip rather than a store lookup.
         Assert.Equal(
-            services.GetRequiredService<WebConfigStore<ApiConfig>>().GetConfig("orders").BaseUrl,
+            RunContext.Detached(services).Configured<ApiConfig>("orders").BaseUrl,
             run.VariableStore.GetVariable<string>("address"));
     }
 

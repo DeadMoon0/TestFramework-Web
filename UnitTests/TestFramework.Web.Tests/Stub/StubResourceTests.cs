@@ -189,16 +189,31 @@ public class StubResourceTests(ITestOutputHelper output)
         Assert.Contains("soon", failure.ToString(), StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// An unusable entry is refused when the run composes its resources, before any step has run.
+    /// </summary>
+    /// <remarks>
+    /// The refusal moved and the guarantee did not. It used to happen while the configuration was loaded,
+    /// because the loader eagerly read every entry into a typed store; that store is gone, so the package's
+    /// reader runs once - when the run composes its graph, still before the first step.
+    /// </remarks>
+    /// <remarks>
+    /// It arrives unwrapped, which is worth pinning. Composition happens before the run has any step results
+    /// to report, so this is not a failed step gathered into a run failure - it is the setup call refusing,
+    /// with the package's own sentence and its own recovery line intact.
+    /// </remarks>
     [Fact]
-    public async Task AnUnusableEntryIsStillRefusedWhileLoading()
+    public async Task AnUnusableEntryIsRefusedBeforeAnyStepRuns()
     {
-        // The half that did not move. Configuration reaching a step through the run changes where the record
-        // is built, not who validates the file - and this is the load-time refusal proving it, because a
-        // value this bad never reaches the shape's reader at all.
-        StubConfigurationValidationException failure = Assert.Throws<StubConfigurationValidationException>(
-            () => Configured(("Stub:payments:BaseUrl", "http://localhost:8080/"), ("Stub:payments:PollInterval", "soon")));
+        StubConfigurationValidationException failure = await Assert.ThrowsAsync<StubConfigurationValidationException>(
+            () => Run(environment: null, configured:
+            [
+                ("Stub:payments:BaseUrl", "http://localhost:8080/"),
+                ("Stub:payments:PollInterval", "soon"),
+            ]));
 
         Assert.Contains("PollInterval", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("soon", failure.Message, StringComparison.Ordinal);
     }
 
     private async Task<TimelineRun> Run(PublishingEnvironment? environment, string resolves = "payments", params (string Key, string Value)[] configured)
