@@ -27,6 +27,12 @@ internal static class WebJson
     internal static JsonSerializerSettings Wire { get; } = new JsonSerializerSettings
     {
         ContractResolver = new CamelCasePropertyNamesContractResolver(),
+
+        // A response body is a payload somebody else wrote. Left at Newtonsoft's default, anything
+        // ISO-8601-shaped in a JToken target came back as a Date token - format, kind and offset mutated -
+        // so an assertion against the wire text compared against a value the server never sent. Typed
+        // DateTime members still convert on assignment; only the reinterpretation of strings stops.
+        DateParseHandling = DateParseHandling.None,
     };
 
     /// <summary>

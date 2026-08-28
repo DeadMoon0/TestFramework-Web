@@ -110,7 +110,7 @@ public sealed class SqlRowArtifactReference<TRow> : ArtifactReference<SqlRowArti
             SqlIdentifier,
             statement.Text,
             BuildKeyParameters(map, context.Variables),
-            System.Threading.CancellationToken.None).ConfigureAwait(false);
+            context.Deadline.Token).ConfigureAwait(false);
 
         return rows.Count == 0
             ? new ArtifactResolveResult<SqlRowArtifactDescriber<TRow>, SqlRowArtifactData<TRow>, SqlRowArtifactReference<TRow>> { Found = false }

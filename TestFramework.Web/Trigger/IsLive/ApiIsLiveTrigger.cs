@@ -82,7 +82,7 @@ internal sealed class ApiIsLiveTrigger(ApiIdentifier identifier, VariableReferen
                 probeUri,
                 triggerConfig,
                 context.Logger,
-                context.Deadline.Token).ConfigureAwait(false);
+                context.Deadline).ConfigureAwait(false);
 
             stopwatch.Stop();
 
@@ -113,7 +113,7 @@ internal sealed class ApiIsLiveTrigger(ApiIdentifier identifier, VariableReferen
         Uri probeUri,
         ApiTriggerConfig triggerConfig,
         ScopedLogger logger,
-        CancellationToken cancellationToken)
+        StepDeadline deadline)
     {
         // A freshly started local host answers 404 or 503 until its routes are live. Waiting that
         // out is this step's whole purpose, so it happens here rather than on every later call.
@@ -121,19 +121,35 @@ internal sealed class ApiIsLiveTrigger(ApiIdentifier identifier, VariableReferen
             && level != ApiAlivenessLevel.Reachable
             && triggerConfig.LocalWarmupRetryDuration > TimeSpan.Zero;
 
-        DateTime deadline = DateTime.UtcNow.Add(triggerConfig.LocalWarmupRetryDuration);
+        if (retryWarmup && triggerConfig.LocalWarmupRetryDelay <= TimeSpan.Zero)
+        {
+            throw new TestFramework.Core.Exceptions.FrameworkConfigurationException(
+                $"{nameof(ApiTriggerConfig)}.{nameof(ApiTriggerConfig.LocalWarmupRetryDelay)} is {triggerConfig.LocalWarmupRetryDelay}, which would poll without pause.",
+                ["Register an ApiTriggerConfig with a positive LocalWarmupRetryDelay, or leave the default in place."]);
+        }
+
+        // The warmup is this step's own budget, measured the way the step's deadline is - monotonic
+        // elapsed time, never the wall clock, whose ~15 ms ticks can disagree with a timer armed from the
+        // same figure. And it never outlives the step: when what remains of the deadline cannot fit
+        // another wait, the loop returns its last answer instead of dying mid-sleep as a bare
+        // cancellation - so the probe's own verdict, with the status it last saw and the ways out of it,
+        // is what the reader gets.
+        Stopwatch warmup = Stopwatch.StartNew();
         bool announced = false;
 
         while (true)
         {
             using HttpRequestMessage message = new(HttpMethod.Get, probeUri);
             if (level == ApiAlivenessLevel.Authenticated)
-                await new ConfiguredApiAuthenticationProvider(identifier, config).ApplyAsync(message, cancellationToken).ConfigureAwait(false);
+                await new ConfiguredApiAuthenticationProvider(identifier, config).ApplyAsync(message, deadline.Token).ConfigureAwait(false);
 
-            HttpResponseMessage response = await sender.SendAsync(message, cancellationToken).ConfigureAwait(false);
+            HttpResponseMessage response = await sender.SendAsync(message, deadline.Token).ConfigureAwait(false);
             bool warmupStatus = response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.ServiceUnavailable;
 
-            if (!retryWarmup || !warmupStatus || DateTime.UtcNow >= deadline)
+            if (!retryWarmup || !warmupStatus || warmup.Elapsed >= triggerConfig.LocalWarmupRetryDuration)
+                return response;
+
+            if (!deadline.IsUnbounded && deadline.Remaining <= triggerConfig.LocalWarmupRetryDelay)
                 return response;
 
             if (!announced)
@@ -150,7 +166,7 @@ internal sealed class ApiIsLiveTrigger(ApiIdentifier identifier, VariableReferen
             }
 
             response.Dispose();
-            await Task.Delay(triggerConfig.LocalWarmupRetryDelay, cancellationToken).ConfigureAwait(false);
+            await Task.Delay(triggerConfig.LocalWarmupRetryDelay, deadline.Token).ConfigureAwait(false);
         }
     }
 
@@ -160,17 +176,7 @@ internal sealed class ApiIsLiveTrigger(ApiIdentifier identifier, VariableReferen
         || string.Equals(uri.Host, "host.docker.internal", StringComparison.OrdinalIgnoreCase);
 
     private Uri BuildProbeUri(ApiConfig config, ApiAlivenessLevel level)
-    {
-        if (!Uri.TryCreate(config.BaseUrl, UriKind.Absolute, out Uri? baseUri))
-            throw ApiConfigurationValidationException.InvalidValue(identifier, nameof(ApiConfig.BaseUrl), $"'{config.BaseUrl}' is not an absolute URL");
-
-        if (level == ApiAlivenessLevel.Reachable)
-            return baseUri;
-
-        string healthPath = config.HealthPath.TrimStart('/');
-        string separator = baseUri.AbsoluteUri.EndsWith('/') ? string.Empty : "/";
-        return new Uri(baseUri.AbsoluteUri + separator + healthPath, UriKind.Absolute);
-    }
+        => HttpRequestSpec.Join(identifier, config.BaseUrl, level == ApiAlivenessLevel.Reachable ? string.Empty : config.HealthPath);
 
     private void EnsureProbeSucceeded(ApiAlivenessLevel level, HttpStatusCode statusCode, Uri probeUri)
     {

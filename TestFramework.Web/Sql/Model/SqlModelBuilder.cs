@@ -244,7 +244,15 @@ public sealed class SqlModelDefinition(Type modelType)
         }
 
         // Key order follows the order the keys were declared, which is the order the caller passes
-        // key values in.
+        // key values in. A key that was also ignored is refused by name rather than surfacing as a bare
+        // LINQ exception from the First below - the two calls contradict each other, and only the author
+        // knows which one they meant.
+        foreach (System.Reflection.PropertyInfo key in _keys)
+        {
+            if (!columns.Any(column => column.Property == key))
+                throw SqlModelMapException.KeyIgnored(ModelType, key.Name);
+        }
+
         List<SqlColumnMap> ordered = [
             .. _keys.Select(key => columns.First(column => column.Property == key)),
             .. columns.Where(column => !column.IsKey),

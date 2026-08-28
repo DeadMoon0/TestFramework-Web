@@ -95,7 +95,7 @@ public class DefaultSqlConfigProvider : ISqlConfigProvider
         if (string.IsNullOrWhiteSpace(value))
             return null;
 
-        if (TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out TimeSpan parsed) && parsed > TimeSpan.Zero)
+        if (ConfigValueRules.PositiveDuration(value, out TimeSpan parsed))
             return parsed;
 
         throw SqlConfigurationValidationException.InvalidValue(identifier, propertyName, $"'{value}' is not a positive time span. Use a value such as '00:00:30'");

@@ -8,10 +8,14 @@ namespace TestFramework.Web.Stub;
 /// Remembers, per stub identifier, the point in the stub's request log this run starts observing at.
 /// </summary>
 /// <remarks>
-/// Registered alongside the stub configuration store, so its lifetime is the run's service provider
-/// rather than the process: a static cache would reintroduce exactly the cross-run leak the
-/// watermark exists to prevent. The stored value is a timestamp from the stub's own clock, never
-/// from the test host's, because those two clocks are not comparable when the stub runs elsewhere.
+/// Registered as a singleton on the caller's service provider - not a static, which would leak across
+/// every run in the process. Note the honest limit of that: the scope is per <em>provider</em>, and only
+/// a run-scoped provider makes it per run. A fixture that shares one provider across runs shares the
+/// watermarks with it, and a run that skips <c>Reset</c> then inherits the previous run's window rather
+/// than the documented whole-log default; each run's own <c>Reset</c> overwrites the entry, which is why
+/// the shared-stub pattern always resets first. The stored value is a timestamp from the stub's own
+/// clock, never from the test host's, because those two clocks are not comparable when the stub runs
+/// elsewhere.
 /// </remarks>
 internal sealed class StubObservationScope
 {

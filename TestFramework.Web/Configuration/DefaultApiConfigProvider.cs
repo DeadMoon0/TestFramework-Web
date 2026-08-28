@@ -86,7 +86,7 @@ public class DefaultApiConfigProvider : IApiConfigProvider
         if (string.IsNullOrWhiteSpace(value))
             return ApiAuthMode.None;
 
-        if (Enum.TryParse(value, ignoreCase: true, out ApiAuthMode mode))
+        if (ConfigValueRules.DefinedEnum(value, out ApiAuthMode mode))
             return mode;
 
         throw ApiConfigurationValidationException.InvalidValue(
@@ -100,7 +100,7 @@ public class DefaultApiConfigProvider : IApiConfigProvider
         if (string.IsNullOrWhiteSpace(value))
             return null;
 
-        if (TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out TimeSpan parsed) && parsed > TimeSpan.Zero)
+        if (ConfigValueRules.PositiveDuration(value, out TimeSpan parsed))
             return parsed;
 
         throw ApiConfigurationValidationException.InvalidValue(

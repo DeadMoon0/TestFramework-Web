@@ -4,10 +4,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using TestFramework.Core.Artifacts;
 using TestFramework.Core.Environment;
+using TestFramework.Core.Environment.Graph;
 using TestFramework.Core.Logging;
 using TestFramework.Core.Steps;
 using TestFramework.Core.Steps.Options;
 using TestFramework.Core.Variables;
+using TestFramework.Web.Sql.Exceptions;
 using TestFramework.Web.Sql.Execution;
 
 namespace TestFramework.Web.Sql.Steps.IsLive;
@@ -136,10 +138,49 @@ public sealed class SqlIsLiveTrigger : Step<SqlIsLiveResult>, IHasEnvironmentReq
             ? "SELECT 1;"
             : "SELECT DB_NAME();";
 
-        await executor.ScalarAsync<string>(_sqlIdentifier, statement, new Dictionary<string, object?>(StringComparer.Ordinal), context.Deadline.Token).ConfigureAwait(false);
+        string? answered = await executor.ScalarAsync<string>(_sqlIdentifier, statement, new Dictionary<string, object?>(StringComparer.Ordinal), context.Deadline.Token).ConfigureAwait(false);
         stopwatch.Stop();
+
+        // The answer is compared, not merely fetched: running DB_NAME() and discarding the result proved
+        // only what Reachable already proves, while the summary claimed the configured database answered -
+        // a verbatim connection string without an Initial Catalog would have passed on the login's default
+        // database, which is precisely the case the two levels exist to tell apart.
+        if (level == SqlAlivenessLevel.Database)
+            EnsureConfiguredDatabaseAnswered(context, answered);
 
         context.Logger.LogInformation("SQL IsLive '{0}' succeeded in {1}.", _sqlIdentifier.ToString(), stopwatch.Elapsed);
         return new SqlIsLiveResult(_sqlIdentifier, level, connection, true, stopwatch.Elapsed);
+    }
+
+    /// <summary>
+    /// Compares what <c>DB_NAME()</c> answered against the database this run knows the identifier by.
+    /// </summary>
+    /// <remarks>
+    /// The expected name comes from the run - the same value the graph carries for everything else -
+    /// because that is what the test author stated or the container published. A run that holds no name
+    /// for the identifier cannot verify one, and saying so beats quietly passing on whatever database the
+    /// login defaults to.
+    /// </remarks>
+    private void EnsureConfiguredDatabaseAnswered(RunContext context, string? answered)
+    {
+        if (!context.Values.TryGet(
+                ValueRef.For(WebEnvironmentResourceKinds.Sql, _sqlIdentifier, WebEnvironmentResourceKinds.DatabaseNameValue),
+                ResourceVantage.Host,
+                out string? expected)
+            || expected is not { Length: > 0 })
+        {
+            throw SqlConfigurationValidationException.InvalidValue(
+                _sqlIdentifier.ToString(),
+                nameof(SqlConfig.Database),
+                $"the run holds no database name to verify against. Set 'Sql:{_sqlIdentifier}:Database', or probe at {nameof(SqlAlivenessLevel.Reachable)} level");
+        }
+
+        if (!string.Equals(answered, expected, StringComparison.OrdinalIgnoreCase))
+        {
+            throw SqlConfigurationValidationException.InvalidValue(
+                _sqlIdentifier.ToString(),
+                nameof(SqlConfig.Database),
+                $"the connection answered as database '{answered}' where '{expected}' was configured. The connection string points at a different catalog than the entry claims");
+        }
     }
 }

@@ -7,9 +7,8 @@ namespace TestFramework.Web.Configuration;
 /// Configuration required to call a REST API.
 /// </summary>
 /// <remarks>
-/// The identifier maps to a named entry under the <c>Api</c> section. Only
-/// Every value has a usable default, and an entry may leave the address open for something that
-/// supplies it later.
+/// The identifier maps to a named entry under the <c>Api</c> section. Every value has a usable default,
+/// and an entry may leave the address open for something that supplies it later.
 /// </remarks>
 public record ApiConfig
 {

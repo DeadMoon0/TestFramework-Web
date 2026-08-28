@@ -97,14 +97,33 @@ public class SqlResourceTests(ITestOutputHelper output)
     [Fact]
     public async Task ADatabaseTheRunStartedNeedsNoConfigurationEntryAtAll()
     {
-        // Entry 21's case, and for SQL it is the sharpest one: the package's own provider refuses an entry
-        // with neither a connection string nor a server while *loading*, so a container-only database cannot
-        // be written down at all. A produced connection string is complete on its own.
+        // Entry 21's case: a container-only database needs no entry at all, and a produced connection
+        // string is complete on its own.
         TimelineRun run = await Run(new PublishingEnvironment("orders-db", "Server=127.0.0.1,49999;Database=orders", database: "orders"));
 
         run.EnsureRanToCompletion();
 
         Assert.Equal("Server=127.0.0.1,49999;Database=orders", run.VariableStore.GetVariable<string>("connection"));
+        Assert.Equal("orders", run.VariableStore.GetVariable<string>("database"));
+    }
+
+    [Fact]
+    public async Task ANameOnlyEntryDeclaresTheNameAndCrashesNothing()
+    {
+        // The other half of entry 21, and a regression its tests did not cover: the provider deliberately
+        // accepts an entry that only names the database, so the shape meets one while composing the graph.
+        // Its "does this entry have coordinates" guard caught the wrong exception type, so this exact run -
+        // a name in the file, the address published by the container - died at composition instead of
+        // publishing the name and letting the produced connection answer.
+        TimelineRun run = await Run(
+            new PublishingEnvironment("orders-db", "Server=127.0.0.1,49999;Database=orders"),
+            configured: [("Sql:orders-db:Database", "orders")]);
+
+        run.EnsureRanToCompletion();
+
+        Assert.Equal("Server=127.0.0.1,49999;Database=orders", run.VariableStore.GetVariable<string>("connection"));
+
+        // The name came from the file - the one thing the entry said, published as declared.
         Assert.Equal("orders", run.VariableStore.GetVariable<string>("database"));
     }
 

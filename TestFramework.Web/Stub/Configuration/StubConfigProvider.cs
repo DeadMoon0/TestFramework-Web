@@ -78,7 +78,7 @@ public class DefaultStubConfigProvider : IStubConfigProvider
         if (string.IsNullOrWhiteSpace(value))
             return null;
 
-        if (Enum.TryParse(value, ignoreCase: true, out StubResetMode parsed) && Enum.IsDefined(parsed))
+        if (ConfigValueRules.DefinedEnum(value, out StubResetMode parsed))
             return parsed;
 
         throw StubConfigurationValidationException.InvalidValue(
@@ -103,7 +103,7 @@ public class DefaultStubConfigProvider : IStubConfigProvider
         if (string.IsNullOrWhiteSpace(value))
             return null;
 
-        if (TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out TimeSpan parsed) && parsed > TimeSpan.Zero)
+        if (ConfigValueRules.PositiveDuration(value, out TimeSpan parsed))
             return parsed;
 
         throw StubConfigurationValidationException.InvalidValue(identifier, propertyName, $"'{value}' is not a positive time span. Use a value such as '00:00:00.250'");

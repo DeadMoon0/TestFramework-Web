@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.Extensions.DependencyInjection;
 using System.Threading;
 using System.Threading.Tasks;
 using TestFramework.Core.Artifacts;
@@ -84,7 +85,15 @@ public sealed class SqlScalarStep<TValue> : SqlStepBase<SqlScalarResult<TValue>>
         TValue? value = await executor.ScalarAsync<TValue>(SqlIdentifier, Statement, parameters, context.Deadline.Token).ConfigureAwait(false);
         stopwatch.Stop();
 
-        context.Logger.LogInformation("SQL '{0}' <- {1} in {2}", SqlIdentifier.ToString(), value?.ToString() ?? "null", stopwatch.Elapsed);
+        // Gated the way parameter values are, and for the same reason: a scalar read is real data - a
+        // secret or a personal column lands in the log otherwise, with no opt-out. The value still reaches
+        // the result and the run; only the log line withholds it.
+        SqlStepConfig stepConfig = context.Services.GetService<SqlStepConfig>() ?? new SqlStepConfig();
+        string logged = stepConfig.LogParameterValues
+            ? value?.ToString() ?? "null"
+            : $"({typeof(TValue).Name}; enable {nameof(SqlStepConfig)}.{nameof(SqlStepConfig.LogParameterValues)} to log values)";
+
+        context.Logger.LogInformation("SQL '{0}' <- {1} in {2}", SqlIdentifier.ToString(), logged, stopwatch.Elapsed);
         return new SqlScalarResult<TValue>(SqlIdentifier, value, stopwatch.Elapsed);
     }
 }

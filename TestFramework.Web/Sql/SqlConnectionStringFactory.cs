@@ -10,6 +10,26 @@ namespace TestFramework.Web.Sql;
 public static class SqlConnectionStringFactory
 {
     /// <summary>
+    /// Whether the entry says where the database is at all.
+    /// </summary>
+    /// <remarks>
+    /// The question a shape asks before composing: an entry that only names a database - a complete thing
+    /// to say about one a container has yet to create - has no coordinates yet and publishes nothing,
+    /// which is an answer rather than a failure. It lives here beside the refusal in
+    /// <see cref="Create"/> so the two cannot come to different conclusions about what "has an address"
+    /// means; asking by catching the refusal was tried and swallowed real misconfigurations - a malformed
+    /// connection string read as "no coordinates yet".
+    /// </remarks>
+    /// <param name="config">The entry.</param>
+    /// <returns>True when composing can be asked to succeed.</returns>
+    public static bool HasCoordinates(SqlConfig config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+
+        return !string.IsNullOrWhiteSpace(config.ConnectionString) || !string.IsNullOrWhiteSpace(config.Server);
+    }
+
+    /// <summary>
     /// Builds the connection string for an identifier.
     /// </summary>
     /// <param name="identifier">The SQL identifier being resolved, used for error messages.</param>

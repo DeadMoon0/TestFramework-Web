@@ -148,7 +148,7 @@ internal sealed class ApiShape(IApiConfigProvider provider) : ConfigShape<ApiCon
         {
             config = config with
             {
-                Auth = Enum.TryParse(auth, ignoreCase: true, out ApiAuthMode parsed)
+                Auth = ConfigValueRules.DefinedEnum(auth, out ApiAuthMode parsed)
                     ? parsed
                     : throw Unreadable(auth, identifier, nameof(ApiConfig.Auth), string.Join(" or ", Enum.GetNames<ApiAuthMode>())),
             };
@@ -168,9 +168,9 @@ internal sealed class ApiShape(IApiConfigProvider provider) : ConfigShape<ApiCon
         {
             config = config with
             {
-                RequestTimeout = TimeSpan.TryParse(requestTimeout, CultureInfo.InvariantCulture, out TimeSpan parsed)
+                RequestTimeout = ConfigValueRules.PositiveDuration(requestTimeout, out TimeSpan parsed)
                     ? parsed
-                    : throw Unreadable(requestTimeout, identifier, nameof(ApiConfig.RequestTimeout), "a duration such as '00:00:30'"),
+                    : throw Unreadable(requestTimeout, identifier, nameof(ApiConfig.RequestTimeout), "a positive duration such as '00:00:30'"),
             };
         }
 

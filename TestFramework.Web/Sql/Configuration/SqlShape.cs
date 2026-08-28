@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using TestFramework.Config.Configuration;
 using TestFramework.Core.Environment.Graph;
 using TestFramework.Core.Exceptions;
+using TestFramework.Web.Configuration;
 
 namespace TestFramework.Web.Sql.Configuration;
 
@@ -18,12 +19,11 @@ namespace TestFramework.Web.Sql.Configuration;
 /// the package's existing factory rather than a second implementation here.
 /// </para>
 /// <para>
-/// An entry that holds neither publishes nothing rather than failing. Note that this package's own provider
-/// does not currently allow such an entry - it refuses a section with no <c>Server</c> and no
-/// <c>ConnectionString</c> while loading, before a shape sees it - so the guard is for a caller who supplied a
-/// provider that permits one. It is also the shape a container-provisioned database wants, which is worth
-/// knowing when the producing half of the graph arrives: a database something is about to create has a name
-/// before it has coordinates.
+/// An entry that holds neither publishes nothing rather than failing. That is the ordinary shape for a
+/// container-provisioned database - it has a name before it has coordinates, and this package's own provider
+/// deliberately accepts a name-only entry - so the case arrives through the default provider, not only
+/// through a caller's own. The address the entry does not have is refused where something tries to connect,
+/// by the factory.
 /// </para>
 /// </remarks>
 /// <param name="provider">Reads an entry, including whatever validation the caller configured.</param>
@@ -109,10 +109,10 @@ internal sealed class SqlShape(ISqlConfigProvider provider) : ConfigShape<SqlCon
         {
             config = config with
             {
-                CommandTimeout = TimeSpan.TryParse(commandTimeout, CultureInfo.InvariantCulture, out TimeSpan parsed)
+                CommandTimeout = ConfigValueRules.PositiveDuration(commandTimeout, out TimeSpan parsed)
                     ? parsed
                     : throw new FrameworkConfigurationException(
-                        $"The run holds '{commandTimeout}' as {WebEnvironmentResourceKinds.CommandTimeoutValue} for database '{identifier}', which cannot be read as a duration such as '00:00:30'.",
+                        $"The run holds '{commandTimeout}' as {WebEnvironmentResourceKinds.CommandTimeoutValue} for database '{identifier}', which cannot be read as a positive duration such as '00:00:30'.",
                         [
                             $"Correct 'Sql:{identifier}:{WebEnvironmentResourceKinds.CommandTimeoutValue}', or the environment component that publishes it.",
                         ]),
@@ -129,21 +129,23 @@ internal sealed class SqlShape(ISqlConfigProvider provider) : ConfigShape<SqlCon
     /// The connection string this entry amounts to, or null when it does not amount to one yet.
     /// </summary>
     /// <remarks>
-    /// The factory refuses an entry with neither a connection string nor a server and database, and refusing
-    /// is right when something is about to connect. Here it is a question rather than a demand - "does this
-    /// entry already say where the database is" - so the refusal is an answer of no, not a failure of the run.
-    /// Unreachable through this package's default provider, which refuses such an entry earlier; reachable
-    /// through a caller's own.
+    /// "Does this entry already say where the database is" is asked of the factory, which owns that rule,
+    /// rather than answered by catching its refusal. The catch was tried and was wrong twice over: it named
+    /// the wrong exception type, so a name-only entry crashed graph composition instead of publishing
+    /// nothing - and once the type was right it would have swallowed real misconfigurations, reading a
+    /// malformed connection string as "no coordinates yet". An entry with coordinates that still cannot
+    /// compose is a load-time refusal with the factory's own message, which is what it always should have
+    /// been.
     /// </remarks>
     private static string? Connectable(SqlConfig config)
     {
-        try
-        {
-            return SqlConnectionStringFactory.Create("configuration", config);
-        }
-        catch (FrameworkConfigurationException)
+        if (!SqlConnectionStringFactory.HasCoordinates(config))
         {
             return null;
         }
+
+        // The shape never learns the identifier - Values(config) is the whole signature - so the entry's
+        // own database name is the best label a composition failure can carry.
+        return SqlConnectionStringFactory.Create(config.Database is { Length: > 0 } database ? database : "the Sql entry", config);
     }
 }

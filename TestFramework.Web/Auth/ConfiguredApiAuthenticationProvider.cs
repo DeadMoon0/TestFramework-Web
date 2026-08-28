@@ -50,8 +50,16 @@ public sealed class ConfiguredApiAuthenticationProvider(string identifier, ApiCo
                 break;
 
             case ApiAuthMode.None:
-            default:
                 break;
+
+            default:
+                // A mode this switch has no arm for is a defined enum value nobody taught this provider to
+                // apply - sending the request without credentials would turn a gap in this file into an
+                // unauthenticated call that reads like the server rejecting a valid one.
+                throw ApiConfigurationValidationException.InvalidValue(
+                    identifier,
+                    nameof(ApiConfig.Auth),
+                    $"'{config.Auth}' is a mode this provider does not know how to apply. Use one of: {string.Join(", ", Enum.GetNames<ApiAuthMode>())}");
         }
 
         return Task.CompletedTask;

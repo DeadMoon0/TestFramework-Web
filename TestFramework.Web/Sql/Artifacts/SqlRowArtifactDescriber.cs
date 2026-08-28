@@ -88,7 +88,7 @@ public sealed class SqlRowArtifactDescriber<TRow> : ArtifactDescriber<SqlRowArti
         IReadOnlyDictionary<string, object?> keyParameters = reference.BuildKeyParameters(map, context.Variables);
 
         SqlStatement exists = SqlStatementBuilder.ExistsByKey(map);
-        int found = await executor.ScalarAsync<int>(reference.SqlIdentifier, exists.Text, keyParameters, CancellationToken.None).ConfigureAwait(false);
+        int found = await executor.ScalarAsync<int>(reference.SqlIdentifier, exists.Text, keyParameters, context.Deadline.Token).ConfigureAwait(false);
 
         if (found > 0)
         {
@@ -103,7 +103,7 @@ public sealed class SqlRowArtifactDescriber<TRow> : ArtifactDescriber<SqlRowArti
                 reference.SqlIdentifier,
                 update.Text,
                 BuildUpdateParameters(map, data.Row, keyParameters),
-                CancellationToken.None).ConfigureAwait(false);
+                context.Deadline.Token).ConfigureAwait(false);
 
             context.Logger.LogInformation("SQL row '{0}' updated in '{1}'.", map.ToString(), reference.SqlIdentifier.ToString());
             return;
@@ -114,7 +114,7 @@ public sealed class SqlRowArtifactDescriber<TRow> : ArtifactDescriber<SqlRowArti
             reference.SqlIdentifier,
             insert.Text,
             BuildInsertParameters(map, data.Row),
-            CancellationToken.None).ConfigureAwait(false);
+            context.Deadline.Token).ConfigureAwait(false);
 
         context.Logger.LogInformation("SQL row '{0}' inserted into '{1}'.", map.ToString(), reference.SqlIdentifier.ToString());
     }
@@ -136,7 +136,7 @@ public sealed class SqlRowArtifactDescriber<TRow> : ArtifactDescriber<SqlRowArti
             reference.SqlIdentifier,
             delete.Text,
             reference.BuildKeyParameters(map, context.Variables),
-            CancellationToken.None).ConfigureAwait(false);
+            context.Deadline.Token).ConfigureAwait(false);
 
         context.Logger.LogInformation(
             affected > 0 ? "SQL row '{0}' deleted from '{1}'." : "SQL row '{0}' was already gone in '{1}'.",

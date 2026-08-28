@@ -5,6 +5,7 @@ using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using TestFramework.Config.Configuration;
 using TestFramework.Core.Environment.Graph;
+using TestFramework.Web.Configuration;
 
 namespace TestFramework.Web.Stub.Configuration;
 
@@ -133,9 +134,9 @@ internal sealed class StubShape(IStubConfigProvider provider) : ConfigShape<Stub
     }
 
     private static TimeSpan ParseTimeSpan(string value, string identifier, string valueName)
-        => TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out TimeSpan parsed)
+        => ConfigValueRules.PositiveDuration(value, out TimeSpan parsed)
             ? parsed
-            : throw Unparseable(value, identifier, valueName, "a duration such as '00:00:00.250'");
+            : throw Unparseable(value, identifier, valueName, "a positive duration such as '00:00:00.250'");
 
     private static bool ParseBool(string value, string identifier, string valueName)
         => bool.TryParse(value, out bool parsed)
@@ -143,7 +144,7 @@ internal sealed class StubShape(IStubConfigProvider provider) : ConfigShape<Stub
             : throw Unparseable(value, identifier, valueName, "'true' or 'false'");
 
     private static StubResetMode ParseResetMode(string value, string identifier)
-        => Enum.TryParse(value, ignoreCase: true, out StubResetMode parsed)
+        => ConfigValueRules.DefinedEnum(value, out StubResetMode parsed)
             ? parsed
             : throw Unparseable(value, identifier, WebEnvironmentResourceKinds.ResetModeValue, string.Join(" or ", Enum.GetNames<StubResetMode>()));
 

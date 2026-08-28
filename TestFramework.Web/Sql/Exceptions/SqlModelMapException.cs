@@ -28,6 +28,29 @@ public sealed class SqlModelMapException : TimelineFrameworkException
     }
 
     /// <summary>
+    /// Creates an exception for a property declared as a key and also ignored.
+    /// </summary>
+    /// <remarks>
+    /// The two calls contradict each other and only the author knows which was meant, so the model is
+    /// refused by name - the alternative was a bare LINQ exception from the lookup that could not find
+    /// the ignored key among the mapped columns.
+    /// </remarks>
+    /// <param name="modelType">The model type being mapped.</param>
+    /// <param name="key">The property that is both key and ignored.</param>
+    /// <returns>The exception describing the contradiction.</returns>
+    public static SqlModelMapException KeyIgnored(Type modelType, string key)
+    {
+        ArgumentNullException.ThrowIfNull(modelType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        return new SqlModelMapException(
+            $"'{modelType.Name}.{key}' is declared as a key and also ignored, so the model cannot be mapped.",
+            [
+                $"Remove either .Key(x => x.{key}) or .Ignore(x => x.{key}) - a key column cannot be left unmapped.",
+            ]);
+    }
+
+    /// <summary>
     /// Creates an exception for a model that has no mappable properties.
     /// </summary>
     /// <param name="modelType">The model type being mapped.</param>

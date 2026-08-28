@@ -98,16 +98,8 @@ public sealed class HttpRequestSpec
     /// <returns>The absolute request URI.</returns>
     public Uri ResolveUri(string identifier, string baseUrl)
     {
-        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out Uri? baseUri))
-            throw ApiConfigurationValidationException.InvalidValue(identifier, nameof(Configuration.ApiConfig.BaseUrl), $"'{baseUrl}' is not an absolute URL");
-
         string resolvedPath = SubstituteRouteValues(identifier, Path);
-
-        // A leading slash on the relative part would discard any base path, which is never what a
-        // configured base URL like "http://host/api-root/" is meant to do.
-        string relative = resolvedPath.TrimStart('/');
-        string separator = baseUri.AbsoluteUri.EndsWith('/') ? string.Empty : "/";
-        Uri absolute = new(baseUri.AbsoluteUri + separator + relative, UriKind.Absolute);
+        Uri absolute = Join(identifier, baseUrl, resolvedPath);
 
         if (_query.Count == 0)
             return absolute;
@@ -118,6 +110,35 @@ public sealed class HttpRequestSpec
             $"{Uri.EscapeDataString(pair.Key)}={Uri.EscapeDataString(pair.Value)}")));
 
         return new Uri(builder.ToString(), UriKind.Absolute);
+    }
+
+    /// <summary>
+    /// The one rule for how a base URL and a relative path become a URI.
+    /// </summary>
+    /// <remarks>
+    /// One rule literally rather than aspirationally: the liveness probe used to carry its own copy of
+    /// this join, identical by luck, which is exactly the drift the remark at the top of this file claims
+    /// cannot happen. A leading slash on the relative part would discard any base path, which is never
+    /// what a configured base URL like <c>http://host/api-root/</c> is meant to do; an empty path is the
+    /// base itself.
+    /// </remarks>
+    /// <param name="identifier">The API identifier, used for error messages.</param>
+    /// <param name="baseUrl">The configured base URL.</param>
+    /// <param name="path">The relative path, or empty for the base itself.</param>
+    /// <returns>The absolute URI.</returns>
+    internal static Uri Join(string identifier, string? baseUrl, string path)
+    {
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out Uri? baseUri))
+            throw ApiConfigurationValidationException.InvalidValue(identifier, nameof(Configuration.ApiConfig.BaseUrl), $"'{baseUrl}' is not an absolute URL");
+
+        string relative = path.TrimStart('/');
+
+        if (relative.Length == 0)
+            return baseUri;
+
+        string separator = baseUri.AbsoluteUri.EndsWith('/') ? string.Empty : "/";
+
+        return new Uri(baseUri.AbsoluteUri + separator + relative, UriKind.Absolute);
     }
 
     /// <summary>
