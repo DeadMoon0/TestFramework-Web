@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.Data.SqlClient;
 using TestFramework.Web.Sql.Exceptions;
 
@@ -52,8 +52,15 @@ public static class SqlConnectionStringFactory
 
     private static SqlConnectionStringBuilder CreateFromParts(string identifier, SqlConfig config)
     {
+        // The only place the absence is a failure rather than a fact, so it is the only place that says so.
+        // Both roads are named because both are normal: a person writes the address down, or the thing that
+        // creates the database publishes it while starting.
         if (string.IsNullOrWhiteSpace(config.Server))
-            throw SqlConfigurationValidationException.InvalidValue(identifier, nameof(SqlConfig.Server), "no Server and no ConnectionString were configured");
+            throw SqlConfigurationValidationException.InvalidValue(
+                identifier,
+                nameof(SqlConfig.Server),
+                "the run holds no address for it. Set 'Sql:" + identifier + ":ConnectionString' or 'Sql:" + identifier
+                    + ":Server', or include the definition that provisions the database so it publishes one when it starts");
 
         if (string.IsNullOrWhiteSpace(config.Database))
             throw SqlConfigurationValidationException.InvalidValue(identifier, nameof(SqlConfig.Database), "no Database and no ConnectionString were configured");

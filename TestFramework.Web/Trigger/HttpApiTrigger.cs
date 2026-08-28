@@ -67,7 +67,7 @@ internal sealed class HttpApiTrigger(ApiIdentifier identifier, ComposedRequestVa
         ApiConfig config = context.Configured<ApiConfig>(identifier);
         ApiTriggerConfig triggerConfig = context.Services.GetService<ApiTriggerConfig>() ?? new ApiTriggerConfig();
 
-        Uri requestUri = spec.ResolveUri(identifier, config.BaseUrl);
+        Uri requestUri = spec.ResolveUri(identifier, config.BaseUrlRequired);
         IHttpSender sender = context.Services.GetWebComponentFactory().CreateSender(identifier, config);
         IApiAuthenticationProvider authentication = ResolveAuthentication(spec, context.Variables, config);
 

@@ -55,15 +55,28 @@ public class ApiConfigurationTests
     }
 
     [Fact]
-    public void LoadApiConfig_Throws_WhenBaseUrlIsMissing()
+    /// <summary>
+    /// An entry may state everything except where the thing is.
+    /// </summary>
+    /// <remarks>
+    /// The reversal of a load-time refusal, and deliberate: a resource a container is about to start has no
+    /// address to state, so demanding one forced a placeholder nobody dials. What is not relaxed is using it
+    /// - the shape refuses to rebuild a record without an address, so the failure lands where something is
+    /// about to connect rather than where somebody wrote a file.
+    /// </remarks>
+    public void LoadApiConfig_AcceptsAnEntryWithNoAddress()
     {
         IConfiguration configuration = BuildConfiguration(("Api:orders:Auth", "None"));
 
-        ApiConfigurationValidationException exception = Assert.Throws<ApiConfigurationValidationException>(
-            () => new DefaultApiConfigProvider().LoadApiConfig(configuration, "orders"));
+        ApiConfig config = new DefaultApiConfigProvider().LoadApiConfig(configuration, "orders");
 
-        Assert.Contains("BaseUrl", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("Api:orders:BaseUrl", exception.Message, StringComparison.Ordinal);
+        Assert.Null(config.BaseUrl);
+        Assert.Equal(ApiAuthMode.None, config.Auth);
+
+        // Using it is still refused, and says both ways to supply one.
+        FrameworkConfigurationException refused = Assert.Throws<FrameworkConfigurationException>(() => config.BaseUrlRequired);
+        Assert.Contains("nothing to call", refused.Message, StringComparison.Ordinal);
+        Assert.Contains("publishes one when it starts", refused.ToString(), StringComparison.Ordinal);
     }
 
     [Theory]

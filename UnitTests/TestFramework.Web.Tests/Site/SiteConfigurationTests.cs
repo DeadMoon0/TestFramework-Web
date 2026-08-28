@@ -45,15 +45,26 @@ public class SiteConfigurationTests
     }
 
     [Fact]
-    public void LoadSiteConfig_Throws_WhenBaseUrlIsMissing()
+    /// <summary>
+    /// An entry may state everything except where the thing is.
+    /// </summary>
+    /// <remarks>
+    /// The reversal of a load-time refusal, and deliberate: a resource a container is about to start has no
+    /// address to state, so demanding one forced a placeholder nobody dials. What is not relaxed is using it
+    /// - the shape refuses to rebuild a record without an address, so the failure lands where something is
+    /// about to connect rather than where somebody wrote a file.
+    /// </remarks>
+    public void LoadSiteConfig_AcceptsAnEntryWithNoAddress()
     {
         IConfiguration configuration = BuildConfiguration(("Site:shop:AllowInvalidCertificates", "true"));
 
-        SiteConfigurationValidationException exception = Assert.Throws<SiteConfigurationValidationException>(
-            () => new DefaultSiteConfigProvider().LoadSiteConfig(configuration, "shop"));
+        SiteConfig config = new DefaultSiteConfigProvider().LoadSiteConfig(configuration, "shop");
 
-        Assert.Contains("BaseUrl", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("Site:shop:BaseUrl", exception.Message, StringComparison.Ordinal);
+        Assert.Null(config.BaseUrl);
+        Assert.True(config.AllowInvalidCertificates);
+
+        FrameworkConfigurationException refused = Assert.Throws<FrameworkConfigurationException>(() => config.BaseUrlRequired);
+        Assert.Contains("nothing to call", refused.Message, StringComparison.Ordinal);
     }
 
     [Fact]

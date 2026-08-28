@@ -51,9 +51,9 @@ public class DefaultStubConfigProvider : IStubConfigProvider
         ArgumentNullException.ThrowIfNull(configuration);
         IConfigurationSection section = configuration.GetSection(StubSelector).GetSection(identifier);
 
+        // Not refused for having no address - see ApiConfig.BaseUrl for why. The shape's rebuild is where a
+        // stub nobody can reach becomes a failure.
         string? baseUrl = section.GetSection(nameof(StubConfig.BaseUrl)).Value;
-        if (string.IsNullOrWhiteSpace(baseUrl))
-            throw StubConfigurationValidationException.InvalidValue(identifier, nameof(StubConfig.BaseUrl), "no BaseUrl was configured");
 
         StubConfig config = new()
         {

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
@@ -60,12 +60,12 @@ public class DefaultApiConfigProvider : IApiConfigProvider
         ArgumentNullException.ThrowIfNull(configuration);
         IConfigurationSection section = configuration.GetSection(ApiSelector).GetSection(identifier);
 
-        string baseUrl = section.GetSection(nameof(ApiConfig.BaseUrl)).Value
-            ?? throw ApiConfigurationValidationException.InvalidValue(identifier, nameof(ApiConfig.BaseUrl), "the value is missing");
-
+        // Not refused for having no address. An entry may state everything about an API except where it is,
+        // which is the whole truth about one a container has yet to start; the refusal belongs where
+        // something tries to call it, and ApiShape.Read is where that lands.
         ApiConfig config = new()
         {
-            BaseUrl = baseUrl,
+            BaseUrl = section.GetSection(nameof(ApiConfig.BaseUrl)).Value,
             Auth = ParseAuthMode(identifier, section.GetSection(nameof(ApiConfig.Auth)).Value),
             ApiKeyHeaderName = section.GetSection(nameof(ApiConfig.ApiKeyHeaderName)).Value,
             ApiKey = section.GetSection(nameof(ApiConfig.ApiKey)).Value,

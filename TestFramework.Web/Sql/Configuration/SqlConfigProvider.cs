@@ -65,9 +65,14 @@ public class DefaultSqlConfigProvider : ISqlConfigProvider
             CommandTimeout = ParseTimeSpan(identifier, nameof(SqlConfig.CommandTimeout), section.GetSection(nameof(SqlConfig.CommandTimeout)).Value),
         };
 
-        if (string.IsNullOrWhiteSpace(config.ConnectionString) && string.IsNullOrWhiteSpace(config.Server))
-            throw SqlConfigurationValidationException.InvalidValue(identifier, nameof(SqlConfig.Server), "neither ConnectionString nor Server was configured");
-
+        // Deliberately not refused here for having no coordinates. An entry may say only what a database is
+        // called - which is a complete thing to say about one a container has yet to create, and the only
+        // thing anybody can say about it before it exists. Demanding a server at load time forced the two
+        // bad answers this migration exists to remove: a placeholder nobody dials, or the container writing
+        // its address back into the configuration.
+        //
+        // What is missing is not a value but an address, and "there is nowhere to connect" is only a failure
+        // where something tries to. That refusal lives in SqlConnectionStringFactory.
         return config;
     }
 

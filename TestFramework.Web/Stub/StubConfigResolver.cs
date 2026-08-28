@@ -59,7 +59,7 @@ public static class StubConfigResolver
 
         return new HttpClient(handler, disposeHandler: true)
         {
-            BaseAddress = new Uri(config.BaseUrl, UriKind.Absolute),
+            BaseAddress = new Uri(config.BaseUrlRequired, UriKind.Absolute),
             Timeout = Timeout.InfiniteTimeSpan,
         };
     }

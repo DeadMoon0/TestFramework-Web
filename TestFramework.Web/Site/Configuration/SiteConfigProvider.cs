@@ -50,9 +50,9 @@ public class DefaultSiteConfigProvider : ISiteConfigProvider
         ArgumentNullException.ThrowIfNull(configuration);
         IConfigurationSection section = configuration.GetSection(SiteSelector).GetSection(identifier);
 
+        // Not refused for having no address - see ApiConfig.BaseUrl for why. The shape's rebuild is where
+        // something nobody can reach becomes a failure.
         string? baseUrl = section.GetSection(nameof(SiteConfig.BaseUrl)).Value;
-        if (string.IsNullOrWhiteSpace(baseUrl))
-            throw SiteConfigurationValidationException.InvalidValue(identifier, nameof(SiteConfig.BaseUrl), "no BaseUrl was configured");
 
         return new SiteConfig
         {

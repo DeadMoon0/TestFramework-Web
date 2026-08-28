@@ -40,15 +40,46 @@ public class SqlConfigurationTests
         Assert.Equal(TimeSpan.FromSeconds(45), config.CommandTimeout);
     }
 
+    /// <summary>
+    /// An entry may say only what the database is called.
+    /// </summary>
+    /// <remarks>
+    /// This used to be refused while loading, which made a database a container has yet to create
+    /// inexpressible: the only truthful thing to say about one before it exists is its name. The reversal
+    /// is deliberate - a schema is an upper bound rather than a demand, so an entry holds what it actually
+    /// got, and the address arrives from whatever creates the database.
+    /// </remarks>
     [Fact]
-    public void LoadSqlConfig_Throws_WhenNeitherConnectionStringNorServerIsConfigured()
+    public void LoadSqlConfig_AcceptsAnEntryThatOnlyNamesTheDatabase()
     {
         IConfiguration configuration = BuildConfiguration(("Sql:main:Database", "SampleDb"));
 
-        SqlConfigurationValidationException exception = Assert.Throws<SqlConfigurationValidationException>(
-            () => new DefaultSqlConfigProvider().LoadSqlConfig(configuration, "main"));
+        SqlConfig config = new DefaultSqlConfigProvider().LoadSqlConfig(configuration, "main");
 
+        Assert.Equal("SampleDb", config.Database);
+        Assert.Null(config.ConnectionString);
+        Assert.Null(config.Server);
+    }
+
+    /// <summary>
+    /// Connecting is where having no address becomes a failure, and the message names both ways to fix it.
+    /// </summary>
+    /// <remarks>
+    /// The refusal moved rather than disappeared. Loading is the wrong place for it because an entry with
+    /// no coordinates is a normal entry there; connecting is the only place "there is nowhere to dial" is
+    /// news.
+    /// </remarks>
+    [Fact]
+    public void ConnectingWithoutAnAddressNamesBothWaysToSupplyOne()
+    {
+        SqlConfig named = new SqlConfig { Database = "SampleDb" };
+
+        SqlConfigurationValidationException exception = Assert.Throws<SqlConfigurationValidationException>(
+            () => SqlConnectionStringFactory.Create("main", named));
+
+        Assert.Contains("Sql:main:ConnectionString", exception.Message, StringComparison.Ordinal);
         Assert.Contains("Sql:main:Server", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("publishes one when it starts", exception.Message, StringComparison.Ordinal);
     }
 
     [Theory]

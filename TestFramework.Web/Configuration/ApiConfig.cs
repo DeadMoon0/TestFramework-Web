@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using TestFramework.Web.Auth;
 
 namespace TestFramework.Web.Configuration;
@@ -8,14 +8,45 @@ namespace TestFramework.Web.Configuration;
 /// </summary>
 /// <remarks>
 /// The identifier maps to a named entry under the <c>Api</c> section. Only
-/// <see cref="BaseUrl"/> is required; every other value has a usable default.
+/// Every value has a usable default, and an entry may leave the address open for something that
+/// supplies it later.
 /// </remarks>
 public record ApiConfig
 {
     /// <summary>
-    /// Absolute API host URL, for example <c>https://my-api.example.com/</c>.
+    /// Where it answers, when that is known yet.
     /// </summary>
-    public required string BaseUrl { get; init; }
+    /// <remarks>
+    /// <para>
+    /// Absent is a normal entry rather than an incomplete one. A resource a container is about to start has
+    /// no address until it does, and the rest of the entry - a health path, an auth mode, a poll interval -
+    /// is perfectly statable in advance. Requiring one here forced a placeholder nobody dials.
+    /// </para>
+    /// <para>
+    /// A record rebuilt from a run still always has one: the shape refuses to rebuild without an address, so
+    /// anything holding one of these because a step asked for it can rely on this. Only an entry read
+    /// straight out of configuration may leave it open.
+    /// </para>
+    /// </remarks>
+    public string? BaseUrl { get; init; }
+
+    /// <summary>
+    /// The address, for something about to use it.
+    /// </summary>
+    /// <remarks>
+    /// The invariant stated once rather than asserted at each call site. A record rebuilt from a run always
+    /// has an address - the shape refuses to rebuild without one - so this cannot fail for a config a step
+    /// was handed; it can only fail for an entry somebody read straight out of configuration and then tried
+    /// to connect with, which is the case that deserves a sentence rather than a null reference.
+    /// </remarks>
+    /// <exception cref="TestFramework.Core.Exceptions.FrameworkConfigurationException">The entry states no address.</exception>
+    public string BaseUrlRequired
+        => this.BaseUrl is { Length: > 0 } baseUrl
+            ? baseUrl
+            : throw new TestFramework.Core.Exceptions.FrameworkConfigurationException(
+                "This entry states no address, so there is nothing to call.",
+                ["Set its BaseUrl, or include the definition that provisions it so it publishes one when it starts."]);
+
 
     /// <summary>
     /// Relative path probed by health-level liveness checks. Defaults to <c>/health</c>.
