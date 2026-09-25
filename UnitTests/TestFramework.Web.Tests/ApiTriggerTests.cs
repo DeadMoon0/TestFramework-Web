@@ -304,14 +304,26 @@ public class ApiTriggerTests(SampleApiFixture fixture)
             .Trigger(WebExt.Api.Http("not-registered").Get("api/items").Call()).Name("unknown")
             .Build();
 
-        TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
+        // Where it fails depends on the engine: from TestFramework.Core 0.6.0 the run is refused while it is
+        // planned, because nothing declares the identifier; an earlier engine refuses inside the step. Either
+        // way the failure is the family's own type, and it lists the identifiers that do exist.
+        FrameworkConfigurationException failure = await FailureOf(timeline, fixture.CreateConfig(), "unknown");
 
-        // The one reader the family shares throws its own type now, not this package's - and it puts the
-        // identifiers that do exist in the exception's Available list rather than in the sentence, which is
-        // where every other failure in the family puts them.
-        run.Step("unknown").Should().HaveThrown<FrameworkConfigurationException>();
-        run.Assert(run.Step("unknown").LastResult.Exception!.ToString(), "configuration failure message")
-            .Should().Contain("not-registered").And().Contain("sample");
+        Assert.Contains("not-registered", failure.ToString());
+        Assert.Contains("sample", failure.ToString());
+    }
+
+    private static async Task<FrameworkConfigurationException> FailureOf(Timeline timeline, ConfigInstance config, string label)
+    {
+        try
+        {
+            TimelineRun run = await timeline.SetupRun(config).RunAsync();
+            return Assert.IsType<FrameworkConfigurationException>(run.Step(label).LastResult.Exception);
+        }
+        catch (FrameworkConfigurationException refusedWhilePlanned)
+        {
+            return refusedWhilePlanned;
+        }
     }
 
     [Fact]

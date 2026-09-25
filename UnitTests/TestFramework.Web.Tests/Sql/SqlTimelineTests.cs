@@ -311,13 +311,22 @@ public class SqlTimelineTests
             .LoadWebConfig()
             .Build();
 
-        TimelineRun run = await timeline.SetupRun(config).RunAsync();
+        // Where it fails depends on the engine: from TestFramework.Core 0.6.0 the run is refused while it is
+        // planned, because nothing declares the identifier; an earlier engine refuses inside the step. Either
+        // way the failure is the family's own type, and it lists the identifiers that do exist.
+        FrameworkConfigurationException failure;
+        try
+        {
+            TimelineRun run = await timeline.SetupRun(config).RunAsync();
+            failure = Assert.IsType<FrameworkConfigurationException>(run.Step("delete").LastResult.Exception);
+        }
+        catch (FrameworkConfigurationException refusedWhilePlanned)
+        {
+            failure = refusedWhilePlanned;
+        }
 
-        // The one reader the family shares throws its own type now rather than this package's, and puts the
-        // identifiers that do exist in the exception's Available list rather than in the sentence.
-        run.Step("delete").Should().HaveThrown<FrameworkConfigurationException>();
-        run.Assert(run.Step("delete").LastResult.Exception!.ToString(), "sql configuration failure")
-            .Should().Contain("missing").And().Contain("main");
+        Assert.Contains("missing", failure.ToString());
+        Assert.Contains("main", failure.ToString());
     }
 
     /// <summary>
