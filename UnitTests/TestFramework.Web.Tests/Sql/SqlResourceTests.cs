@@ -147,7 +147,7 @@ public class SqlResourceTests(ITestOutputHelper output)
             .Trigger(new ResolvesDatabaseStep(resolves)).Name("resolves")
             .Build();
 
-        ITimelineRunBuilder builder = timeline.SetupRun(Configured(configured), output);
+        ITimelineRunBuilder builder = timeline.SetupRun(Configured(configured), output.WriteLine);
 
         if (environment is not null)
         {

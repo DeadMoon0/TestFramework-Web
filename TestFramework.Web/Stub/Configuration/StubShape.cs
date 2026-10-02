@@ -101,11 +101,13 @@ internal sealed class StubShape(IStubConfigProvider provider) : ConfigShape<Stub
         if (!values.TryGetValue(ValueNames.BaseUrl, out string? baseUrl) || string.IsNullOrWhiteSpace(baseUrl))
         {
             throw new FrameworkConfigurationException(
-                $"The run has no address for stub '{identifier}'.",
-                [
+                $"The run has no address for stub '{identifier}'.")
+            {
+                RecoverySteps = [
                     $"Set 'Stub:{identifier}:BaseUrl', or include the stub definition that starts one.",
                 ],
-                [.. values.Keys]);
+                AvailableOptions = [.. values.Keys],
+            };
         }
 
         StubConfig config = new StubConfig { BaseUrl = baseUrl };
@@ -150,8 +152,10 @@ internal sealed class StubShape(IStubConfigProvider provider) : ConfigShape<Stub
 
     private static FrameworkConfigurationException Unparseable(string value, string identifier, string valueName, string expected)
         => new FrameworkConfigurationException(
-            $"The run holds '{value}' as {valueName} for stub '{identifier}', which cannot be read as {expected}.",
-            [
+            $"The run holds '{value}' as {valueName} for stub '{identifier}', which cannot be read as {expected}.")
+        {
+            RecoverySteps = [
                 $"Correct 'Stub:{identifier}:{valueName}', or the environment component that publishes it.",
-            ]);
+            ],
+        };
 }

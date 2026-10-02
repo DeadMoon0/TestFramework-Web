@@ -112,10 +112,12 @@ internal sealed class SqlShape(ISqlConfigProvider provider) : ConfigShape<SqlCon
                 CommandTimeout = ConfigValueRules.PositiveDuration(commandTimeout, out TimeSpan parsed)
                     ? parsed
                     : throw new FrameworkConfigurationException(
-                        $"The run holds '{commandTimeout}' as {WebEnvironmentResourceKinds.CommandTimeoutValue} for database '{identifier}', which cannot be read as a positive duration such as '00:00:30'.",
-                        [
+                        $"The run holds '{commandTimeout}' as {WebEnvironmentResourceKinds.CommandTimeoutValue} for database '{identifier}', which cannot be read as a positive duration such as '00:00:30'.")
+                    {
+                        RecoverySteps = [
                             $"Correct 'Sql:{identifier}:{WebEnvironmentResourceKinds.CommandTimeoutValue}', or the environment component that publishes it.",
-                        ]),
+                        ],
+                    },
             };
         }
 

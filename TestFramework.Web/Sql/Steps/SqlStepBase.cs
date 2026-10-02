@@ -65,7 +65,7 @@ public abstract class SqlStepBase<TResult> : Step<TResult>, IHasEnvironmentRequi
         foreach (VariableReferenceGeneric input in Parameters.Inputs)
         {
             if (input.Identifier is { } identifier)
-                contract.Inputs.Add(new StepIOEntry(identifier.Identifier, StepIOKind.Variable, true, typeof(object)));
+                contract.Input(identifier, typeof(object));
         }
     }
 

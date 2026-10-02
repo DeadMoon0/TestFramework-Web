@@ -51,7 +51,7 @@ internal sealed class ApiIsLiveTrigger(ApiIdentifier identifier, VariableReferen
         ArgumentNullException.ThrowIfNull(contract);
 
         if (alivenessLevel.HasIdentifier && alivenessLevel.Identifier is { } variableIdentifier)
-            contract.Inputs.Add(new StepIOEntry(variableIdentifier.Identifier, StepIOKind.Variable, false, typeof(ApiAlivenessLevel)));
+            contract.OptionalInput(variableIdentifier, typeof(ApiAlivenessLevel));
     }
 
     public IReadOnlyCollection<EnvironmentRequirement> GetEnvironmentRequirements(VariableStore variableStore)
@@ -124,8 +124,10 @@ internal sealed class ApiIsLiveTrigger(ApiIdentifier identifier, VariableReferen
         if (retryWarmup && triggerConfig.LocalWarmupRetryDelay <= TimeSpan.Zero)
         {
             throw new TestFramework.Core.Exceptions.FrameworkConfigurationException(
-                $"{nameof(ApiTriggerConfig)}.{nameof(ApiTriggerConfig.LocalWarmupRetryDelay)} is {triggerConfig.LocalWarmupRetryDelay}, which would poll without pause.",
-                ["Register an ApiTriggerConfig with a positive LocalWarmupRetryDelay, or leave the default in place."]);
+                $"{nameof(ApiTriggerConfig)}.{nameof(ApiTriggerConfig.LocalWarmupRetryDelay)} is {triggerConfig.LocalWarmupRetryDelay}, which would poll without pause.")
+            {
+                RecoverySteps = ["Register an ApiTriggerConfig with a positive LocalWarmupRetryDelay, or leave the default in place."],
+            };
         }
 
         // The warmup is this step's own budget, measured the way the step's deadline is - monotonic

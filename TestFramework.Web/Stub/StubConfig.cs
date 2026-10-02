@@ -35,8 +35,10 @@ public record StubConfig
         => this.BaseUrl is { Length: > 0 } baseUrl
             ? baseUrl
             : throw new TestFramework.Core.Exceptions.FrameworkConfigurationException(
-                "This entry states no address, so there is nothing to call.",
-                ["Set its BaseUrl, or include the definition that provisions it so it publishes one when it starts."]);
+                "This entry states no address, so there is nothing to call.")
+            {
+                RecoverySteps = ["Set its BaseUrl, or include the definition that provisions it so it publishes one when it starts."],
+            };
 
 
     /// <summary>

@@ -57,7 +57,7 @@ public sealed class StubAdminException : TimelineFrameworkException
             innerException);
 
     private StubAdminException(string friendlyMessage, IReadOnlyList<string> recoverySteps, IReadOnlyList<string>? availableOptions = null, Exception? innerException = null)
-        : base(friendlyMessage, recoverySteps, availableOptions, innerException)
+        : base(friendlyMessage, recoverySteps, availableOptions ?? [], innerException)
     {
     }
 }

@@ -55,7 +55,7 @@ public sealed class ApiConfigurationValidationException : TimelineFrameworkExcep
             [.. requiredProperties.Select(property => $"Set 'Api:{identifier}:{property}'.")]);
 
     private ApiConfigurationValidationException(string friendlyMessage, IReadOnlyList<string> recoverySteps, IReadOnlyList<string>? availableOptions = null)
-        : base(friendlyMessage, recoverySteps, availableOptions)
+        : base(friendlyMessage, recoverySteps, availableOptions ?? [])
     {
     }
 }

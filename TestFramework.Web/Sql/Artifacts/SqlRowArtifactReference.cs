@@ -91,7 +91,7 @@ public sealed class SqlRowArtifactReference<TRow> : ArtifactReference<SqlRowArti
         foreach (VariableReference<string> keyValue in _keyValues)
         {
             if (keyValue.Identifier is { } identifier)
-                contract.Inputs.Add(new StepIOEntry(identifier.Identifier, StepIOKind.Variable, true, typeof(string)));
+                contract.Input(identifier, typeof(string));
         }
     }
 

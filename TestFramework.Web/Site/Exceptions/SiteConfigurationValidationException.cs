@@ -42,7 +42,7 @@ public sealed class SiteConfigurationValidationException : TimelineFrameworkExce
             [$"Correct 'Site:{identifier}:{propertyName}' in the configuration used by this run."]);
 
     private SiteConfigurationValidationException(string friendlyMessage, IReadOnlyList<string> recoverySteps, IReadOnlyList<string>? availableOptions = null)
-        : base(friendlyMessage, recoverySteps, availableOptions)
+        : base(friendlyMessage, recoverySteps, availableOptions ?? [])
     {
     }
 }

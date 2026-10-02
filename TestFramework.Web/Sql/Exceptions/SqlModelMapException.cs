@@ -96,7 +96,7 @@ public sealed class SqlModelMapException : TimelineFrameworkException
             innerException);
 
     private SqlModelMapException(string friendlyMessage, IReadOnlyList<string> recoverySteps, IReadOnlyList<string>? availableOptions = null, Exception? innerException = null)
-        : base(friendlyMessage, recoverySteps, availableOptions, innerException)
+        : base(friendlyMessage, recoverySteps, availableOptions ?? [], innerException)
     {
     }
 }

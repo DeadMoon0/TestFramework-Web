@@ -95,7 +95,7 @@ public sealed class SqlSchemaGenerationException : TimelineFrameworkException
     }
 
     private SqlSchemaGenerationException(string friendlyMessage, IReadOnlyList<string> recoverySteps, IReadOnlyList<string>? availableOptions = null, Exception? innerException = null)
-        : base(friendlyMessage, recoverySteps, availableOptions, innerException)
+        : base(friendlyMessage, recoverySteps, availableOptions ?? [], innerException)
     {
     }
 }

@@ -40,21 +40,21 @@ public static class WebEnvironmentResourceKinds
     public static readonly ResourceKind RestApiKind = ResourceKind
         .Named(RestApi)
         .OffersPerVantage(ValueNames.BaseUrl)
-        .Offers(nameof(Configuration.ApiConfig.HealthPath), optional: true)
-        .Offers(nameof(Configuration.ApiConfig.Auth), optional: true)
-        .Offers(nameof(Configuration.ApiConfig.ApiKeyHeaderName), optional: true)
-        .Offers(nameof(Configuration.ApiConfig.RequestTimeout), optional: true)
-        .Offers(nameof(Configuration.ApiConfig.AllowInvalidCertificates), optional: true)
-        .Offers(nameof(Configuration.ApiConfig.UseCookies), optional: true)
-        .Offers(nameof(Configuration.ApiConfig.UserName), optional: true)
+        .Offers(nameof(Configuration.ApiConfig.HealthPath), ValueTraits.Optional)
+        .Offers(nameof(Configuration.ApiConfig.Auth), ValueTraits.Optional)
+        .Offers(nameof(Configuration.ApiConfig.ApiKeyHeaderName), ValueTraits.Optional)
+        .Offers(nameof(Configuration.ApiConfig.RequestTimeout), ValueTraits.Optional)
+        .Offers(nameof(Configuration.ApiConfig.AllowInvalidCertificates), ValueTraits.Optional)
+        .Offers(nameof(Configuration.ApiConfig.UseCookies), ValueTraits.Optional)
+        .Offers(nameof(Configuration.ApiConfig.UserName), ValueTraits.Optional)
 
         // The three that must never appear in a listing. A key or a token says who you are, and unlike a
         // connection string it is not also an address - so redacting it costs a reader nothing at all. The
         // user name is deliberately not among them: it identifies rather than authenticates, and a failure
         // that cannot say which account it tried is a worse failure.
-        .Offers(nameof(Configuration.ApiConfig.ApiKey), optional: true, secret: true)
-        .Offers(nameof(Configuration.ApiConfig.BearerToken), optional: true, secret: true)
-        .Offers(nameof(Configuration.ApiConfig.Password), optional: true, secret: true)
+        .Offers(nameof(Configuration.ApiConfig.ApiKey), ValueTraits.Optional | ValueTraits.Secret)
+        .Offers(nameof(Configuration.ApiConfig.BearerToken), ValueTraits.Optional | ValueTraits.Secret)
+        .Offers(nameof(Configuration.ApiConfig.Password), ValueTraits.Optional | ValueTraits.Secret)
         .Build();
 
     /// <summary>
@@ -91,9 +91,9 @@ public static class WebEnvironmentResourceKinds
     /// </remarks>
     public static readonly ResourceKind SqlKind = ResourceKind
         .Named(Sql)
-        .OffersPerVantage(ValueNames.ConnectionString, optional: true, secret: true)
-        .Offers(DatabaseNameValue, optional: true)
-        .Offers(CommandTimeoutValue, optional: true)
+        .OffersPerVantage(ValueNames.ConnectionString, ValueTraits.Optional | ValueTraits.Secret)
+        .Offers(DatabaseNameValue, ValueTraits.Optional)
+        .Offers(CommandTimeoutValue, ValueTraits.Optional)
         .Build();
 
     /// <summary>
@@ -134,10 +134,10 @@ public static class WebEnvironmentResourceKinds
     public static readonly ResourceKind StubKind = ResourceKind
         .Named(Stub)
         .OffersPerVantage(ValueNames.BaseUrl)
-        .Offers(AdminPathValue, optional: true)
-        .Offers(PollIntervalValue, optional: true)
-        .Offers(AllowInvalidCertificatesValue, optional: true)
-        .Offers(ResetModeValue, optional: true)
+        .Offers(AdminPathValue, ValueTraits.Optional)
+        .Offers(PollIntervalValue, ValueTraits.Optional)
+        .Offers(AllowInvalidCertificatesValue, ValueTraits.Optional)
+        .Offers(ResetModeValue, ValueTraits.Optional)
         .Build();
 
     /// <summary>
@@ -177,6 +177,6 @@ public static class WebEnvironmentResourceKinds
     public static readonly ResourceKind SiteKind = ResourceKind
         .Named(Site)
         .OffersPerVantage(ValueNames.BaseUrl)
-        .Offers(nameof(TestFramework.Web.Site.SiteConfig.AllowInvalidCertificates), optional: true)
+        .Offers(nameof(TestFramework.Web.Site.SiteConfig.AllowInvalidCertificates), ValueTraits.Optional)
         .Build();
 }

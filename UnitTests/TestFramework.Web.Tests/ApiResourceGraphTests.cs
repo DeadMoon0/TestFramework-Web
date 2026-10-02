@@ -39,7 +39,7 @@ public class ApiResourceGraphTests(ITestOutputHelper output)
             .Trigger(new ReadsValueStep(WebEnvironmentResourceKinds.RestApi, "orders", ValueNames.BaseUrl)).Name("reads")
             .Build();
 
-        TimelineRun run = await timeline.SetupRun(Configured(("Api:orders:BaseUrl", "http://localhost:5080/")), output).RunAsync();
+        TimelineRun run = await timeline.SetupRun(Configured(("Api:orders:BaseUrl", "http://localhost:5080/")), output.WriteLine).RunAsync();
 
         run.EnsureRanToCompletion();
 
@@ -55,7 +55,7 @@ public class ApiResourceGraphTests(ITestOutputHelper output)
             .Trigger(new ReadsValueStep(WebEnvironmentResourceKinds.RestApi, "orders", ValueNames.BaseUrl, ResourceVantage.Network)).Name("reads")
             .Build();
 
-        TimelineRun run = await timeline.SetupRun(Configured(("Api:orders:BaseUrl", "http://localhost:5080/")), output).RunAsync();
+        TimelineRun run = await timeline.SetupRun(Configured(("Api:orders:BaseUrl", "http://localhost:5080/")), output.WriteLine).RunAsync();
 
         run.EnsureRanToCompletion();
 
@@ -73,7 +73,7 @@ public class ApiResourceGraphTests(ITestOutputHelper output)
             .Trigger(new ReadsValueStep(WebEnvironmentResourceKinds.RestApi, "orders", ValueNames.BaseUrl)).Name("reads")
             .Build();
 
-        TimelineRun run = await timeline.SetupRun(services, output).RunAsync();
+        TimelineRun run = await timeline.SetupRun(services, output.WriteLine).RunAsync();
 
         run.EnsureRanToCompletion();
 
@@ -90,7 +90,7 @@ public class ApiResourceGraphTests(ITestOutputHelper output)
             .Trigger(new ReadsValueStep(WebEnvironmentResourceKinds.Site, "storefront", ValueNames.BaseUrl)).Name("reads")
             .Build();
 
-        TimelineRun run = await timeline.SetupRun(Configured(("Site:storefront:BaseUrl", "http://localhost:5090/")), output).RunAsync();
+        TimelineRun run = await timeline.SetupRun(Configured(("Site:storefront:BaseUrl", "http://localhost:5090/")), output.WriteLine).RunAsync();
 
         run.EnsureRanToCompletion();
 
@@ -106,7 +106,7 @@ public class ApiResourceGraphTests(ITestOutputHelper output)
             .Build();
 
         TimelineRun run = await timeline
-            .SetupRun(Configured(("Stub:payments:BaseUrl", "http://localhost:5091/"), ("Stub:payments:AdminPath", "/__admin")), output)
+            .SetupRun(Configured(("Stub:payments:BaseUrl", "http://localhost:5091/"), ("Stub:payments:AdminPath", "/__admin")), output.WriteLine)
             .RunAsync();
 
         run.EnsureRanToCompletion();
@@ -130,7 +130,7 @@ public class ApiResourceGraphTests(ITestOutputHelper output)
                     ("Sql:orders-db:Server", "localhost,14333"),
                     ("Sql:orders-db:Database", "orders"),
                     ("Sql:orders-db:IntegratedSecurity", "true")),
-                output)
+                output.WriteLine)
             .RunAsync();
 
         run.EnsureRanToCompletion();
@@ -156,7 +156,7 @@ public class ApiResourceGraphTests(ITestOutputHelper output)
                     ("Sql:orders-db:Server", "localhost,14333"),
                     ("Sql:orders-db:Database", "orders"),
                     ("Sql:orders-db:IntegratedSecurity", "true")),
-                output)
+                output.WriteLine)
             .RunAsync();
 
         run.EnsureRanToCompletion();

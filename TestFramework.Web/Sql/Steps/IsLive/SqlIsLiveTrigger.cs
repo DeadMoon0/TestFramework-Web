@@ -111,7 +111,7 @@ public sealed class SqlIsLiveTrigger : Step<SqlIsLiveResult>, IHasEnvironmentReq
         ArgumentNullException.ThrowIfNull(contract);
 
         if (_alivenessLevel.Identifier is { } identifier)
-            contract.Inputs.Add(new StepIOEntry(identifier.Identifier, StepIOKind.Variable, false, typeof(SqlAlivenessLevel)));
+            contract.OptionalInput(identifier, typeof(SqlAlivenessLevel));
     }
 
     /// <inheritdoc />

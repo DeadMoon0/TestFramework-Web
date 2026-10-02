@@ -35,7 +35,7 @@ public sealed class ApiResponseFormatException : TimelineFrameworkException
     }
 
     private ApiResponseFormatException(string friendlyMessage, IReadOnlyList<string> recoverySteps, IReadOnlyList<string>? availableOptions, Exception? innerException)
-        : base(friendlyMessage, recoverySteps, availableOptions, innerException)
+        : base(friendlyMessage, recoverySteps, availableOptions ?? [], innerException)
     {
     }
 }

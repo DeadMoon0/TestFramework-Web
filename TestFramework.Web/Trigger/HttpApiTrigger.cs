@@ -51,7 +51,7 @@ internal sealed class HttpApiTrigger(ApiIdentifier identifier, ComposedRequestVa
         foreach (VariableReferenceGeneric input in request.Inputs)
         {
             if (input.Identifier is { } variableIdentifier)
-                contract.Inputs.Add(new StepIOEntry(variableIdentifier.Identifier, StepIOKind.Variable, true, typeof(string)));
+                contract.Input(variableIdentifier, typeof(string));
         }
     }
 

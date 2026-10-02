@@ -90,7 +90,7 @@ public sealed class SqlExecutionFailedException : TimelineFrameworkException
     }
 
     private SqlExecutionFailedException(string friendlyMessage, IReadOnlyList<string> recoverySteps, IReadOnlyList<string>? availableOptions, Exception? innerException)
-        : base(friendlyMessage, recoverySteps, availableOptions, innerException)
+        : base(friendlyMessage, recoverySteps, availableOptions ?? [], innerException)
     {
     }
 }

@@ -116,7 +116,7 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
         ArgumentNullException.ThrowIfNull(contract);
 
         if (_bodyContains?.Identifier is { } identifier)
-            contract.Inputs.Add(new StepIOEntry(identifier.Identifier, StepIOKind.Variable, true, typeof(string)));
+            contract.Input(identifier, typeof(string));
     }
 
     /// <inheritdoc />

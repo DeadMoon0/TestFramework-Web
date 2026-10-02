@@ -42,7 +42,7 @@ public sealed class StubConfigurationValidationException : TimelineFrameworkExce
             [$"Correct 'Stub:{identifier}:{propertyName}' in the configuration used by this run."]);
 
     private StubConfigurationValidationException(string friendlyMessage, IReadOnlyList<string> recoverySteps, IReadOnlyList<string>? availableOptions = null)
-        : base(friendlyMessage, recoverySteps, availableOptions)
+        : base(friendlyMessage, recoverySteps, availableOptions ?? [])
     {
     }
 }

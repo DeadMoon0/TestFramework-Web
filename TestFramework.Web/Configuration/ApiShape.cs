@@ -122,11 +122,13 @@ internal sealed class ApiShape(IApiConfigProvider provider) : ConfigShape<ApiCon
         if (!values.TryGetValue(ValueNames.BaseUrl, out string? baseUrl) || string.IsNullOrWhiteSpace(baseUrl))
         {
             throw new FrameworkConfigurationException(
-                $"The run has no address for API '{identifier}'.",
-                [
+                $"The run has no address for API '{identifier}'.")
+            {
+                RecoverySteps = [
                     $"Set 'Api:{identifier}:BaseUrl', or include the definition that provisions it.",
                 ],
-                [.. values.Keys]);
+                AvailableOptions = [.. values.Keys],
+            };
         }
 
         ApiConfig config = new ApiConfig
@@ -202,8 +204,10 @@ internal sealed class ApiShape(IApiConfigProvider provider) : ConfigShape<ApiCon
     /// </remarks>
     private static FrameworkConfigurationException Unreadable(string value, string identifier, string valueName, string expected)
         => new FrameworkConfigurationException(
-            $"The run holds '{value}' as {valueName} for API '{identifier}', which cannot be read as {expected}.",
-            [
+            $"The run holds '{value}' as {valueName} for API '{identifier}', which cannot be read as {expected}.")
+        {
+            RecoverySteps = [
                 $"Correct 'Api:{identifier}:{valueName}', or the environment component that publishes it.",
-            ]);
+            ],
+        };
 }

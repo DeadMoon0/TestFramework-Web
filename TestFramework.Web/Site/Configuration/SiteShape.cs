@@ -78,11 +78,13 @@ internal sealed class SiteShape(ISiteConfigProvider provider) : ConfigShape<Site
         if (!values.TryGetValue(ValueNames.BaseUrl, out string? baseUrl) || string.IsNullOrWhiteSpace(baseUrl))
         {
             throw new FrameworkConfigurationException(
-                $"The run has no address for site '{identifier}'.",
-                [
+                $"The run has no address for site '{identifier}'.")
+            {
+                RecoverySteps = [
                     $"Set 'Site:{identifier}:BaseUrl', or include the site definition that serves it.",
                 ],
-                [.. values.Keys]);
+                AvailableOptions = [.. values.Keys],
+            };
         }
 
         SiteConfig config = new SiteConfig { BaseUrl = baseUrl };
@@ -94,10 +96,12 @@ internal sealed class SiteShape(ISiteConfigProvider provider) : ConfigShape<Site
                 AllowInvalidCertificates = bool.TryParse(allowInvalid, out bool parsed)
                     ? parsed
                     : throw new FrameworkConfigurationException(
-                        $"The run holds '{allowInvalid}' as {nameof(SiteConfig.AllowInvalidCertificates)} for site '{identifier}', which cannot be read as 'true' or 'false'.",
-                        [
+                        $"The run holds '{allowInvalid}' as {nameof(SiteConfig.AllowInvalidCertificates)} for site '{identifier}', which cannot be read as 'true' or 'false'.")
+                    {
+                        RecoverySteps = [
                             $"Correct 'Site:{identifier}:{nameof(SiteConfig.AllowInvalidCertificates)}', or the environment component that publishes it.",
-                        ]),
+                        ],
+                    },
             };
         }
 
