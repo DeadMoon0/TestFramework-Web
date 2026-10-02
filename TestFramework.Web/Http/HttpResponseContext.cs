@@ -15,30 +15,70 @@ namespace TestFramework.Web.Http;
 /// <summary>
 /// Serializable HTTP response context returned by API triggers.
 /// </summary>
-/// <param name="ApiIdentifier">The API identifier that produced the response.</param>
-/// <param name="RequestMethod">The HTTP method that was sent.</param>
-/// <param name="RequestUri">The absolute URI that was called.</param>
-/// <param name="StatusCode">The response status code.</param>
-/// <param name="ReasonPhrase">The response reason phrase, when the server sent one.</param>
-/// <param name="ContentType">The response content type, when present.</param>
-/// <param name="Body">The response body as text, when the response had content.</param>
-/// <param name="Headers">Response and content headers, merged and case-insensitive.</param>
-/// <param name="Elapsed">Wall-clock duration of the call.</param>
 /// <remarks>
 /// This type is a plain data record on purpose: step results travel to the debugging UI, so a live
 /// <see cref="HttpResponseMessage"/> must never leave the trigger.
 /// </remarks>
-public sealed record HttpResponseContext(
-    string ApiIdentifier,
-    string RequestMethod,
-    Uri RequestUri,
-    HttpStatusCode StatusCode,
-    string? ReasonPhrase,
-    string? ContentType,
-    string? Body,
-    IReadOnlyDictionary<string, string[]> Headers,
-    TimeSpan Elapsed) : StepResultContext
+public sealed record HttpResponseContext : StepResultContext
 {
+    internal HttpResponseContext(string apiIdentifier, string requestMethod, Uri requestUri, HttpStatusCode statusCode, string? reasonPhrase, string? contentType, string? body, IReadOnlyDictionary<string, string[]> headers, TimeSpan elapsed)
+    {
+        this.ApiIdentifier = apiIdentifier;
+        this.RequestMethod = requestMethod;
+        this.RequestUri = requestUri;
+        this.StatusCode = statusCode;
+        this.ReasonPhrase = reasonPhrase;
+        this.ContentType = contentType;
+        this.Body = body;
+        this.Headers = headers;
+        this.Elapsed = elapsed;
+    }
+
+    /// <summary>
+    /// The API identifier that produced the response.
+    /// </summary>
+    public string ApiIdentifier { get; }
+
+    /// <summary>
+    /// The HTTP method that was sent.
+    /// </summary>
+    public string RequestMethod { get; }
+
+    /// <summary>
+    /// The absolute URI that was called.
+    /// </summary>
+    public Uri RequestUri { get; }
+
+    /// <summary>
+    /// The response status code.
+    /// </summary>
+    public HttpStatusCode StatusCode { get; }
+
+    /// <summary>
+    /// The response reason phrase, when the server sent one.
+    /// </summary>
+    public string? ReasonPhrase { get; }
+
+    /// <summary>
+    /// The response content type, when present.
+    /// </summary>
+    public string? ContentType { get; }
+
+    /// <summary>
+    /// The response body as text, when the response had content.
+    /// </summary>
+    public string? Body { get; }
+
+    /// <summary>
+    /// Response and content headers, merged and case-insensitive.
+    /// </summary>
+    public IReadOnlyDictionary<string, string[]> Headers { get; }
+
+    /// <summary>
+    /// Wall-clock duration of the call.
+    /// </summary>
+    public TimeSpan Elapsed { get; }
+
     private const int BodyExcerptLimit = 2048;
 
     /// <summary>

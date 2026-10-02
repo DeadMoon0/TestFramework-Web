@@ -25,9 +25,9 @@ public class StubMappingTests
             .OnPost("/api/charges")
                 .WithHeader("Idempotency-Key")
                 .WithBodyContaining("\"amount\"")
-                .RespondJson(HttpStatusCode.Created, new { id = "{{Random Type=Guid}}" }, useTemplating: true)
+                .Respond(StubResponse.Json(HttpStatusCode.Created, new { id = "{{Random Type=Guid}}" }) with { UseTemplating = true })
             .OnGet("/api/slow")
-                .RespondText(HttpStatusCode.OK, "ok", delay: TimeSpan.FromSeconds(2));
+                .Respond(StubResponse.Text(HttpStatusCode.OK, "ok") with { Delay = TimeSpan.FromSeconds(2) });
     }
 
     [Fact]

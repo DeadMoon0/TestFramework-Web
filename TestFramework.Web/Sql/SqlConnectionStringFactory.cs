@@ -16,7 +16,7 @@ public static class SqlConnectionStringFactory
     /// The question a shape asks before composing: an entry that only names a database - a complete thing
     /// to say about one a container has yet to create - has no coordinates yet and publishes nothing,
     /// which is an answer rather than a failure. It lives here beside the refusal in
-    /// <see cref="Create"/> so the two cannot come to different conclusions about what "has an address"
+    /// <see cref="Create(string, SqlConfig, SqlCredentials)"/> so the two cannot come to different conclusions about what "has an address"
     /// means; asking by catching the refusal was tried and swallowed real misconfigurations - a malformed
     /// connection string read as "no coordinates yet".
     /// </remarks>
@@ -32,11 +32,21 @@ public static class SqlConnectionStringFactory
     /// <summary>
     /// Builds the connection string for an identifier.
     /// </summary>
+    /// <remarks>Uses <c>null</c> for <c>credentials</c>; the other overload states it.</remarks>
+    /// <param name="identifier">The SQL identifier being resolved, used for error messages.</param>
+    /// <param name="config">The configuration to compose from.</param>
+    /// <returns>The composed connection string.</returns>
+    public static string Create(string identifier, SqlConfig config)
+        => Create(identifier, config, null);
+
+    /// <summary>
+    /// Builds the connection string for an identifier.
+    /// </summary>
     /// <param name="identifier">The SQL identifier being resolved, used for error messages.</param>
     /// <param name="config">The configuration to compose from.</param>
     /// <param name="credentials">Credentials that override the configured ones, when supplied.</param>
     /// <returns>The composed connection string.</returns>
-    public static string Create(string identifier, SqlConfig config, SqlCredentials? credentials = null)
+    public static string Create(string identifier, SqlConfig config, SqlCredentials? credentials)
     {
         ArgumentNullException.ThrowIfNull(config);
 

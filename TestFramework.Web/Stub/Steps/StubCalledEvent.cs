@@ -16,11 +16,30 @@ namespace TestFramework.Web.Stub.Steps;
 /// <summary>
 /// The first matching call a stub received while the run waited for it.
 /// </summary>
-/// <param name="StubIdentifier">The stub that was waited on.</param>
-/// <param name="Call">The call that arrived.</param>
-/// <param name="Waited">How long the run waited for it.</param>
-public sealed record StubCalledResult(string StubIdentifier, StubCall Call, TimeSpan Waited) : StepResultContext
+public sealed record StubCalledResult : StepResultContext
 {
+    internal StubCalledResult(string stubIdentifier, StubCall call, TimeSpan waited)
+    {
+        this.StubIdentifier = stubIdentifier;
+        this.Call = call;
+        this.Waited = waited;
+    }
+
+    /// <summary>
+    /// The stub that was waited on.
+    /// </summary>
+    public string StubIdentifier { get; }
+
+    /// <summary>
+    /// The call that arrived.
+    /// </summary>
+    public StubCall Call { get; }
+
+    /// <summary>
+    /// How long the run waited for it.
+    /// </summary>
+    public TimeSpan Waited { get; }
+
     /// <summary>
     /// Returns a readable description of the event.
     /// </summary>
@@ -49,7 +68,7 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
     /// <param name="stubIdentifier">The stub to wait on.</param>
     /// <param name="method">The method the awaited call must have.</param>
     /// <param name="path">The path the awaited call must have.</param>
-    public StubCalledEvent(StubIdentifier stubIdentifier, string method, string path)
+    internal StubCalledEvent(StubIdentifier stubIdentifier, string method, string path)
     {
         ArgumentNullException.ThrowIfNull(stubIdentifier);
         ArgumentException.ThrowIfNullOrWhiteSpace(method);

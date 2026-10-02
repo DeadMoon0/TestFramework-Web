@@ -1,10 +1,13 @@
+using TestFramework.Core.Conventions;
+
 namespace TestFramework.Web.Stub;
 
 /// <summary>
 /// Logical identifier used to resolve a configured stub server.
 /// </summary>
 /// <param name="Identifier">The configuration key that names the stub entry.</param>
-public record StubIdentifier(string Identifier)
+[ClosedShape("An identifier is its name; anything more about a stub belongs in its configuration.")]
+public sealed record StubIdentifier(string Identifier)
 {
     /// <summary>
     /// Converts a typed identifier to its raw string representation.

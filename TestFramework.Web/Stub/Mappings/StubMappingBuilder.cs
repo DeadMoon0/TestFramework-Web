@@ -144,60 +144,37 @@ public sealed class StubRequestBuilder
     }
 
     /// <summary>
-    /// Answers with a JSON body.
+    /// Answers with a JSON body. For a delay or templating, use <see cref="Respond"/> with
+    /// <c>StubResponse.Json(...) with { ... }</c>.
     /// </summary>
     /// <param name="statusCode">The status code.</param>
     /// <param name="body">The body, serialized to JSON.</param>
-    /// <param name="delay">How long to wait before answering.</param>
-    /// <param name="useTemplating">
-    /// Whether the body may quote the request back, for example <c>{{request.body.amount}}</c>.
-    /// </param>
-    public StubMappingBuilder RespondJson(HttpStatusCode statusCode, object body, TimeSpan? delay = null, bool useTemplating = false)
-    {
-        ArgumentNullException.ThrowIfNull(body);
-
-        // Through the wire serializer, so a response body a test hands over is named the same way a
-        // request body is.
-        JToken node = JToken.FromObject(body, WebJson.WireSerializer)
-            ?? throw new ArgumentException("The response body serialized to nothing.", nameof(body));
-
-        return Respond(new StubResponse(
-            (int)statusCode,
-            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["Content-Type"] = "application/json" },
-            null,
-            node,
-            delay,
-            useTemplating));
-    }
+    public StubMappingBuilder RespondJson(HttpStatusCode statusCode, object body)
+        => Respond(StubResponse.Json(statusCode, body));
 
     /// <summary>
-    /// Answers with a literal body.
+    /// Answers with a literal <c>text/plain</c> body.
+    /// </summary>
+    /// <param name="statusCode">The status code.</param>
+    /// <param name="body">The body, sent as it is.</param>
+    public StubMappingBuilder RespondText(HttpStatusCode statusCode, string body)
+        => Respond(StubResponse.Text(statusCode, body));
+
+    /// <summary>
+    /// Answers with a literal body of a stated content type.
     /// </summary>
     /// <param name="statusCode">The status code.</param>
     /// <param name="body">The body, sent as it is.</param>
     /// <param name="contentType">The content type.</param>
-    /// <param name="delay">How long to wait before answering.</param>
-    public StubMappingBuilder RespondText(HttpStatusCode statusCode, string body, string contentType = "text/plain", TimeSpan? delay = null)
-    {
-        ArgumentNullException.ThrowIfNull(body);
-        ArgumentException.ThrowIfNullOrWhiteSpace(contentType);
-
-        return Respond(new StubResponse(
-            (int)statusCode,
-            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["Content-Type"] = contentType },
-            body,
-            null,
-            delay,
-            false));
-    }
+    public StubMappingBuilder RespondText(HttpStatusCode statusCode, string body, string contentType)
+        => Respond(StubResponse.Text(statusCode, body, contentType));
 
     /// <summary>
     /// Answers with a status code and no body.
     /// </summary>
     /// <param name="statusCode">The status code.</param>
-    /// <param name="delay">How long to wait before answering.</param>
-    public StubMappingBuilder RespondStatus(HttpStatusCode statusCode, TimeSpan? delay = null)
-        => Respond(new StubResponse((int)statusCode, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), null, null, delay, false));
+    public StubMappingBuilder RespondStatus(HttpStatusCode statusCode)
+        => Respond(StubResponse.Status(statusCode));
 
     /// <summary>
     /// Answers with a fully described response.

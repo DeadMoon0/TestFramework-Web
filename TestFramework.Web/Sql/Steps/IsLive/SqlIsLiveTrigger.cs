@@ -47,18 +47,42 @@ public enum SqlAlivenessLevel
 /// <see cref="Exceptions.SqlExecutionFailedException"/> or
 /// <see cref="Exceptions.SqlConfigurationValidationException"/> instead of returning.
 /// </remarks>
-/// <param name="SqlIdentifier">The database that was probed.</param>
-/// <param name="AlivenessLevel">The requested probe depth.</param>
-/// <param name="Connection">A log-safe description of the connection.</param>
-/// <param name="Success">
-/// Always <see langword="true"/>. A failed probe throws rather than returning a result, so there is
-/// no value of this record in which it is false. It exists so that an asserted probe reads like any
-/// other step result instead of forcing a different assertion shape on the one step that cannot
-/// fail quietly.
-/// </param>
-/// <param name="Elapsed">Wall-clock duration of the probe.</param>
-public sealed record SqlIsLiveResult(string SqlIdentifier, SqlAlivenessLevel AlivenessLevel, string Connection, bool Success, TimeSpan Elapsed) : StepResultContext
+public sealed record SqlIsLiveResult : StepResultContext
 {
+    internal SqlIsLiveResult(string sqlIdentifier, SqlAlivenessLevel alivenessLevel, string connection, bool success, TimeSpan elapsed)
+    {
+        this.SqlIdentifier = sqlIdentifier;
+        this.AlivenessLevel = alivenessLevel;
+        this.Connection = connection;
+        this.Success = success;
+        this.Elapsed = elapsed;
+    }
+
+    /// <summary>
+    /// The database that was probed.
+    /// </summary>
+    public string SqlIdentifier { get; }
+
+    /// <summary>
+    /// The requested probe depth.
+    /// </summary>
+    public SqlAlivenessLevel AlivenessLevel { get; }
+
+    /// <summary>
+    /// A log-safe description of the connection.
+    /// </summary>
+    public string Connection { get; }
+
+    /// <summary>
+    /// Always <see langword="true"/>. A failed probe throws rather than returning a result, so there is no value of this record in which it is false. It exists so that an asserted probe reads like any other step result instead of forcing a different assertion shape on the one step that cannot fail quietly.
+    /// </summary>
+    public bool Success { get; }
+
+    /// <summary>
+    /// Wall-clock duration of the probe.
+    /// </summary>
+    public TimeSpan Elapsed { get; }
+
     /// <summary>
     /// Returns a readable description of the outcome.
     /// </summary>

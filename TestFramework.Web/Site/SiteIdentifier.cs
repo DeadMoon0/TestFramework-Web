@@ -1,3 +1,5 @@
+using TestFramework.Core.Conventions;
+
 namespace TestFramework.Web.Site;
 
 /// <summary>
@@ -8,7 +10,8 @@ namespace TestFramework.Web.Site;
 /// a UI test that drives <c>"shop"</c> is served by the site declared as <c>"shop"</c>.
 /// </remarks>
 /// <param name="Identifier">The configuration key that names the site entry.</param>
-public record SiteIdentifier(string Identifier)
+[ClosedShape("An identifier is its name; anything more about a site belongs in its configuration.")]
+public sealed record SiteIdentifier(string Identifier)
 {
     /// <summary>
     /// Converts a typed identifier to its raw string representation.

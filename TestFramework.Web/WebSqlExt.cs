@@ -23,7 +23,7 @@ public class SqlProxy
     /// <param name="identifier">The SQL identifier to run against.</param>
     /// <param name="statement">The statement text.</param>
     /// <returns>The step, ready for further <c>WithParameter</c> calls.</returns>
-    public SqlExecuteStep Execute(SqlIdentifier identifier, string statement) => new(identifier, statement);
+    public SqlExecuteStep Execute(SqlIdentifier identifier, string statement) => new(identifier, statement, null);
 
     /// <summary>
     /// Reads a single value from the database.
@@ -32,7 +32,7 @@ public class SqlProxy
     /// <param name="identifier">The SQL identifier to run against.</param>
     /// <param name="statement">The statement text.</param>
     /// <returns>The step, ready for further <c>WithParameter</c> calls.</returns>
-    public SqlScalarStep<TValue> Scalar<TValue>(SqlIdentifier identifier, string statement) => new(identifier, statement);
+    public SqlScalarStep<TValue> Scalar<TValue>(SqlIdentifier identifier, string statement) => new(identifier, statement, null);
 
     /// <summary>
     /// Runs a script, batch by batch.
@@ -40,14 +40,22 @@ public class SqlProxy
     /// <param name="identifier">The SQL identifier to run against.</param>
     /// <param name="script">The script to run.</param>
     /// <returns>The step, ready for further <c>WithParameter</c> calls.</returns>
-    public SqlScriptStep Script(SqlIdentifier identifier, SqlScript script) => new(identifier, script);
+    public SqlScriptStep Script(SqlIdentifier identifier, SqlScript script) => new(identifier, script, null);
+
+    /// <summary>
+    /// Probes whether the database is answering, using a constant level.
+    /// </summary>
+    /// <remarks>Uses <c>SqlAlivenessLevel.Database</c> for <c>level</c>; the other overload states it.</remarks>
+    /// <param name="identifier">The SQL identifier to probe.</param>
+    public Step<SqlIsLiveResult> IsLive(SqlIdentifier identifier)
+        => this.IsLive(identifier, SqlAlivenessLevel.Database);
 
     /// <summary>
     /// Probes whether the database is answering, using a constant level.
     /// </summary>
     /// <param name="identifier">The SQL identifier to probe.</param>
     /// <param name="level">How deep the probe should go.</param>
-    public Step<SqlIsLiveResult> IsLive(SqlIdentifier identifier, SqlAlivenessLevel level = SqlAlivenessLevel.Database)
+    public Step<SqlIsLiveResult> IsLive(SqlIdentifier identifier, SqlAlivenessLevel level)
         => IsLive(identifier, Var.Const(level));
 
     /// <summary>

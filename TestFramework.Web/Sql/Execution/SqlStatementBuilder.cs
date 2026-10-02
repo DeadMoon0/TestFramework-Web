@@ -8,10 +8,24 @@ namespace TestFramework.Web.Sql.Execution;
 /// <summary>
 /// A statement and the parameter names it expects.
 /// </summary>
-/// <param name="Text">The statement text.</param>
-/// <param name="ParameterNames">The parameter names, without the leading marker.</param>
-public sealed record SqlStatement(string Text, IReadOnlyList<string> ParameterNames)
+public sealed record SqlStatement
 {
+    internal SqlStatement(string text, IReadOnlyList<string> parameterNames)
+    {
+        this.Text = text;
+        this.ParameterNames = parameterNames;
+    }
+
+    /// <summary>
+    /// The statement text.
+    /// </summary>
+    public string Text { get; }
+
+    /// <summary>
+    /// The parameter names, without the leading marker.
+    /// </summary>
+    public IReadOnlyList<string> ParameterNames { get; }
+
     /// <summary>
     /// Returns the statement text.
     /// </summary>

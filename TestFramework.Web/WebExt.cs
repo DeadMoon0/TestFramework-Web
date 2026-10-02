@@ -52,10 +52,19 @@ public static class WebExt
         /// <summary>
         /// Creates a liveness probe using a constant level.
         /// </summary>
+        /// <remarks>Uses <c>ApiAlivenessLevel.Reachable</c> for <c>level</c>; the other overload states it.</remarks>
+        /// <param name="identifier">The API identifier to probe.</param>
+        /// <returns>A step that probes the API when executed.</returns>
+        public Step<ApiIsLiveResult> IsLive(ApiIdentifier identifier)
+            => this.IsLive(identifier, ApiAlivenessLevel.Reachable);
+
+        /// <summary>
+        /// Creates a liveness probe using a constant level.
+        /// </summary>
         /// <param name="identifier">The API identifier to probe.</param>
         /// <param name="level">How deep the probe should go.</param>
         /// <returns>A step that probes the API when executed.</returns>
-        public Step<ApiIsLiveResult> IsLive(ApiIdentifier identifier, ApiAlivenessLevel level = ApiAlivenessLevel.Reachable)
+        public Step<ApiIsLiveResult> IsLive(ApiIdentifier identifier, ApiAlivenessLevel level)
             => IsLive(identifier, Var.Const(level));
 
         /// <summary>

@@ -8,12 +8,23 @@ namespace TestFramework.Web.Sql.Execution;
 /// <summary>
 /// What running the batches of one script did.
 /// </summary>
-/// <param name="AffectedRows">The total number of affected rows reported by the batches.</param>
-/// <param name="OpenTransactionCount">
-/// How many transactions were still open when the batches finished, or <see langword="null"/> when
-/// the executor cannot tell.
-/// </param>
-public readonly record struct SqlScriptExecutionResult(int AffectedRows, int? OpenTransactionCount);
+/// <remarks>
+/// Every executor builds one, so its members are init properties: a result that learns more does not break the
+/// executors compiled against it.
+/// </remarks>
+public readonly record struct SqlScriptExecutionResult
+{
+    /// <summary>
+    /// The total number of affected rows reported by the batches.
+    /// </summary>
+    public required int AffectedRows { get; init; }
+
+    /// <summary>
+    /// How many transactions were still open when the batches finished, or <see langword="null"/> when the executor
+    /// cannot tell.
+    /// </summary>
+    public int? OpenTransactionCount { get; init; }
+}
 
 /// <summary>
 /// Executes statements against a configured SQL database.
@@ -88,7 +99,7 @@ public interface ISqlExecutor
             affected += await ExecuteAsync(identifier, batch, parameters, cancellationToken).ConfigureAwait(false);
 
         // A per-batch executor has no connection to inspect, so it cannot report a dangling transaction.
-        return new SqlScriptExecutionResult(affected, null);
+        return new SqlScriptExecutionResult { AffectedRows = affected };
     }
 
     /// <summary>

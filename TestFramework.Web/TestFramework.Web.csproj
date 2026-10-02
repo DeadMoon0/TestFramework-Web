@@ -11,12 +11,12 @@
 		<PackageTags>Test;UnitTest;IntegrationTest;Framework;Fluent;Timeline;Web;Rest;Api;Http;Sql;SqlServer;Stub;Mock;WireMock</PackageTags>
 		<PackageIcon>Icon.png</PackageIcon>
 		<Description>Test web applications from inside a TestFramework timeline: REST APIs, the SQL Server databases behind them, and the dependencies they call. Provides identifier-driven configuration, variable-backed HTTP requests and SQL statements, row artifacts with automatic teardown, liveness probes, stub declarations with request verification, and request authentication including Windows Negotiate.</Description>
-		<Version>0.5.0</Version>
+		<Version>0.6.0</Version>
 		<PackageProjectUrl>https://github.com/DeadMoon0/TestFramework-Web</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/DeadMoon0/TestFramework-Web.git</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<Copyright>Copyright (c) DeadMoon0 2026</Copyright>
-		<PackageReleaseNotes>BREAKING - WebConfigStore&lt;T&gt; is gone. A run answers for its own configuration, so the store was filled by the loaders and read by nothing; read a record with context.Configured&lt;ApiConfig&gt;("orders") instead of resolving a store from the service provider. A malformed entry is now refused when the run composes its resources rather than while the configuration is loaded - still before any step, but BuildServiceProvider() no longer throws. Site entries also carry AllowInvalidCertificates through the run.</PackageReleaseNotes>
+		<PackageReleaseNotes>BREAKING - needs TestFramework.Core 0.7.0 and TestFramework.Config 0.4.0. Stub.Calls(identifier) narrows with WithMethod(...) and WithPath(...) instead of optional arguments, and Stub.Called refuses a null method instead of waiting for GET. A stub response delay or templating is set with Respond(StubResponse.Json(...) with { Delay = ..., UseTemplating = true }). Results, stub mappings and SQL steps are built by Web only; SqlCredentials comes from Integrated or Login; SqlScriptExecutionResult uses init properties. Optional parameters elsewhere became overloads.</PackageReleaseNotes>
 	</PropertyGroup>
 
 	<ItemGroup>

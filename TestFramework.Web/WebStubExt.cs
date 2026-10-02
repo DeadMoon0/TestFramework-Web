@@ -1,3 +1,4 @@
+using System;
 using System.Net.Http;
 using TestFramework.Core.Steps;
 using TestFramework.Web.Stub;
@@ -22,17 +23,21 @@ public class StubProxy
     /// <param name="path">The path the awaited call must have.</param>
     /// <returns>An event, bounded by the step timeout.</returns>
     public StubCalledEvent Called(StubIdentifier identifier, HttpMethod method, string path)
-        => new(identifier, method?.Method ?? HttpMethod.Get.Method, path);
+    {
+        // Refused rather than read as GET: a missing method is a mistake in the timeline, and waiting for GET
+        // instead waits, until the step's timeout, for a call the test never meant.
+        ArgumentNullException.ThrowIfNull(method);
+
+        return new(identifier, method.Method, path);
+    }
 
     /// <summary>
     /// Reads the calls the stub has received so far.
     /// </summary>
     /// <param name="identifier">The stub identifier.</param>
-    /// <param name="method">The method to filter by, or <see langword="null"/> for any.</param>
-    /// <param name="path">The path to filter by, or <see langword="null"/> for any.</param>
-    /// <returns>The step, which <c>WithHeader(...)</c> can narrow further.</returns>
-    public StubCallsStep Calls(StubIdentifier identifier, HttpMethod? method = null, string? path = null)
-        => new(identifier, method?.Method, path);
+    /// <returns>The step, which <c>WithMethod(...)</c>, <c>WithPath(...)</c> and <c>WithHeader(...)</c> narrow.</returns>
+    public StubCallsStep Calls(StubIdentifier identifier)
+        => new(identifier);
 
     /// <summary>
     /// Starts this run's observation window on the stub, so later observations only see what

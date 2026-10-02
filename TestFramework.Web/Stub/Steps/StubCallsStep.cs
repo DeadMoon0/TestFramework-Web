@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using TestFramework.Core.Artifacts;
@@ -16,11 +17,30 @@ namespace TestFramework.Web.Stub.Steps;
 /// <summary>
 /// The calls a stub received, as observed at one point in the run.
 /// </summary>
-/// <param name="StubIdentifier">The stub that was inspected.</param>
-/// <param name="Calls">The matching calls, oldest first.</param>
-/// <param name="UnmatchedCalls">Calls the stub received but had no mapping for.</param>
-public sealed record StubCallsResult(string StubIdentifier, IReadOnlyList<StubCall> Calls, IReadOnlyList<StubCall> UnmatchedCalls) : StepResultContext
+public sealed record StubCallsResult : StepResultContext
 {
+    internal StubCallsResult(string stubIdentifier, IReadOnlyList<StubCall> calls, IReadOnlyList<StubCall> unmatchedCalls)
+    {
+        this.StubIdentifier = stubIdentifier;
+        this.Calls = calls;
+        this.UnmatchedCalls = unmatchedCalls;
+    }
+
+    /// <summary>
+    /// The stub that was inspected.
+    /// </summary>
+    public string StubIdentifier { get; }
+
+    /// <summary>
+    /// The matching calls, oldest first.
+    /// </summary>
+    public IReadOnlyList<StubCall> Calls { get; }
+
+    /// <summary>
+    /// Calls the stub received but had no mapping for.
+    /// </summary>
+    public IReadOnlyList<StubCall> UnmatchedCalls { get; }
+
     /// <summary>
     /// Returns a readable description of the observation.
     /// </summary>
@@ -42,7 +62,7 @@ public abstract class StubStepBase<TResult> : Step<TResult>, IHasEnvironmentRequ
     /// <param name="stubIdentifier">The stub to inspect.</param>
     /// <param name="method">The method to filter by, or <see langword="null"/> for any.</param>
     /// <param name="path">The path to filter by, or <see langword="null"/> for any.</param>
-    protected StubStepBase(StubIdentifier stubIdentifier, string? method, string? path)
+    private protected StubStepBase(StubIdentifier stubIdentifier, string? method, string? path)
     {
         ArgumentNullException.ThrowIfNull(stubIdentifier);
 
@@ -68,12 +88,12 @@ public abstract class StubStepBase<TResult> : Step<TResult>, IHasEnvironmentRequ
     /// <summary>
     /// The method calls must have to count, when one was given.
     /// </summary>
-    public string? Method { get; }
+    public string? Method { get; private protected set; }
 
     /// <summary>
     /// The path calls must have to count, when one was given.
     /// </summary>
-    public string? Path { get; }
+    public string? Path { get; private protected set; }
 
     /// <inheritdoc />
     public override bool DoesReturn => true;
@@ -95,7 +115,7 @@ public abstract class StubStepBase<TResult> : Step<TResult>, IHasEnvironmentRequ
     /// </summary>
     /// <param name="calls">Every call the stub received.</param>
     /// <param name="watermark">The newest timestamp that predates this run, or <see langword="null"/> for the whole log.</param>
-    protected IReadOnlyList<StubCall> Filter(IEnumerable<StubCall> calls, DateTimeOffset? watermark = null)
+    private protected IReadOnlyList<StubCall> Filter(IEnumerable<StubCall> calls, DateTimeOffset? watermark)
     {
         ArgumentNullException.ThrowIfNull(calls);
 
@@ -159,14 +179,50 @@ public abstract class StubStepBase<TResult> : Step<TResult>, IHasEnvironmentRequ
 public sealed class StubCallsStep : StubStepBase<StubCallsResult>
 {
     /// <summary>
-    /// Creates the step.
+    /// Creates the step over every call the stub logged; <c>WebExt.Stub.Calls(...)</c> is the way to make one.
     /// </summary>
     /// <param name="stubIdentifier">The stub to inspect.</param>
-    /// <param name="method">The method to filter by, or <see langword="null"/> for any.</param>
-    /// <param name="path">The path to filter by, or <see langword="null"/> for any.</param>
-    public StubCallsStep(StubIdentifier stubIdentifier, string? method = null, string? path = null)
+    internal StubCallsStep(StubIdentifier stubIdentifier)
+        : base(stubIdentifier, null, null)
+    {
+    }
+
+    private StubCallsStep(StubIdentifier stubIdentifier, string? method, string? path)
         : base(stubIdentifier, method, path)
     {
+    }
+
+    /// <summary>
+    /// Narrows the observation to calls made with one method.
+    /// </summary>
+    /// <param name="method">The method a call must have.</param>
+    /// <returns>The step for fluent chaining.</returns>
+    /// <remarks>
+    /// A modifier like <see cref="WithHeader"/>, not a constructor argument: each filter is its own method, so a
+    /// filter added later - a query, a body - is a new method rather than one more optional parameter that every
+    /// compiled caller would have depended on.
+    /// </remarks>
+    public StubCallsStep WithMethod(HttpMethod method)
+    {
+        ArgumentNullException.ThrowIfNull(method);
+
+        ((TestFramework.Core.IFreezable)this).EnsureNotFrozen();
+        Method = method.Method;
+        return this;
+    }
+
+    /// <summary>
+    /// Narrows the observation to calls made to one path, which may use <c>*</c> wildcards.
+    /// </summary>
+    /// <param name="path">The path a call must have; with or without its leading slash.</param>
+    /// <returns>The step for fluent chaining.</returns>
+    public StubCallsStep WithPath(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        ((TestFramework.Core.IFreezable)this).EnsureNotFrozen();
+        Path = StubPathMatcher.Normalize(path);
+        return this;
     }
 
     /// <summary>

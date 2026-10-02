@@ -27,8 +27,15 @@ public sealed class SqlModelRegistry
     /// <summary>
     /// Creates the default registry: explicit registrations, then attributes, then convention.
     /// </summary>
+    /// <remarks>Uses <c>null</c> for <c>builder</c>; the other overload states it.</remarks>
+    public static SqlModelRegistry CreateDefault()
+        => CreateDefault(null);
+
+    /// <summary>
+    /// Creates the default registry: explicit registrations, then attributes, then convention.
+    /// </summary>
     /// <param name="builder">The explicit registrations, when any.</param>
-    public static SqlModelRegistry CreateDefault(SqlModelBuilder? builder = null)
+    public static SqlModelRegistry CreateDefault(SqlModelBuilder? builder)
         => new([
             new FluentSqlModelSource(builder ?? new SqlModelBuilder()),
             new DataAnnotationsSqlModelSource(),

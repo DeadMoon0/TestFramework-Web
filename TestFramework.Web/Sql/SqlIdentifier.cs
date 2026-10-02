@@ -1,10 +1,13 @@
+using TestFramework.Core.Conventions;
+
 namespace TestFramework.Web.Sql;
 
 /// <summary>
 /// Logical identifier used to resolve a configured SQL Server database.
 /// </summary>
 /// <param name="Identifier">The configuration key that names the database entry.</param>
-public record SqlIdentifier(string Identifier)
+[ClosedShape("An identifier is its name; anything more about a database belongs in its configuration.")]
+public sealed record SqlIdentifier(string Identifier)
 {
     /// <summary>
     /// Converts a typed identifier to its raw string representation.

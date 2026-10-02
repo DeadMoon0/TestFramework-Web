@@ -16,11 +16,30 @@ namespace TestFramework.Web.Sql.Steps;
 /// Result of a scalar query.
 /// </summary>
 /// <typeparam name="TValue">The scalar value type.</typeparam>
-/// <param name="SqlIdentifier">The database the query ran against.</param>
-/// <param name="Value">The scalar value.</param>
-/// <param name="Elapsed">Wall-clock duration of the query.</param>
-public sealed record SqlScalarResult<TValue>(string SqlIdentifier, TValue? Value, TimeSpan Elapsed) : StepResultContext
+public sealed record SqlScalarResult<TValue> : StepResultContext
 {
+    internal SqlScalarResult(string sqlIdentifier, TValue? value, TimeSpan elapsed)
+    {
+        this.SqlIdentifier = sqlIdentifier;
+        this.Value = value;
+        this.Elapsed = elapsed;
+    }
+
+    /// <summary>
+    /// The database the query ran against.
+    /// </summary>
+    public string SqlIdentifier { get; }
+
+    /// <summary>
+    /// The scalar value.
+    /// </summary>
+    public TValue? Value { get; }
+
+    /// <summary>
+    /// Wall-clock duration of the query.
+    /// </summary>
+    public TimeSpan Elapsed { get; }
+
     /// <summary>
     /// Returns a readable description of the outcome.
     /// </summary>
@@ -42,7 +61,7 @@ public sealed class SqlScalarStep<TValue> : SqlStepBase<SqlScalarResult<TValue>>
     /// <param name="sqlIdentifier">The SQL identifier to run against.</param>
     /// <param name="statement">The statement text.</param>
     /// <param name="parameters">The variable-backed parameters.</param>
-    public SqlScalarStep(SqlIdentifier sqlIdentifier, string statement, SqlParameterSet? parameters = null)
+    internal SqlScalarStep(SqlIdentifier sqlIdentifier, string statement, SqlParameterSet? parameters)
         : base(sqlIdentifier, statement, parameters ?? new SqlParameterSet())
     {
     }

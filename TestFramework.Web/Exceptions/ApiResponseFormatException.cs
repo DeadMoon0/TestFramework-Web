@@ -19,7 +19,7 @@ public sealed class ApiResponseFormatException : TimelineFrameworkException
     /// <param name="bodyExcerpt">A truncated excerpt of the response body.</param>
     /// <param name="innerException">The underlying deserialization exception, when any.</param>
     /// <returns>The exception describing the format mismatch.</returns>
-    public static ApiResponseFormatException CannotDeserialize(Type targetType, HttpStatusCode statusCode, string? contentType, string? bodyExcerpt, Exception? innerException = null)
+    internal static ApiResponseFormatException CannotDeserialize(Type targetType, HttpStatusCode statusCode, string? contentType, string? bodyExcerpt, Exception? innerException = null)
     {
         ArgumentNullException.ThrowIfNull(targetType);
 

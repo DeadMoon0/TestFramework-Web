@@ -59,16 +59,30 @@ public interface IWithBodyAction
     /// <summary>
     /// Sends a text body.
     /// </summary>
+    /// <remarks>Uses <c>null</c> for <c>contentType</c>; the other overload states it.</remarks>
+    /// <param name="text">The body text.</param>
+    IApiPayloadStage WithBody(VariableReference<string> text);
+
+    /// <summary>
+    /// Sends a text body.
+    /// </summary>
     /// <param name="text">The body text.</param>
     /// <param name="contentType">The content type to declare. Defaults to <c>text/plain; charset=utf-8</c>.</param>
-    IApiPayloadStage WithBody(VariableReference<string> text, string? contentType = null);
+    IApiPayloadStage WithBody(VariableReference<string> text, string? contentType);
+
+    /// <summary>
+    /// Sends a binary body.
+    /// </summary>
+    /// <remarks>Uses <c>null</c> for <c>contentType</c>; the other overload states it.</remarks>
+    /// <param name="data">The body bytes.</param>
+    IApiPayloadStage WithBody(VariableReference<byte[]> data);
 
     /// <summary>
     /// Sends a binary body.
     /// </summary>
     /// <param name="data">The body bytes.</param>
     /// <param name="contentType">The content type to declare. Defaults to <c>application/octet-stream</c>.</param>
-    IApiPayloadStage WithBody(VariableReference<byte[]> data, string? contentType = null);
+    IApiPayloadStage WithBody(VariableReference<byte[]> data, string? contentType);
 
     /// <summary>
     /// Serializes a value as JSON and sends it as the request body.

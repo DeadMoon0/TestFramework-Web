@@ -13,11 +13,30 @@ namespace TestFramework.Web.Sql.Steps;
 /// <summary>
 /// Result of a statement that changes rows.
 /// </summary>
-/// <param name="SqlIdentifier">The database the statement ran against.</param>
-/// <param name="AffectedRows">The number of rows the statement changed.</param>
-/// <param name="Elapsed">Wall-clock duration of the statement.</param>
-public sealed record SqlExecuteResult(string SqlIdentifier, int AffectedRows, TimeSpan Elapsed) : StepResultContext
+public sealed record SqlExecuteResult : StepResultContext
 {
+    internal SqlExecuteResult(string sqlIdentifier, int affectedRows, TimeSpan elapsed)
+    {
+        this.SqlIdentifier = sqlIdentifier;
+        this.AffectedRows = affectedRows;
+        this.Elapsed = elapsed;
+    }
+
+    /// <summary>
+    /// The database the statement ran against.
+    /// </summary>
+    public string SqlIdentifier { get; }
+
+    /// <summary>
+    /// The number of rows the statement changed.
+    /// </summary>
+    public int AffectedRows { get; }
+
+    /// <summary>
+    /// Wall-clock duration of the statement.
+    /// </summary>
+    public TimeSpan Elapsed { get; }
+
     /// <summary>
     /// Returns a readable description of the outcome.
     /// </summary>
@@ -35,7 +54,7 @@ public sealed class SqlExecuteStep : SqlStepBase<SqlExecuteResult>
     /// <param name="sqlIdentifier">The SQL identifier to run against.</param>
     /// <param name="statement">The statement text.</param>
     /// <param name="parameters">The variable-backed parameters.</param>
-    public SqlExecuteStep(SqlIdentifier sqlIdentifier, string statement, SqlParameterSet? parameters = null)
+    internal SqlExecuteStep(SqlIdentifier sqlIdentifier, string statement, SqlParameterSet? parameters)
         : base(sqlIdentifier, statement, parameters ?? new SqlParameterSet())
     {
     }

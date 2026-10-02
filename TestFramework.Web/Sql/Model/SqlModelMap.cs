@@ -9,16 +9,40 @@ namespace TestFramework.Web.Sql.Model;
 /// <summary>
 /// Describes how one property maps to one column.
 /// </summary>
-/// <param name="Property">The model property.</param>
-/// <param name="ColumnName">The column name.</param>
-/// <param name="IsKey">Whether the column participates in the primary key.</param>
-/// <param name="IsGenerated">Whether the database assigns the value, so it is never written.</param>
-public sealed record SqlColumnMap(PropertyInfo Property, string ColumnName, bool IsKey, bool IsGenerated)
+public sealed record SqlColumnMap
 {
+    internal SqlColumnMap(PropertyInfo property, string columnName, bool isKey, bool isGenerated)
+    {
+        this.Property = property;
+        this.ColumnName = columnName;
+        this.IsKey = isKey;
+        this.IsGenerated = isGenerated;
+    }
+
+    /// <summary>
+    /// The model property.
+    /// </summary>
+    public PropertyInfo Property { get; }
+
+    /// <summary>
+    /// The column name.
+    /// </summary>
+    public string ColumnName { get; }
+
+    /// <summary>
+    /// Whether the column participates in the primary key.
+    /// </summary>
+    public bool IsKey { get; }
+
+    /// <summary>
+    /// Whether the database assigns the value, so it is never written.
+    /// </summary>
+    public bool IsGenerated { get; }
+
     /// <summary>
     /// The CLR type of the mapped property, with nullability removed.
     /// </summary>
-    public Type ClrType { get; } = Nullable.GetUnderlyingType(Property.PropertyType) ?? Property.PropertyType;
+    public Type ClrType => Nullable.GetUnderlyingType(Property.PropertyType) ?? Property.PropertyType;
 
     /// <summary>
     /// The declared maximum length of a text or binary column.

@@ -37,9 +37,17 @@ public sealed class SqlScript
     /// <summary>
     /// Creates a script from inline text.
     /// </summary>
+    /// <remarks>Uses <c>null</c> for <c>description</c>; the other overload states it.</remarks>
+    /// <param name="text">The script text.</param>
+    public static SqlScript FromText(string text)
+        => FromText(text, null);
+
+    /// <summary>
+    /// Creates a script from inline text.
+    /// </summary>
     /// <param name="text">The script text.</param>
     /// <param name="description">A short description used in logs. Defaults to a generic one.</param>
-    public static SqlScript FromText(string text, string? description = null)
+    public static SqlScript FromText(string text, string? description)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(text);
         return new SqlScript(text, string.IsNullOrWhiteSpace(description) ? "inline script" : description);
@@ -114,12 +122,36 @@ public sealed class SqlScript
 /// <summary>
 /// Result of running a script.
 /// </summary>
-/// <param name="SqlIdentifier">The database the script ran against.</param>
-/// <param name="Batches">The number of batches executed.</param>
-/// <param name="AffectedRows">The total number of affected rows reported by the batches.</param>
-/// <param name="Elapsed">Wall-clock duration of the script.</param>
-public sealed record SqlScriptResult(string SqlIdentifier, int Batches, int AffectedRows, TimeSpan Elapsed) : StepResultContext
+public sealed record SqlScriptResult : StepResultContext
 {
+    internal SqlScriptResult(string sqlIdentifier, int batches, int affectedRows, TimeSpan elapsed)
+    {
+        this.SqlIdentifier = sqlIdentifier;
+        this.Batches = batches;
+        this.AffectedRows = affectedRows;
+        this.Elapsed = elapsed;
+    }
+
+    /// <summary>
+    /// The database the script ran against.
+    /// </summary>
+    public string SqlIdentifier { get; }
+
+    /// <summary>
+    /// The number of batches executed.
+    /// </summary>
+    public int Batches { get; }
+
+    /// <summary>
+    /// The total number of affected rows reported by the batches.
+    /// </summary>
+    public int AffectedRows { get; }
+
+    /// <summary>
+    /// Wall-clock duration of the script.
+    /// </summary>
+    public TimeSpan Elapsed { get; }
+
     /// <summary>
     /// Returns a readable description of the outcome.
     /// </summary>
@@ -139,7 +171,7 @@ public sealed class SqlScriptStep : SqlStepBase<SqlScriptResult>
     /// <param name="sqlIdentifier">The SQL identifier to run against.</param>
     /// <param name="script">The script to run.</param>
     /// <param name="parameters">The variable-backed parameters shared by every batch.</param>
-    public SqlScriptStep(SqlIdentifier sqlIdentifier, SqlScript script, SqlParameterSet? parameters = null)
+    internal SqlScriptStep(SqlIdentifier sqlIdentifier, SqlScript script, SqlParameterSet? parameters)
         : base(sqlIdentifier, RequireScript(script).Text, parameters ?? new SqlParameterSet())
     {
         _script = script;

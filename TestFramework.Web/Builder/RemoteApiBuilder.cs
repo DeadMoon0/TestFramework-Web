@@ -74,13 +74,19 @@ internal sealed class RemoteApiBuilder(ApiIdentifier identifier) : IApiConnectio
         return this;
     }
 
-    public IApiPayloadStage WithBody(VariableReference<string> text, string? contentType = null)
+    public IApiPayloadStage WithBody(VariableReference<string> text)
+        => this.WithBody(text, null);
+
+    public IApiPayloadStage WithBody(VariableReference<string> text, string? contentType)
     {
         _state.SetBody(text, contentType ?? "text/plain; charset=utf-8");
         return this;
     }
 
-    public IApiPayloadStage WithBody(VariableReference<byte[]> data, string? contentType = null)
+    public IApiPayloadStage WithBody(VariableReference<byte[]> data)
+        => this.WithBody(data, null);
+
+    public IApiPayloadStage WithBody(VariableReference<byte[]> data, string? contentType)
     {
         _state.SetBody(data, contentType ?? "application/octet-stream");
         return this;

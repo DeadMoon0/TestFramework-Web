@@ -74,7 +74,7 @@ public sealed class AdoSqlExecutor : ISqlExecutor
         ArgumentNullException.ThrowIfNull(parameters);
 
         if (batches.Count == 0)
-            return new SqlScriptExecutionResult(0, 0);
+            return new SqlScriptExecutionResult { AffectedRows = 0, OpenTransactionCount = 0 };
 
         SqlConfig config = _context.Configured<SqlConfig>(identifier);
         string connectionString = ResolveConnectionString(identifier);
@@ -102,7 +102,7 @@ public sealed class AdoSqlExecutor : ISqlExecutor
                 .ExecuteScalarAsync<int>(CreateCommand("SELECT @@TRANCOUNT;", EmptyParameters, config, cancellationToken))
                 .ConfigureAwait(false);
 
-            return new SqlScriptExecutionResult(affected, openTransactions);
+            return new SqlScriptExecutionResult { AffectedRows = affected, OpenTransactionCount = openTransactions };
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

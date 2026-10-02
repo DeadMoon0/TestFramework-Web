@@ -16,11 +16,21 @@ public static class WebSqlExtensions
     /// <summary>
     /// Loads SQL configuration entries into the service collection.
     /// </summary>
+    /// <remarks>Uses <c>null</c> for <c>provider</c>; the other overload states it.</remarks>
+    /// <param name="serviceCollection">The service collection to register the SQL config store in.</param>
+    /// <param name="configuration">The configuration root from which to load settings.</param>
+    /// <returns>The service collection for fluent chaining.</returns>
+    public static IServiceCollection LoadWebSqlConfigs(this IServiceCollection serviceCollection, IConfiguration configuration)
+        => serviceCollection.LoadWebSqlConfigs(configuration, null);
+
+    /// <summary>
+    /// Loads SQL configuration entries into the service collection.
+    /// </summary>
     /// <param name="serviceCollection">The service collection to register the SQL config store in.</param>
     /// <param name="configuration">The configuration root from which to load settings.</param>
     /// <param name="provider">Optional custom configuration provider. Uses <see cref="DefaultSqlConfigProvider"/> when omitted.</param>
     /// <returns>The service collection for fluent chaining.</returns>
-    public static IServiceCollection LoadWebSqlConfigs(this IServiceCollection serviceCollection, IConfiguration configuration, ISqlConfigProvider? provider = null)
+    public static IServiceCollection LoadWebSqlConfigs(this IServiceCollection serviceCollection, IConfiguration configuration, ISqlConfigProvider? provider)
     {
         SqlConfigLoader loader = new(provider ?? new DefaultSqlConfigProvider());
         loader.LoadAllConfigs(configuration, serviceCollection);

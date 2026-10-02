@@ -338,7 +338,7 @@ internal sealed class PaymentsStubDefinition : StubDefinition
         .OnPost("/api/charges")
             .WithHeader("Idempotency-Key")
             .WithBodyContaining("\"amount\"")
-            .RespondJson(HttpStatusCode.Created, new { id = "{{Random Type=Guid}}" }, useTemplating: true);
+            .Respond(StubResponse.Json(HttpStatusCode.Created, new { id = "{{Random Type=Guid}}" }) with { UseTemplating = true });
 }
 ```
 
@@ -386,14 +386,14 @@ three are **not** equivalent:
   unmatched list if it arrives inside your window. Demote the assertion to a log inspection there, or
   keep it strict only where the run owns the stub.
 - **`Calls(...)` and `Called(...)` accept the same `*` wildcard the mappings do**, so
-  `Stub.Calls("payments", path: "/api/charges/*")` finds what `OnPost("/api/charges/*")` answered. A
+  `Stub.Calls("payments").WithPath("/api/charges/*")` finds what `OnPost("/api/charges/*")` answered. A
   pattern without a `*` stays an exact comparison, and a leading slash is optional on both.
 - **A header filter is the only true isolation on a shared stub.** The timeline cannot stamp a
   correlation id on the outbound call — the application makes it, not the test — but if the
   application forwards `traceparent` or a correlation header your request already set, filter on it:
 
 ```csharp
-.Trigger(WebExt.Stub.Calls("payments", HttpMethod.Post, "/api/charges")
+.Trigger(WebExt.Stub.Calls("payments").WithMethod(HttpMethod.Post).WithPath("/api/charges")
     .WithHeader("x-correlation-id", correlationId)).Name("calls")
 
 .WaitForEvent(WebExt.Stub.Called("payments", HttpMethod.Post, "/api/charges")

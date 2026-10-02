@@ -15,22 +15,54 @@ namespace TestFramework.Web.Stub.Admin;
 /// <summary>
 /// One request a stub received.
 /// </summary>
-/// <param name="Method">The HTTP method.</param>
-/// <param name="Path">The path that was requested.</param>
-/// <param name="Query">The raw query string, without the leading question mark.</param>
-/// <param name="Body">The request body as text, when there was one.</param>
-/// <param name="Headers">The request headers.</param>
-/// <param name="ReceivedAt">When the stub received it.</param>
-/// <param name="Matched">Whether a mapping answered it. An unmatched call is a call the test never declared.</param>
-public sealed record StubCall(
-    string Method,
-    string Path,
-    string? Query,
-    string? Body,
-    IReadOnlyDictionary<string, string> Headers,
-    DateTimeOffset? ReceivedAt,
-    bool Matched)
+public sealed record StubCall
 {
+    internal StubCall(string method, string path, string? query, string? body, IReadOnlyDictionary<string, string> headers, DateTimeOffset? receivedAt, bool matched)
+    {
+        this.Method = method;
+        this.Path = path;
+        this.Query = query;
+        this.Body = body;
+        this.Headers = headers;
+        this.ReceivedAt = receivedAt;
+        this.Matched = matched;
+    }
+
+    /// <summary>
+    /// The HTTP method.
+    /// </summary>
+    public string Method { get; }
+
+    /// <summary>
+    /// The path that was requested.
+    /// </summary>
+    public string Path { get; }
+
+    /// <summary>
+    /// The raw query string, without the leading question mark.
+    /// </summary>
+    public string? Query { get; }
+
+    /// <summary>
+    /// The request body as text, when there was one.
+    /// </summary>
+    public string? Body { get; }
+
+    /// <summary>
+    /// The request headers.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Headers { get; }
+
+    /// <summary>
+    /// When the stub received it.
+    /// </summary>
+    public DateTimeOffset? ReceivedAt { get; }
+
+    /// <summary>
+    /// Whether a mapping answered it. An unmatched call is a call the test never declared.
+    /// </summary>
+    public bool Matched { get; }
+
     /// <summary>
     /// Returns a readable description of the call.
     /// </summary>

@@ -347,7 +347,7 @@ public class SqlTimelineTests
             System.Threading.CancellationToken cancellationToken)
         {
             _scripts.Add(batches);
-            return Task.FromResult(new SqlScriptExecutionResult(batches.Count, OpenTransactionCount));
+            return Task.FromResult(new SqlScriptExecutionResult { AffectedRows = batches.Count, OpenTransactionCount = OpenTransactionCount });
         }
     }
 }
