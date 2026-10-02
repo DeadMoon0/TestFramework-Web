@@ -45,7 +45,25 @@ public static class SqlConfigResolver
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        return context.Services.GetService<Execution.ISqlExecutor>() ?? new Execution.AdoSqlExecutor(context);
+        // An executor registered as a service was a singleton handed nothing, so it could never see the run it
+        // executes for. Refused by name rather than ignored: ignoring it would silently swap the author's
+        // executor for the default one.
+        if (context.Services.GetService<Execution.ISqlExecutor>() is { } registered)
+        {
+            throw new Core.Exceptions.FrameworkConfigurationException(
+                $"An ISqlExecutor ('{registered.GetType().Name}') is registered as a service, and Web creates executors through ISqlExecutorFactory, which is handed the run.")
+            {
+                RecoverySteps =
+                [
+                    "Implement ISqlExecutorFactory, create the executor in Create(context), and register it with UseSqlExecutor(factory).",
+                    "Resolve connections inside the executor with context.Configured<SqlConfig>(identifier), so a container-published database is found.",
+                ],
+            };
+        }
+
+        return context.Services.GetService<Execution.ISqlExecutorFactory>() is { } factory
+            ? factory.Create(context)
+            : new Execution.AdoSqlExecutor(context);
     }
 
     /// <summary>

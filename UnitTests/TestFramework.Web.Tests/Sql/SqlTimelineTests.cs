@@ -46,7 +46,7 @@ public class SqlTimelineTests
                 model.For<Order>().Table("Orders").Key(x => x.Id);
                 models?.Invoke(new SqlModelBuilderScope(model));
             })
-            .AddService(services => services.AddSingleton<ISqlExecutor>(executor));
+            .UseSqlExecutor(new FixedSqlExecutorFactory(executor));
 
         return builder.Build();
     }

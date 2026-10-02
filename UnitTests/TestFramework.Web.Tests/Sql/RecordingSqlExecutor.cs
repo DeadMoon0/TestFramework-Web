@@ -32,6 +32,14 @@ public sealed record RecordedSqlCall(string Identifier, string Statement, IReadO
 /// external executor written before <c>ExecuteScriptAsync</c> existed: such an implementer keeps the
 /// old one-connection-per-batch semantics through the default interface body.
 /// </remarks>
+/// <summary>
+/// Hands every step the same executor, for a test that wants to see what was sent.
+/// </summary>
+public sealed class FixedSqlExecutorFactory(ISqlExecutor executor) : ISqlExecutorFactory
+{
+    public ISqlExecutor Create(TestFramework.Core.Steps.RunContext context) => executor;
+}
+
 public class RecordingSqlExecutor : ISqlExecutor
 {
     private readonly List<RecordedSqlCall> _calls = [];

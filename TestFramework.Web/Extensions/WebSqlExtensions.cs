@@ -103,4 +103,19 @@ public static class WebSqlExtensions
         builder.AddService(services => services.AddSingleton(provider));
         return builder;
     }
+
+    /// <summary>
+    /// Registers the factory SQL steps create their executor with, in place of the built-in ADO.NET executor.
+    /// </summary>
+    /// <param name="builder">The config instance builder.</param>
+    /// <param name="factory">The factory; see <see cref="Sql.Execution.ISqlExecutorFactory"/> for what its executors must do.</param>
+    /// <returns>The builder for fluent chaining.</returns>
+    public static IConfigInstanceBuilder UseSqlExecutor(this IConfigInstanceBuilder builder, Sql.Execution.ISqlExecutorFactory factory)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(factory);
+
+        builder.AddService(services => services.AddSingleton(factory));
+        return builder;
+    }
 }

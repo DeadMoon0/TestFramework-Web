@@ -31,7 +31,8 @@ public readonly record struct SqlScriptExecutionResult
 /// </summary>
 /// <remarks>
 /// This is the seam that keeps the rest of the SQL surface free of any particular data access
-/// library, and the place a different provider would plug in.
+/// library. A different provider plugs in through <see cref="ISqlExecutorFactory"/>, which is handed the run and
+/// says what an executor must do.
 /// </remarks>
 public interface ISqlExecutor
 {

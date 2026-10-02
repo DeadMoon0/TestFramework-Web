@@ -19,8 +19,8 @@ ones the rest of the framework uses.
 - **You want to verify what the API did to its database**: configure `Sql:<identifier>` and use row
   artifacts and query finders in the same timeline.
 - **You need the API or the database booted for you**: not covered by this package. Timelines are
-  written against the `IHttpSender` and `ISqlExecutor` seams, so a container lane slots in without
-  changing them.
+  written against the `IWebComponentFactory` and `ISqlExecutorFactory` seams - each handed the run, so it
+  can find a container-published address - and a container lane slots in without changing them.
 
 ## Install
 

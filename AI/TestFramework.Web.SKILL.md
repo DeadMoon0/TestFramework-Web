@@ -82,7 +82,7 @@
     - WebExt.Stub.Calls(identifier).WithMethod(method).WithPath(path).WithHeader(name, value) | WebExt.Stub.Reset(identifier). The path filter takes the same * wildcard the mappings take, and a leading slash is optional.
     - run.StubCall(label) | StubCalls(label) | StubUnmatchedCalls(label) -> ValueHandle&lt;T&gt;
     - StubConfig: BaseUrl, AdminPath, PollInterval, AllowInvalidCertificates, ResetMode (Watermark by default, or ClearServerLog)
-    - Extension points: IWebComponentFactory, IHttpSender, IApiConfigProvider, IApiAuthenticationProvider, ISqlExecutor, ISqlModelMapSource, ISqlCredentialProvider, ISqlConfigProvider, IStubConfigProvider
+    - Extension points: IWebComponentFactory, IHttpSender, IApiConfigProvider, IApiAuthenticationProvider, ISqlExecutorFactory (registered with UseSqlExecutor(factory); a directly registered ISqlExecutor is refused), ISqlModelMapSource, ISqlCredentialProvider, ISqlConfigProvider, IStubConfigProvider
 </api_hints>
 
 <configuration_shape>

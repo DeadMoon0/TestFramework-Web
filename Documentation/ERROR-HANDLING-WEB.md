@@ -17,6 +17,7 @@ The design rule: a failure message must be enough to fix the problem without re-
 | Asserted status did not match | `ValueAssertionException` from the framework's own assertions |
 | Body cannot be read as the requested type | `ApiResponseFormatException` |
 | Liveness probe answered, but not acceptably | `ApiLivenessProbeException` |
+| An `ISqlExecutor` registered as a service instead of through `UseSqlExecutor(factory)` | `FrameworkConfigurationException`, when the first SQL step runs |
 
 This split is deliberate. Tests routinely assert error responses, so a `404` must not abort the run.
 Anything that prevents a response from existing at all does.
