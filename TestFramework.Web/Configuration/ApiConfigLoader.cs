@@ -12,8 +12,8 @@ internal sealed class ApiConfigLoader(IApiConfigProvider configProvider)
         // an API is gets one answer whether a person wrote it down or a container published it later.
         serviceCollection.AddConfigShape(new ApiShape(configProvider));
 
-        WebRedactionOptions redactionOptions = configProvider.LoadRedactionOptions(configuration);
-        serviceCollection.AddSingleton(redactionOptions);
-        serviceCollection.AddSingleton(new Http.HttpHeaderRedactor(redactionOptions));
+        // One declaration among any number: the redactor is built from all of them together, so this one and a
+        // RedactHeaders call in code both count whichever is registered last.
+        serviceCollection.AddSingleton(configProvider.LoadRedactionOptions(configuration));
     }
 }

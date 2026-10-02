@@ -57,19 +57,15 @@ public static class ApiTriggerConfigExtension
     /// <returns>The builder for fluent chaining.</returns>
     /// <remarks>
     /// Prefer the <c>Web:SensitiveHeaders</c> configuration section. Use this only when the names are
-    /// not known until run time.
+    /// not known until run time. It adds to that section and to every other call, in any order - no declaration
+    /// replaces another, so a header named secret anywhere stays secret.
     /// </remarks>
     public static IConfigInstanceBuilder RedactHeaders(this IConfigInstanceBuilder builder, params string[] headerNames)
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(headerNames);
 
-        builder.AddService(services =>
-        {
-            WebRedactionOptions options = WebRedactionOptions.Default.With(headerNames);
-            services.AddSingleton(options);
-            services.AddSingleton(new Http.HttpHeaderRedactor(options));
-        });
+        builder.AddService(services => services.AddSingleton(WebRedactionOptions.Default.With(headerNames)));
 
         return builder;
     }

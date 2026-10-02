@@ -178,7 +178,8 @@ policy in configuration rather than in code:
 ```
 
 A comma-separated string works too. For names only known at run time there is
-`.RedactHeaders("x-runtime-secret")` on the config builder.
+`.RedactHeaders("x-runtime-secret")` on the config builder. Every declaration adds to the others, in any
+order: the section, and each `RedactHeaders` call, all count.
 
 ## Liveness
 

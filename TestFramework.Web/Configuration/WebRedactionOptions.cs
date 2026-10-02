@@ -48,6 +48,14 @@ public sealed record WebRedactionOptions
         return this with { AdditionalSensitiveHeaders = [.. AdditionalSensitiveHeaders, .. headerNames] };
     }
 
+    /// <summary>
+    /// Every declaration together: the built-in names plus what each one added.
+    /// </summary>
+    /// <param name="declarations">Every registered declaration, in any order.</param>
+    /// <returns>One options value naming every sensitive header.</returns>
+    internal static WebRedactionOptions Combine(IEnumerable<WebRedactionOptions> declarations)
+        => new() { AdditionalSensitiveHeaders = [.. declarations.SelectMany(static declaration => declaration.AdditionalSensitiveHeaders)] };
+
     internal HashSet<string> BuildHeaderSet()
         => new(BuiltInSensitiveHeaders.Concat(AdditionalSensitiveHeaders), StringComparer.OrdinalIgnoreCase);
 }

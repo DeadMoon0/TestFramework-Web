@@ -45,12 +45,11 @@ public sealed class HttpHeaderRedactor
     {
         ArgumentNullException.ThrowIfNull(serviceProvider);
 
-        if (serviceProvider.GetService<HttpHeaderRedactor>() is { } registered)
-            return registered;
+        // Every declaration counts: the configuration section and each RedactHeaders call register one apiece, and a
+        // redactor built from only the last of them would log the others in clear.
+        WebRedactionOptions[] declarations = [.. serviceProvider.GetServices<WebRedactionOptions>()];
 
-        return serviceProvider.GetService<WebRedactionOptions>() is { } options
-            ? new HttpHeaderRedactor(options)
-            : Default;
+        return declarations.Length == 0 ? Default : new HttpHeaderRedactor(WebRedactionOptions.Combine(declarations));
     }
 
     /// <summary>

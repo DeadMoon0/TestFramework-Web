@@ -105,8 +105,9 @@ Extend the policy in configuration, not in code:
 { "Web": { "SensitiveHeaders": [ "x-tenant-secret", "x-signature" ] } }
 ```
 
-`.RedactHeaders(...)` on the config builder exists for names that are only known at run time. There
-is no global mutable list, so one test project cannot change what another one redacts.
+`.RedactHeaders(...)` on the config builder exists for names that are only known at run time. It adds to
+the configured names rather than replacing them, whichever is registered last. There is no global mutable
+list, so one test project cannot change what another one redacts.
 
 ## What Callers Should Not Have To Handle
 
