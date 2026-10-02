@@ -18,7 +18,8 @@ namespace TestFramework.Web.Sql.Artifacts;
 /// </summary>
 /// <typeparam name="TRow">The row model type.</typeparam>
 /// <remarks>
-/// Rows located this way are observed, not owned: the framework never deletes them during teardown.
+/// Rows located this way are held by the run like any other: teardown deletes them, whether the test created them
+/// or found them. Chain <c>.MarkReadonly()</c> on the step to only look.
 /// </remarks>
 public sealed class SqlRowWhereFinder<TRow> : ArtifactFinder<SqlRowArtifactDescriber<TRow>, SqlRowArtifactData<TRow>, SqlRowArtifactReference<TRow>>
     where TRow : class

@@ -111,7 +111,8 @@ public class WebArtifactFinderProxy
 public class SqlArtifactFinderProxy
 {
     /// <summary>
-    /// Finds rows matching a where clause. Located rows are observed, never deleted during teardown.
+    /// Finds rows matching a where clause. Teardown deletes the rows it found, as it does every row the run holds;
+    /// chain <c>.MarkReadonly()</c> on the step to only look.
     /// </summary>
     /// <typeparam name="TRow">The row model type.</typeparam>
     /// <param name="identifier">The SQL identifier to query.</param>

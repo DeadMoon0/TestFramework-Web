@@ -274,11 +274,11 @@ WebExt.Sql.Execute("main", "UPDATE Orders SET Status = @status WHERE Id = @id")
 
 Two rules worth knowing:
 
-- **Ownership decides teardown.** There are three ways to put a row in front of a test and they
-  differ only in who is responsible afterwards: `SetupArtifact` + `AddArtifact` creates and **owns**
-  it; `RegisterArtifact` adopts an existing row by key and **also owns** it, so it is removed;
-  `FindArtifact` only **observes**, and what it finds is left exactly where it was. Teardown records
-  that it passed over an artifact marked readonly — an informational line, not a failure.
+- **Teardown removes every row the run holds, unless you say otherwise.** `SetupArtifact` + `AddArtifact`
+  creates a row, `RegisterArtifact` adopts one by key, and `FindArtifact` brings in rows a query found -
+  and teardown deletes all three, whether the test created the row or found it. To only look, chain
+  `.MarkReadonly()` on the step: teardown then passes over the row and records that it did, an
+  informational line, not a failure.
 - **Setup upserts.** A rerun against a database a previous run left dirty converges instead of
   failing on a duplicate key.
 
