@@ -54,12 +54,14 @@ public record SqlConfig
     public bool? Encrypt { get; init; }
 
     /// <summary>
-    /// Connection timeout applied while opening a connection.
+    /// Connection timeout applied while opening a connection, in whole seconds rounded up. When absent the SQL
+    /// client's own default applies: 15 s.
     /// </summary>
     public TimeSpan? ConnectTimeout { get; init; }
 
     /// <summary>
-    /// Command timeout applied to statements. When absent the step timeout is the only limit.
+    /// Command timeout applied to statements, in whole seconds rounded up. When absent the step timeout is the only
+    /// limit: the command is given no limit of its own.
     /// </summary>
     public TimeSpan? CommandTimeout { get; init; }
 }

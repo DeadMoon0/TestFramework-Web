@@ -151,4 +151,20 @@ public class SqlServerRoundTripTests
         run.EnsureRanToCompletion();
         run.SqlRow<RoundTripRow>("row").Select(row => row.Name).Should().Be("fresh");
     }
+
+    [SqlServerFact]
+    public async Task AStatementLongerThanTheDriversDefault_RunsUnderTheStepTimeout()
+    {
+        // Damage without it: with no CommandTimeout configured the SQL client's own 30 s default applied, so a
+        // statement under a two-minute step timeout died at 30 s - while the configuration says the step timeout is
+        // the only limit.
+        Timeline timeline = Timeline.Create()
+            .Trigger(WebExt.Sql.Execute("main", "WAITFOR DELAY '00:00:31';")).Name("slow")
+                .WithTimeOut(TimeSpan.FromMinutes(2))
+            .Build();
+
+        TimelineRun run = await timeline.SetupRun(CreateConfig()).RunAsync();
+
+        run.EnsureRanToCompletion();
+    }
 }

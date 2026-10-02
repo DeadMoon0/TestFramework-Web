@@ -137,7 +137,7 @@ public sealed class AdoSqlExecutor : ISqlExecutor
             statement,
             ToDynamicParameters(parameters),
             commandType: CommandType.Text,
-            commandTimeout: config.CommandTimeout is { } timeout ? (int)timeout.TotalSeconds : null,
+            commandTimeout: SqlTimeouts.CommandSeconds(config.CommandTimeout),
             cancellationToken: cancellationToken);
 
     private async Task<TResult> RunAsync<TResult>(

@@ -63,7 +63,7 @@ public static class SqlConnectionStringFactory
             builder.Encrypt = encrypt;
 
         if (config.ConnectTimeout is { } connectTimeout)
-            builder.ConnectTimeout = (int)connectTimeout.TotalSeconds;
+            builder.ConnectTimeout = SqlTimeouts.WholeSeconds(connectTimeout);
 
         return builder.ConnectionString;
     }
