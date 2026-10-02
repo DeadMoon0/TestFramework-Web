@@ -110,6 +110,7 @@ public sealed class SqlModelMap
         Columns = columns;
         KeyColumns = [.. columns.Where(column => column.IsKey)];
         WritableColumns = [.. columns.Where(column => !column.IsGenerated)];
+        GeneratedKeyColumns = [.. KeyColumns.Where(column => column.IsGenerated)];
     }
 
     /// <summary>
@@ -141,6 +142,12 @@ public sealed class SqlModelMap
     /// The columns the framework writes, excluding database-generated ones.
     /// </summary>
     public IReadOnlyList<SqlColumnMap> WritableColumns { get; }
+
+    /// <summary>
+    /// The key columns the database assigns, in key order: a row the test creates leaves them out and reads them
+    /// back.
+    /// </summary>
+    internal IReadOnlyList<SqlColumnMap> GeneratedKeyColumns { get; }
 
     /// <summary>
     /// The bracket-quoted, schema-qualified table name.
@@ -186,6 +193,12 @@ public sealed class SqlModelMap
             if (column.ClrType == typeof(Guid))
                 return Guid.Parse(value);
 
+            if (column.ClrType == typeof(DateTimeOffset))
+                return DateTimeOffset.Parse(value, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind);
+
+            if (column.ClrType == typeof(DateTime))
+                return DateTime.Parse(value, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind);
+
             return Convert.ChangeType(value, column.ClrType, System.Globalization.CultureInfo.InvariantCulture);
         }
         catch (Exception exception) when (exception is FormatException or InvalidCastException or OverflowException or ArgumentException)
@@ -193,6 +206,36 @@ public sealed class SqlModelMap
             throw SqlModelMapException.KeyConversionFailed(ModelType, column.ColumnName, value, column.ClrType, exception);
         }
     }
+
+    /// <summary>
+    /// Reads a row's key values as the text a reference addresses it by, in key order.
+    /// </summary>
+    /// <param name="row">A row of this map's model.</param>
+    /// <returns>The key values.</returns>
+    /// <exception cref="TestFramework.Core.Exceptions.FrameworkStateException">A key column is null, so the row cannot be addressed.</exception>
+    internal IReadOnlyList<string> ReadKeyValues(object row)
+        => [.. KeyColumns.Select(column => column.Property.GetValue(row) is { } value
+            ? FormatKeyValue(value)
+            : throw new TestFramework.Core.Exceptions.FrameworkStateException(
+                $"The key column '{column.ColumnName}' of '{ModelType.Name}' resolved to null, so the row cannot be addressed."))];
+
+    /// <summary>
+    /// Writes a key value as the text <see cref="ConvertKeyValue"/> reads back to the same value.
+    /// </summary>
+    /// <remarks>
+    /// Dates round-trip format, so a key read from the database addresses the same row again: the general
+    /// invariant format drops the fraction of a second a <c>datetime2</c> key keeps.
+    /// </remarks>
+    /// <param name="value">The key value.</param>
+    /// <returns>The text.</returns>
+    internal static string FormatKeyValue(object value) => value switch
+    {
+        string text => text,
+        DateTime moment => moment.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+        DateTimeOffset moment => moment.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+        IFormattable formattable => formattable.ToString(null, System.Globalization.CultureInfo.InvariantCulture),
+        _ => value.ToString() ?? string.Empty,
+    };
 
     /// <summary>
     /// Returns a readable description of the mapping.

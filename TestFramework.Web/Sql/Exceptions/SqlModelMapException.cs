@@ -95,6 +95,79 @@ public sealed class SqlModelMapException : TimelineFrameworkException
             null,
             innerException);
 
+    /// <summary>
+    /// Creates an exception for a row reference given a number of key values that addresses neither a row that
+    /// exists nor one setup creates.
+    /// </summary>
+    /// <param name="modelType">The model type.</param>
+    /// <param name="supplied">How many key values were given.</param>
+    /// <param name="keyColumns">Every key column, in key order.</param>
+    /// <param name="generatedKeyColumns">The key columns the database assigns.</param>
+    /// <returns>The exception describing the count.</returns>
+    internal static SqlModelMapException KeyValueCount(Type modelType, int supplied, IReadOnlyList<string> keyColumns, IReadOnlyList<string> generatedKeyColumns)
+    {
+        string order = string.Join(", ", keyColumns);
+
+        List<string> recoverySteps = [$"Give every key value, in key order ({order}), to address a row that exists."];
+        if (generatedKeyColumns.Count > 0)
+        {
+            int suppliedByTheTest = keyColumns.Count - generatedKeyColumns.Count;
+            recoverySteps.Add($"Or give only the {suppliedByTheTest} the test supplies and leave out {string.Join(", ", generatedKeyColumns)}, which the database assigns, so setup creates the row and reads the key back.");
+        }
+
+        return new SqlModelMapException(
+            $"'{modelType.Name}' maps to {keyColumns.Count} key column(s) ({order}) but {supplied} key value(s) were given.",
+            recoverySteps);
+    }
+
+    /// <summary>
+    /// Creates an exception for a row the test creates whose reference names a key the database assigns.
+    /// </summary>
+    /// <remarks>
+    /// The insert leaves a generated column out, so the database numbers the row itself and the given value
+    /// addresses a different row - one that is not there. Teardown then deletes nothing and the row the run
+    /// created stays behind, which is why this is refused rather than tried.
+    /// </remarks>
+    /// <param name="modelType">The model type.</param>
+    /// <param name="generatedKeyColumns">The key columns the database assigns.</param>
+    /// <returns>The exception describing the conflict.</returns>
+    internal static SqlModelMapException GeneratedKeyGiven(Type modelType, IReadOnlyList<string> generatedKeyColumns)
+    {
+        string generated = string.Join(", ", generatedKeyColumns);
+
+        return new SqlModelMapException(
+            $"'{modelType.Name}' is set up with a value for {generated}, which the database assigns, so the row it inserts would not be the row the reference addresses.",
+            [
+                $"Leave {generated} out of the reference - Row<{modelType.Name}>(identifier) - so setup reads the assigned key back; chain .KeyTo(...) to hand it to later steps.",
+                $"To adopt a row that already exists, register it instead: RegisterArtifact(name, Row<{modelType.Name}>(identifier, keys...)).",
+            ]);
+    }
+
+    /// <summary>
+    /// Creates an exception for seed data whose key disagrees with the reference.
+    /// </summary>
+    /// <param name="modelType">The model type.</param>
+    /// <param name="columnName">The key column.</param>
+    /// <param name="referenceValue">The value the reference addresses.</param>
+    /// <param name="rowValue">The value the seed row carries.</param>
+    /// <returns>The exception describing the disagreement.</returns>
+    internal static SqlModelMapException SeedKeyDisagrees(Type modelType, string columnName, string referenceValue, string? rowValue)
+        => new(
+            $"The '{modelType.Name}' row being set up carries {columnName} = '{rowValue}', and its reference addresses {columnName} = '{referenceValue}'; teardown would delete a row setup never wrote.",
+            [$"Give the reference and the row the same {columnName}."]);
+
+    /// <summary>
+    /// Creates an exception for a <c>KeyTo</c> naming a property that is not a key column.
+    /// </summary>
+    /// <param name="modelType">The model type.</param>
+    /// <param name="propertyName">The property.</param>
+    /// <param name="keyProperties">The key properties.</param>
+    /// <returns>The exception describing the property.</returns>
+    internal static SqlModelMapException NotAKey(Type modelType, string propertyName, IReadOnlyList<string> keyProperties)
+        => new(
+            $"KeyTo names '{modelType.Name}.{propertyName}', which is not a key column.",
+            [$"Name a key property: {string.Join(", ", keyProperties)}."]);
+
     private SqlModelMapException(string friendlyMessage, IReadOnlyList<string> recoverySteps, IReadOnlyList<string>? availableOptions = null, Exception? innerException = null)
         : base(friendlyMessage, recoverySteps, availableOptions ?? [], innerException)
     {

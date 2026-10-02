@@ -67,14 +67,14 @@
     - ApiAuthMode: None, ApiKey, Bearer, Basic, Negotiate
     - Exceptions: ApiConfigurationValidationException, ApiRequestFailedException, ApiResponseFormatException, ApiLivenessProbeException
     - Setup: .LoadWebConfig(), .ConfigureApiTrigger(c =&gt; c with { ... }), .RedactHeaders(...)
-    - WebExt.Artifact.Sql.Row&lt;T&gt;(identifier, keyValues...) with SetupArtifact/AddArtifact, payload TestFramework.Web.Sql.Artifacts.SqlRowArtifactData&lt;T&gt;. TestFramework.Azure declares a type of the same name; in a file using both, alias one with a using rather than expecting a rename.
+    - WebExt.Artifact.Sql.Row&lt;T&gt;(identifier, keyValues...) with SetupArtifact/AddArtifact, payload TestFramework.Web.Sql.Artifacts.SqlRowArtifactData&lt;T&gt;. For a key the database assigns (Identity, or Generated on a key column) leave it out - Row&lt;T&gt;(identifier) - and chain .KeyTo(x =&gt; x.Id, "orderId") to hand the read-back key to later steps; giving a value for it is refused at setup. TestFramework.Azure declares a type of the same name; in a file using both, alias one with a using rather than expecting a rename.
     - WebExt.ArtifactFinder.Sql.Where&lt;T&gt;(identifier, "Name = @name").WithParameter("name", variable) with FindArtifact/FindArtifacts
     - timeline.RegisterArtifact(identifier, WebExt.Artifact.Sql.Row&lt;T&gt;(...)) to adopt a row the application wrote
     - WebExt.Sql.Execute|Scalar&lt;T&gt;|Script(identifier, ...).WithParameter(name, variable). A script's GO batches all run on one connection, so #temp tables and SET options survive a GO; GO 3 repeats a batch. A custom ISqlExecutor keeps the old per-batch behaviour until it overrides ExecuteScriptAsync.
     - WebExt.Sql.IsLive(identifier, SqlAlivenessLevel.Reachable|Database). The connection string names the catalog, so both levels have already opened the configured database; they differ only in SELECT 1 against SELECT DB_NAME().
     - run.SqlRow&lt;T&gt;(artifactId) | SqlScalar&lt;T&gt;(label) | SqlAffectedRows(label) | SqlProbe(label) -> ValueHandle&lt;T&gt;
     - SqlConfig: ConnectionString or Server/Database/IntegratedSecurity/UserName/Password/TrustServerCertificate/CommandTimeout
-    - Setup: .AddWebSqlModels(models =&gt; models.For&lt;T&gt;().Table("...").Key(x =&gt; x.Id).Generated(x =&gt; x.Id)), .ConfigureSqlSteps(...), .UseSqlCredentials(...)
+    - Setup: .AddWebSqlModels(models =&gt; models.For&lt;T&gt;().Table("...").Key(x =&gt; x.Id).Identity(x =&gt; x.Id)), .ConfigureSqlSteps(...), .UseSqlCredentials(...)
     - SqlSchema.CreateTablesScript(types...) | CreateTable(map) | CreateTables(maps) -> DDL from a model map
     - Model map extras for generation: .Identity(x =&gt; x.Id), .MaxLength(x =&gt; x.Name, 200), .Precision(x =&gt; x.Total, 18, 2), .Required(x =&gt; x.Name), .ColumnType(x =&gt; x.Amount, "money")
     - StubDefinition with Configure(StubMappingBuilder): .OnGet|OnPost|OnPut|OnDelete(path).WithHeader|WithQuery|WithBodyContaining|WithPriority(...).RespondJson|RespondText|RespondStatus(...) or .Respond(StubResponse.Json|Text|Status(...) with { Delay = ..., UseTemplating = true })

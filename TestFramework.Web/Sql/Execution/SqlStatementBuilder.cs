@@ -112,6 +112,38 @@ public static class SqlStatementBuilder
     }
 
     /// <summary>
+    /// Builds an insert of every writable column that returns the inserted row's key, for a model whose key the
+    /// database assigns.
+    /// </summary>
+    /// <remarks>
+    /// The key goes through a table variable - <c>OUTPUT ... INTO</c> - because a bare <c>OUTPUT</c> is refused on
+    /// a table with an enabled trigger, and audit triggers are common on the tables a test seeds. The variable's
+    /// columns are <c>sql_variant</c> so the statement needs no column types: an identity, a
+    /// <c>NEWSEQUENTIALID()</c> default and a computed key all fit, and the reader hands back the value's own type.
+    /// Each key column comes back aliased to its property, the way every select here does.
+    /// </remarks>
+    /// <param name="map">The model map.</param>
+    public static SqlStatement InsertReturningKey(SqlModelMap map)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+
+        string declared = string.Join(", ", map.KeyColumns.Select((_, index) => $"[tf_out{index}] sql_variant"));
+        string inserted = string.Join(", ", map.KeyColumns.Select(column => $"INSERTED.{SqlModelMap.Quote(column.ColumnName)}"));
+        string selected = string.Join(", ", map.KeyColumns.Select((column, index) => $"[tf_out{index}] AS {SqlModelMap.Quote(column.Property.Name)}"));
+        string columns = string.Join(", ", map.WritableColumns.Select(column => SqlModelMap.Quote(column.ColumnName)));
+        string values = string.Join(", ", map.WritableColumns.Select((_, index) => $"@{ValueParameterPrefix}{index}"));
+
+        // A model that is nothing but generated columns inserts a row of defaults.
+        string insert = map.WritableColumns.Count == 0
+            ? $"INSERT INTO {map.QualifiedTable} OUTPUT {inserted} INTO @tf_out DEFAULT VALUES;"
+            : $"INSERT INTO {map.QualifiedTable} ({columns}) OUTPUT {inserted} INTO @tf_out VALUES ({values});";
+
+        return new SqlStatement(
+            $"DECLARE @tf_out TABLE ({declared}); {insert} SELECT {selected} FROM @tf_out;",
+            [.. map.WritableColumns.Select((_, index) => $"{ValueParameterPrefix}{index}")]);
+    }
+
+    /// <summary>
     /// Builds an update of every writable non-key column for one row addressed by its key.
     /// </summary>
     /// <param name="map">The model map.</param>

@@ -97,12 +97,6 @@ public sealed class SqlRowWhereFinder<TRow> : ArtifactFinder<SqlRowArtifactDescr
 
         logger.LogInformation("SQL find '{0}' matched {1} row(s) in '{2}'.", map.ToString(), rows.Count, _sqlIdentifier.ToString());
 
-        return [.. rows.Select(row => SqlRowArtifactReference<TRow>.Discovered(_sqlIdentifier, ReadKeyValues(map, row)))];
+        return [.. rows.Select(row => SqlRowArtifactReference<TRow>.Discovered(_sqlIdentifier, map.ReadKeyValues(row)))];
     }
-
-    private static IReadOnlyList<string> ReadKeyValues(SqlModelMap map, TRow row)
-        => [.. map.KeyColumns.Select(column =>
-            Convert.ToString(column.Property.GetValue(row), CultureInfo.InvariantCulture)
-            ?? throw new TestFramework.Core.Exceptions.FrameworkStateException(
-                $"The key column '{column.ColumnName}' of '{typeof(TRow).Name}' resolved to null, so the row cannot be addressed."))];
 }

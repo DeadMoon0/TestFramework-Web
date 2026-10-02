@@ -86,9 +86,14 @@ public class SqlArtifactProxy
     /// <summary>
     /// Creates a reference to a row the test owns, which is removed during teardown.
     /// </summary>
+    /// <remarks>
+    /// For a key the database assigns, leave that key out: setup inserts the row and reads the key back, and
+    /// <see cref="SqlRowArtifactReference{TRow}.KeyTo{TKey}"/> hands it to later steps.
+    /// </remarks>
     /// <typeparam name="TRow">The row model type.</typeparam>
     /// <param name="identifier">The SQL identifier.</param>
-    /// <param name="keyValues">The key values, in the key order declared by the model map.</param>
+    /// <param name="keyValues">The key values, in the key order declared by the model map - all of them, or only
+    /// the ones the test supplies when the database assigns the rest.</param>
     public SqlRowArtifactReference<TRow> Row<TRow>(SqlIdentifier identifier, params VariableReference<string>[] keyValues)
         where TRow : class
         => new(identifier, keyValues);

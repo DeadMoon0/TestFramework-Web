@@ -85,7 +85,8 @@ public sealed class SqlModelBuilder<TModel>(SqlModelDefinition definition)
     }
 
     /// <summary>
-    /// Declares a property as assigned by the database, so it is never written and is read back after insert.
+    /// Declares a property as assigned by the database, so it is never written; setup reads the row back after
+    /// writing it. On a key column, a row the test creates leaves that key out and setup reads it back.
     /// </summary>
     /// <param name="property">The generated property.</param>
     public SqlModelBuilder<TModel> Generated(Expression<Func<TModel, object?>> property)

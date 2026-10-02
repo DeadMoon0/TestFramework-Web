@@ -228,7 +228,11 @@ attributes, then convention (type name is the table, `Id` is the key):
 ```csharp
 ConfigInstance config = ConfigInstance.FromJsonFile("local.testsettings.json")
     .LoadWebConfig()
-    .AddWebSqlModels(models => models.For<Order>().Schema("sales").Table("Orders").Key(x => x.Id).Generated(x => x.Id))
+    .AddWebSqlModels(models =>
+    {
+        models.For<Order>().Schema("sales").Table("Orders").Key(x => x.Id).Identity(x => x.Id);
+        models.For<Customer>().Table("Customers").Key(x => x.Id);
+    })
     .Build();
 ```
 
@@ -254,9 +258,31 @@ run.ApiStatus("create").Should().Be(HttpStatusCode.Created);
 run.SqlRow<Order>("order").Select(order => order.Quantity).Should().Be(3);
 ```
 
+A key the database assigns - `Identity`, or `Generated` on a key column - is left out of the reference. Setup
+inserts the row, reads the key back, and teardown deletes exactly that row; give a value for that column and
+setup refuses, because the database would number the row itself and teardown would aim at one that is not
+there. A composite key takes the parts the test supplies, in key order:
+
+```csharp
+TimelineRun run = await Timeline.Create()
+    .SetupArtifact("order")
+    .Transform("orderPath", Var.Ref<int>("orderId"), id => $"api/orders/{id}")
+    .Trigger(WebExt.Api.Http("orders").Get(Var.Ref<string>("orderPath")).Call()).Name("read")
+    .Build()
+    .SetupRun(config)
+    .AddArtifact("order",
+        WebExt.Artifact.Sql.Row<Order>("main").KeyTo(x => x.Id, "orderId"),
+        new SqlRowArtifactData<Order>(new Order { Name = "test-order", Quantity = 3 }))
+    .RunAsync();
+```
+
+A model with database-assigned columns is read back after setup writes it, so `run.SqlRow<T>(...)` shows what
+the database holds - defaults and all.
+
 | Surface | Use |
 |---|---|
 | `WebExt.Artifact.Sql.Row<T>(id, keys...)` | a row the test owns: upserted on setup, deleted on teardown |
+| `WebExt.Artifact.Sql.Row<T>(id).KeyTo(x => x.Id, "orderId")` | a row whose key the database assigns: leave that key out, setup inserts and reads it back, `KeyTo` hands it to later steps |
 | `.RegisterArtifact(id, WebExt.Artifact.Sql.Row<T>(...))` | adopt a row the application wrote: resolved by key, and **removed on teardown** |
 | `WebExt.ArtifactFinder.Sql.Where<T>(id, "...")` | locate rows; a predicate that matches nothing fails the step |
 | `WebExt.Sql.Execute(id, "...")` | `UPDATE` / `DELETE` |
