@@ -58,13 +58,20 @@ internal sealed class SqlShape(ISqlConfigProvider provider) : ConfigShape<SqlCon
 
         Dictionary<ValueKey, string> values = [];
 
-        if (Connectable(config) is { Length: > 0 } connectionString)
+        string? connectable = Connectable(config);
+        if (connectable is { Length: > 0 } connectionString)
         {
             values[new ValueKey(ValueNames.ConnectionString, ResourceVantage.Host)] = connectionString;
             values[new ValueKey(ValueNames.ConnectionString, ResourceVantage.Network)] = connectionString;
         }
 
-        if (config.Database is { Length: > 0 } database)
+        // The entry's own Database first; for an entry written as one full connection string, the catalog that
+        // string names. Publishing nothing there left a database-level probe nothing to verify against, although the
+        // connection said which database it means.
+        string? databaseName = config.Database is { Length: > 0 } stated
+            ? stated
+            : connectable is { Length: > 0 } ? new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(connectable).InitialCatalog : null;
+        if (databaseName is { Length: > 0 } database)
         {
             values[new ValueKey(WebEnvironmentResourceKinds.DatabaseNameValue)] = database;
         }
