@@ -6,7 +6,7 @@ namespace TestFramework.Web.Extensions;
 /// <summary>
 /// Extension methods for loading web configuration in timeline config builders.
 /// </summary>
-public static class ConfigExtension
+public static class WebConfigExtension
 {
     /// <summary>
     /// Loads the <c>Api</c>, <c>Sql</c>, <c>Stub</c> and <c>Site</c> configuration sections into the timeline config builder.
