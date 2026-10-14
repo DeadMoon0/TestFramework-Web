@@ -6,6 +6,7 @@ using TestFramework.Core.Timelines.Builder.TimelineBuilder;
 using TestFramework.Core.Variables;
 using TestFramework.Web.Http;
 using TestFramework.Web.Trigger.IsLive;
+using TestFramework.Core.Exceptions;
 
 namespace TestFramework.Web;
 
@@ -30,7 +31,7 @@ public static class WebTimelineResultExtensions
         ArgumentNullException.ThrowIfNull(handle);
 
         return handle.LastResult.Result as HttpResponseContext
-            ?? throw new InvalidOperationException(
+            ?? throw new FrameworkConfigurationException(
                 $"Step '{handle.Label ?? handle.Step.Name}' did not produce an {nameof(HttpResponseContext)}. "
                 + $"Its last result was '{handle.LastResult.Result?.GetType().Name ?? "null"}'.");
     }
@@ -46,7 +47,7 @@ public static class WebTimelineResultExtensions
         ArgumentNullException.ThrowIfNull(handle);
 
         return handle.LastResult.Result as ApiIsLiveResult
-            ?? throw new InvalidOperationException(
+            ?? throw new FrameworkConfigurationException(
                 $"Step '{handle.Label ?? handle.Step.Name}' did not produce an {nameof(ApiIsLiveResult)}. "
                 + $"Its last result was '{handle.LastResult.Result?.GetType().Name ?? "null"}'.");
     }
