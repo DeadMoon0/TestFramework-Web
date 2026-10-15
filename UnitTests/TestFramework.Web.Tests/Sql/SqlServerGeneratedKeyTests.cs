@@ -96,8 +96,8 @@ public class SqlServerGeneratedKeyTests
             .Trigger(WebExt.Sql.Script("main", Schema)).Label("schema")
             .SetupArtifact("ticket")
             .Trigger(WebExt.Sql.Scalar<int>("main", "SELECT COUNT(1) FROM [TFWebGenTicket] WHERE [Id] = @id AND [Title] = @title")
-                .WithParameter("id", Var.Ref<int>("ticketId"))
-                .WithParameter("title", Var.Const(marker))).Label("found")
+                .WithParameterFrom("id", Var.Ref<int>("ticketId"))
+                .WithParameter("title", marker)).Label("found")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig())
@@ -125,8 +125,8 @@ public class SqlServerGeneratedKeyTests
             .Trigger(WebExt.Sql.Script("main", Schema)).Label("schema")
             .SetupArtifact("row")
             .Trigger(WebExt.Sql.Scalar<int>("main", "SELECT COUNT(1) FROM [TFWebGenGuid] WHERE [Id] = @id AND [Title] = @title")
-                .WithParameter("id", Var.Ref<Guid>("rowId"))
-                .WithParameter("title", Var.Const(marker))).Label("found")
+                .WithParameterFrom("id", Var.Ref<Guid>("rowId"))
+                .WithParameter("title", marker)).Label("found")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig())
@@ -152,9 +152,9 @@ public class SqlServerGeneratedKeyTests
             .Trigger(WebExt.Sql.Script("main", Schema)).Label("schema")
             .SetupArtifact("line")
             .Trigger(WebExt.Sql.Scalar<int>("main", "SELECT COUNT(1) FROM [TFWebGenLine] WHERE [OrderId] = @orderId AND [LineNo] = @lineNo AND [Title] = @title")
-                .WithParameter("orderId", Var.Const(orderId))
-                .WithParameter("lineNo", Var.Ref<int>("lineNo"))
-                .WithParameter("title", Var.Const(marker))).Label("found")
+                .WithParameter("orderId", orderId)
+                .WithParameterFrom("lineNo", Var.Ref<int>("lineNo"))
+                .WithParameter("title", marker)).Label("found")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig())
@@ -181,10 +181,10 @@ public class SqlServerGeneratedKeyTests
             .Trigger(WebExt.Sql.Script("main", Schema)).Label("schema")
             .SetupArtifact("audited")
             .Trigger(WebExt.Sql.Scalar<int>("main", "SELECT COUNT(1) FROM [TFWebGenAudit] WHERE [AuditedId] = @id AND [Title] = @title")
-                .WithParameter("id", Var.Ref<int>("auditedId"))
-                .WithParameter("title", Var.Const(marker))).Label("audited")
+                .WithParameterFrom("id", Var.Ref<int>("auditedId"))
+                .WithParameter("title", marker)).Label("audited")
             .Trigger(WebExt.Sql.Execute("main", "DELETE FROM [TFWebGenAudit] WHERE [Title] = @title")
-                .WithParameter("title", Var.Const(marker))).Label("forget-audit")
+                .WithParameter("title", marker)).Label("forget-audit")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig())
@@ -206,7 +206,7 @@ public class SqlServerGeneratedKeyTests
     {
         Timeline verify = Timeline.Create()
             .Trigger(WebExt.Sql.Scalar<int>("main", $"SELECT COUNT(1) FROM [{table}] WHERE [Title] = @title")
-                .WithParameter("title", Var.Const(marker))).Label("left")
+                .WithParameter("title", marker)).Label("left")
             .Build();
 
         TimelineRun run = await verify.SetupRun(CreateConfig()).RunAsync();

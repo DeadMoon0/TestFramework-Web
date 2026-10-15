@@ -41,7 +41,7 @@ ConfigInstance config = ConfigInstance.FromJsonFile("local.testsettings.json")
     .Build();
 
 Timeline timeline = Timeline.Create()
-    .SetVariable("itemId", Var.Const("2"))
+    .SetVariable("itemId", "2")
     .Trigger(WebExt.Api.IsLive("sample", ApiAlivenessLevel.Healthy)).Label("live")
     .Trigger(WebExt.Api.Http("sample")
         .Get("api/items/{id}")
@@ -127,7 +127,7 @@ never references the application project, so the API stays a black box.
 ```csharp
 WebExt.Api.Http("sample")
     .Post("api/items")
-    .WithJsonBody(Var.Ref<CreateItem>("payload"))
+    .WithJsonBodyFrom(Var.Ref<CreateItem>("payload"))
     .WithHeader(Var.Const("x-correlation-id"), Var.Ref<string>("correlationId"))
     .WithQuery("dryRun", Var.Const("false"))
     .Call();
@@ -242,10 +242,10 @@ it is a step. An aggregate is neither, so it is an observation:
 ```csharp
 Timeline timeline = Timeline.Create()
     .SetupArtifact("customer")                                   // seeded, then removed on teardown
-    .SetVariable("orderName", Var.Const("test-order"))
-    .Trigger(WebExt.Api.Http("orders").Post("api/orders").WithJsonBody(Var.Ref<CreateOrder>("payload")).Call()).Label("create")
+    .SetVariable("orderName", "test-order")
+    .Trigger(WebExt.Api.Http("orders").Post("api/orders").WithJsonBodyFrom(Var.Ref<CreateOrder>("payload")).Call()).Label("create")
     .FindArtifact("order", WebExt.ArtifactFinder.Sql.Where<Order>("main", "Name = @name")
-        .WithParameter("name", Var.Ref<string>("orderName")))
+        .WithParameterFrom("name", Var.Ref<string>("orderName")))
     .Build();
 
 TimelineRun run = await timeline.SetupRun(config)
@@ -294,8 +294,8 @@ Parameters are variable-backed, like request bodies:
 
 ```csharp
 WebExt.Sql.Execute("main", "UPDATE Orders SET Status = @status WHERE Id = @id")
-    .WithParameter("status", Var.Const(9))
-    .WithParameter("id", Var.Ref<string>("orderId"))
+    .WithParameter("status", 9)
+    .WithParameterFrom("id", Var.Ref<string>("orderId"))
 ```
 
 Two rules worth knowing:

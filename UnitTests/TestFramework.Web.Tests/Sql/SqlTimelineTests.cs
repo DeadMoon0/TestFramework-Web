@@ -62,11 +62,11 @@ public class SqlTimelineTests
         RecordingSqlExecutor executor = new() { ExecuteResult = 3 };
 
         Timeline timeline = Timeline.Create()
-            .SetVariable("status", Var.Const(9))
-            .SetVariable("name", Var.Const("test-order"))
+            .SetVariable("status", 9)
+            .SetVariable("name", "test-order")
             .Trigger(WebExt.Sql.Execute("main", "UPDATE Orders SET Status = @status WHERE Name = @name")
-                .WithParameter("status", Var.Ref<int>("status"))
-                .WithParameter("name", Var.Ref<string>("name"))).Label("update")
+                .WithParameterFrom("status", Var.Ref<int>("status"))
+                .WithParameterFrom("name", Var.Ref<string>("name"))).Label("update")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig(executor)).RunAsync();
@@ -86,7 +86,7 @@ public class SqlTimelineTests
 
         Timeline timeline = Timeline.Create()
             .Trigger(WebExt.Sql.Scalar<int>("main", "SELECT COUNT(*) FROM Orders WHERE Status = @status")
-                .WithParameter("status", Var.Const(3))).Label("count")
+                .WithParameter("status", 3)).Label("count")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig(executor)).RunAsync();
@@ -276,9 +276,9 @@ public class SqlTimelineTests
         };
 
         Timeline timeline = Timeline.Create()
-            .SetVariable("name", Var.Const("test-order"))
+            .SetVariable("name", "test-order")
             .FindArtifact("order", WebExt.ArtifactFinder.Sql.Where<Order>("main", "Name = @name")
-                .WithParameter("name", Var.Ref<string>("name")))
+                .WithParameterFrom("name", Var.Ref<string>("name")))
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig(executor)).RunAsync();
@@ -299,9 +299,9 @@ public class SqlTimelineTests
         };
 
         Timeline timeline = Timeline.Create()
-            .SetVariable("name", Var.Const("test-order"))
+            .SetVariable("name", "test-order")
             .FindArtifact("order", WebExt.ArtifactFinder.Sql.Where<Order>("main", "Name = @name")
-                .WithParameter("name", Var.Ref<string>("name")))
+                .WithParameterFrom("name", Var.Ref<string>("name")))
             .MarkReadonly()
             .Build();
 
@@ -321,9 +321,9 @@ public class SqlTimelineTests
         };
 
         Timeline timeline = Timeline.Create()
-            .SetVariable("name", Var.Const("test-order"))
+            .SetVariable("name", "test-order")
             .FindArtifact("order", WebExt.ArtifactFinder.Sql.Where<Order>("main", "Name = @name")
-                .WithParameter("name", Var.Ref<string>("name")))
+                .WithParameterFrom("name", Var.Ref<string>("name")))
             // Readonly so teardown's DELETE, which addresses the same key, stays out of the counts below.
             .MarkReadonly()
             .Build();

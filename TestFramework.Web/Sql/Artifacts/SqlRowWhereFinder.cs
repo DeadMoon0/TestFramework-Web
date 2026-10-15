@@ -10,6 +10,7 @@ using TestFramework.Core.Logging;
 using TestFramework.Core.Variables;
 using TestFramework.Web.Sql.Execution;
 using TestFramework.Web.Sql.Model;
+using System.ComponentModel;
 
 namespace TestFramework.Web.Sql.Artifacts;
 
@@ -43,16 +44,52 @@ public sealed class SqlRowWhereFinder<TRow> : ArtifactFinder<SqlRowArtifactDescr
     }
 
     /// <summary>
-    /// Binds a parameter used by the where clause.
+    /// Binds a parameter to a value.
+    /// </summary>
+    /// <typeparam name="TValue">The parameter value type.</typeparam>
+    /// <param name="name">The parameter name, without the leading marker.</param>
+    /// <param name="value">The value.</param>
+    /// <returns>The same instance, for chaining.</returns>
+    public SqlRowWhereFinder<TRow> WithParameter<TValue>(string name, TValue value)
+        => WithParameterFrom(name, Var.Const(NotAValue.Require(value, $"WithParameter('{name}')", $"WithParameterFrom('{name}', ...)")));
+
+    /// <summary>
+    /// Binds a parameter to a variable, read when the step runs.
     /// </summary>
     /// <typeparam name="TValue">The parameter value type.</typeparam>
     /// <param name="name">The parameter name, without the leading marker.</param>
     /// <param name="value">The variable carrying the value.</param>
-    public SqlRowWhereFinder<TRow> WithParameter<TValue>(string name, VariableReference<TValue> value)
-    {
+    /// <returns>The same instance, for chaining.</returns>
+    public SqlRowWhereFinder<TRow> WithParameterFrom<TValue>(string name, VariableReference<TValue> value)
+{
         _parameters.Add(name, value);
         return this;
     }
+
+    /// <summary>Binds a parameter to a constant, which is a value.</summary>
+    /// <typeparam name="TValue">The parameter value type.</typeparam>
+    /// <param name="name">The parameter name, without the leading marker.</param>
+    /// <param name="value">The constant.</param>
+    /// <returns>The same instance, for chaining.</returns>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public SqlRowWhereFinder<TRow> WithParameter<TValue>(string name, ConstVariable<TValue> value) => WithParameterFrom(name, value);
+
+    /// <summary>Refused: a variable is not a value. Use the <c>…From</c> twin.</summary>
+    [Obsolete(NotAValue.Message, error: true)]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public SqlRowWhereFinder<TRow> WithParameter<TValue>(string name, VariableReference<TValue> value) => throw NotAValue.For($"WithParameter('{name}')", $"WithParameterFrom('{name}', ...)");
+
+    /// <summary>Refused: a variable is not a value. Use the <c>…From</c> twin.</summary>
+    [Obsolete(NotAValue.Message, error: true)]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public SqlRowWhereFinder<TRow> WithParameter<TValue>(string name, ResolvableVariable<TValue> value) => throw NotAValue.For($"WithParameter('{name}')", $"WithParameterFrom('{name}', ...)");
+
+    /// <summary>Refused: a variable is not a value. Use the <c>…From</c> twin.</summary>
+    [Obsolete(NotAValue.Message, error: true)]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public SqlRowWhereFinder<TRow> WithParameter<TVar, TValue>(string name, ImmutableVariable<TVar, TValue> value)
+        where TVar : VariableReference<TValue> => throw NotAValue.For($"WithParameter('{name}')", $"WithParameterFrom('{name}', ...)");
+
 
     /// <summary>
     /// Finds the first matching row.

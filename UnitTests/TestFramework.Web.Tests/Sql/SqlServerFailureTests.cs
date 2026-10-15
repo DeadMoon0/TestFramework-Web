@@ -109,7 +109,7 @@ public class SqlServerFailureTests
         Timeline timeline = Timeline.Create()
             .Trigger(WebExt.Sql.Script("main", CreateTableScript)).Label("schema")
             .Trigger(WebExt.Sql.Execute("main", $"INSERT INTO [{TableName}] (Id, Name) VALUES (@id, 'written elsewhere')")
-                .WithParameter("id", Var.Const(id))).Label("application")
+                .WithParameter("id", id)).Label("application")
             .RegisterArtifact("adopted", WebExt.Artifact.Sql.Row<AdoptedRow>("main", Var.Const(key)))
             .Build();
 
@@ -141,7 +141,7 @@ public class SqlServerFailureTests
     {
         Timeline timeline = Timeline.Create()
             .Trigger(WebExt.Sql.Scalar<int>("main", $"SELECT COUNT(1) FROM [{TableName}] WHERE Id = @id")
-                .WithParameter("id", Var.Const(id))).Label("count")
+                .WithParameter("id", id)).Label("count")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig()).RunAsync();

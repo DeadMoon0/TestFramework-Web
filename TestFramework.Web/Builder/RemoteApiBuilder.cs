@@ -92,11 +92,23 @@ internal sealed class RemoteApiBuilder(ApiIdentifier identifier) : IApiConnectio
         return this;
     }
 
-    public IApiPayloadStage WithJsonBody<TValue>(VariableReference<TValue> value)
+    public IApiPayloadStage WithJsonBody<TValue>(TValue value)
+        => WithJsonBodyFrom(Var.Const(NotAValue.Require(value, "WithJsonBody", "WithJsonBodyFrom")));
+
+    public IApiPayloadStage WithJsonBodyFrom<TValue>(VariableReference<TValue> value)
     {
         _state.SetJsonBody(value);
         return this;
     }
+
+    public IApiPayloadStage WithJsonBody<TValue>(ConstVariable<TValue> value) => WithJsonBodyFrom(value);
+
+    public IApiPayloadStage WithJsonBody<TValue>(VariableReference<TValue> value) => throw NotAValue.For("WithJsonBody", "WithJsonBodyFrom");
+
+    public IApiPayloadStage WithJsonBody<TValue>(ResolvableVariable<TValue> value) => throw NotAValue.For("WithJsonBody", "WithJsonBodyFrom");
+
+    public IApiPayloadStage WithJsonBody<TVar, TValue>(ImmutableVariable<TVar, TValue> value) where TVar : VariableReference<TValue>
+        => throw NotAValue.For("WithJsonBody", "WithJsonBodyFrom");
 
     public IApiPayloadStage WithAuth(IApiAuthenticationProvider provider)
     {

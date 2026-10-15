@@ -11,6 +11,7 @@ using TestFramework.Core.Logging;
 using TestFramework.Core.Steps;
 using TestFramework.Core.Variables;
 using TestFramework.Web.Sql.Execution;
+using System.ComponentModel;
 
 namespace TestFramework.Web.Sql.Steps;
 
@@ -190,17 +191,53 @@ public sealed class SqlScriptStep : SqlStepBase<SqlScriptResult>
     public override string Description => $"Runs '{_script.Description}' against the database '{SqlIdentifier}'";
 
     /// <summary>
-    /// Binds a parameter available to every batch of the script.
+    /// Binds a parameter to a value.
+    /// </summary>
+    /// <typeparam name="TValue">The parameter value type.</typeparam>
+    /// <param name="name">The parameter name, without the leading marker.</param>
+    /// <param name="value">The value.</param>
+    /// <returns>The same instance, for chaining.</returns>
+    public SqlScriptStep WithParameter<TValue>(string name, TValue value)
+        => WithParameterFrom(name, Var.Const(NotAValue.Require(value, $"WithParameter('{name}')", $"WithParameterFrom('{name}', ...)")));
+
+    /// <summary>
+    /// Binds a parameter to a variable, read when the step runs.
     /// </summary>
     /// <typeparam name="TValue">The parameter value type.</typeparam>
     /// <param name="name">The parameter name, without the leading marker.</param>
     /// <param name="value">The variable carrying the value.</param>
-    public SqlScriptStep WithParameter<TValue>(string name, VariableReference<TValue> value)
-    {
+    /// <returns>The same instance, for chaining.</returns>
+    public SqlScriptStep WithParameterFrom<TValue>(string name, VariableReference<TValue> value)
+{
         ((TestFramework.Core.IFreezable)this).EnsureNotFrozen();
         Parameters.Add(name, value);
         return this;
     }
+
+    /// <summary>Binds a parameter to a constant, which is a value.</summary>
+    /// <typeparam name="TValue">The parameter value type.</typeparam>
+    /// <param name="name">The parameter name, without the leading marker.</param>
+    /// <param name="value">The constant.</param>
+    /// <returns>The same instance, for chaining.</returns>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public SqlScriptStep WithParameter<TValue>(string name, ConstVariable<TValue> value) => WithParameterFrom(name, value);
+
+    /// <summary>Refused: a variable is not a value. Use the <c>…From</c> twin.</summary>
+    [Obsolete(NotAValue.Message, error: true)]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public SqlScriptStep WithParameter<TValue>(string name, VariableReference<TValue> value) => throw NotAValue.For($"WithParameter('{name}')", $"WithParameterFrom('{name}', ...)");
+
+    /// <summary>Refused: a variable is not a value. Use the <c>…From</c> twin.</summary>
+    [Obsolete(NotAValue.Message, error: true)]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public SqlScriptStep WithParameter<TValue>(string name, ResolvableVariable<TValue> value) => throw NotAValue.For($"WithParameter('{name}')", $"WithParameterFrom('{name}', ...)");
+
+    /// <summary>Refused: a variable is not a value. Use the <c>…From</c> twin.</summary>
+    [Obsolete(NotAValue.Message, error: true)]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public SqlScriptStep WithParameter<TVar, TValue>(string name, ImmutableVariable<TVar, TValue> value)
+        where TVar : VariableReference<TValue> => throw NotAValue.For($"WithParameter('{name}')", $"WithParameterFrom('{name}', ...)");
+
 
     /// <inheritdoc />
     public override Step<SqlScriptResult> Clone()

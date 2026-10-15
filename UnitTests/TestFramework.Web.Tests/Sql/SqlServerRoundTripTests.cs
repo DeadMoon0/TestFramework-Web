@@ -79,7 +79,7 @@ public class SqlServerRoundTripTests
             .Trigger(WebExt.Sql.Script("main", CreateTableScript)).Label("schema")
             .SetupArtifact("row")
             .FindArtifact("found", WebExt.ArtifactFinder.Sql.Where<RoundTripRow>("main", "Id = @id")
-                .WithParameter("id", Var.Const(id)))
+                .WithParameter("id", id))
             .Build();
 
         TimelineRun run = await seed.SetupRun(CreateConfig())
@@ -95,7 +95,7 @@ public class SqlServerRoundTripTests
         // The seeded row is owned by the run, so teardown removed it.
         Timeline verify = Timeline.Create()
             .Trigger(WebExt.Sql.Scalar<int>("main", $"SELECT COUNT(1) FROM [{TableName}] WHERE Id = @id")
-                .WithParameter("id", Var.Const(id))).Label("count")
+                .WithParameter("id", id)).Label("count")
             .Build();
 
         TimelineRun verifyRun = await verify.SetupRun(CreateConfig()).RunAsync();
@@ -137,7 +137,7 @@ public class SqlServerRoundTripTests
         Timeline timeline = Timeline.Create()
             .Trigger(WebExt.Sql.Script("main", CreateTableScript)).Label("schema")
             .Trigger(WebExt.Sql.Execute("main", $"DELETE FROM [{TableName}] WHERE Id = @id; INSERT INTO [{TableName}] (Id, Name, Quantity) VALUES (@id, 'stale', 1);")
-                .WithParameter("id", Var.Const(id))).Label("preexisting")
+                .WithParameter("id", id)).Label("preexisting")
             .SetupArtifact("row")
             .Build();
 

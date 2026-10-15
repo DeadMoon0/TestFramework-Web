@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using TestFramework.Core.Variables;
 using TestFramework.Web.Auth;
 using TestFramework.Web.Builder.Stages;
+using System;
+using System.ComponentModel;
 
 namespace TestFramework.Web.Builder.Actions;
 
@@ -88,8 +90,36 @@ public interface IWithBodyAction
     /// Serializes a value as JSON and sends it as the request body.
     /// </summary>
     /// <typeparam name="TValue">The value type to serialize.</typeparam>
-    /// <param name="value">The value variable.</param>
+    /// <param name="value">The value.</param>
+    IApiPayloadStage WithJsonBody<TValue>(TValue value);
+
+    /// <summary>
+    /// Serializes a variable's value as JSON, read when the step runs, and sends it as the request body.
+    /// </summary>
+    /// <typeparam name="TValue">The value type to serialize.</typeparam>
+    /// <param name="value">The variable carrying the value.</param>
+    IApiPayloadStage WithJsonBodyFrom<TValue>(VariableReference<TValue> value);
+
+    /// <summary>Serializes a constant, which is a value.</summary>
+    /// <typeparam name="TValue">The value type to serialize.</typeparam>
+    /// <param name="value">The constant.</param>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    IApiPayloadStage WithJsonBody<TValue>(ConstVariable<TValue> value);
+
+    /// <summary>Refused: a variable is not a value. Use <c>WithJsonBodyFrom</c>.</summary>
+    [Obsolete(NotAValue.Message, error: true)]
+    [EditorBrowsable(EditorBrowsableState.Never)]
     IApiPayloadStage WithJsonBody<TValue>(VariableReference<TValue> value);
+
+    /// <summary>Refused: a variable is not a value. Use <c>WithJsonBodyFrom</c>.</summary>
+    [Obsolete(NotAValue.Message, error: true)]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    IApiPayloadStage WithJsonBody<TValue>(ResolvableVariable<TValue> value);
+
+    /// <summary>Refused: a variable is not a value. Use <c>WithJsonBodyFrom</c>.</summary>
+    [Obsolete(NotAValue.Message, error: true)]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    IApiPayloadStage WithJsonBody<TVar, TValue>(ImmutableVariable<TVar, TValue> value) where TVar : VariableReference<TValue>;
 }
 
 /// <summary>

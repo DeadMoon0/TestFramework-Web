@@ -9,6 +9,7 @@ using TestFramework.Core.Steps;
 using TestFramework.Core.Steps.Options;
 using TestFramework.Core.Variables;
 using TestFramework.Web.Sql.Execution;
+using System.ComponentModel;
 
 namespace TestFramework.Web.Sql.Steps;
 
@@ -76,17 +77,53 @@ public sealed class SqlScalarStep<TValue> : SqlStepBase<SqlScalarResult<TValue>>
     public override StepExecutionPhase Phase => StepExecutionPhase.Observe;
 
     /// <summary>
-    /// Binds a parameter used by the statement.
+    /// Binds a parameter to a value.
+    /// </summary>
+    /// <typeparam name="TParameter">The parameter value type.</typeparam>
+    /// <param name="name">The parameter name, without the leading marker.</param>
+    /// <param name="value">The value.</param>
+    /// <returns>The same instance, for chaining.</returns>
+    public SqlScalarStep<TValue> WithParameter<TParameter>(string name, TParameter value)
+        => WithParameterFrom(name, Var.Const(NotAValue.Require(value, $"WithParameter('{name}')", $"WithParameterFrom('{name}', ...)")));
+
+    /// <summary>
+    /// Binds a parameter to a variable, read when the step runs.
     /// </summary>
     /// <typeparam name="TParameter">The parameter value type.</typeparam>
     /// <param name="name">The parameter name, without the leading marker.</param>
     /// <param name="value">The variable carrying the value.</param>
-    public SqlScalarStep<TValue> WithParameter<TParameter>(string name, VariableReference<TParameter> value)
-    {
+    /// <returns>The same instance, for chaining.</returns>
+    public SqlScalarStep<TValue> WithParameterFrom<TParameter>(string name, VariableReference<TParameter> value)
+{
         ((TestFramework.Core.IFreezable)this).EnsureNotFrozen();
         Parameters.Add(name, value);
         return this;
     }
+
+    /// <summary>Binds a parameter to a constant, which is a value.</summary>
+    /// <typeparam name="TParameter">The parameter value type.</typeparam>
+    /// <param name="name">The parameter name, without the leading marker.</param>
+    /// <param name="value">The constant.</param>
+    /// <returns>The same instance, for chaining.</returns>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public SqlScalarStep<TValue> WithParameter<TParameter>(string name, ConstVariable<TParameter> value) => WithParameterFrom(name, value);
+
+    /// <summary>Refused: a variable is not a value. Use the <c>…From</c> twin.</summary>
+    [Obsolete(NotAValue.Message, error: true)]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public SqlScalarStep<TValue> WithParameter<TParameter>(string name, VariableReference<TParameter> value) => throw NotAValue.For($"WithParameter('{name}')", $"WithParameterFrom('{name}', ...)");
+
+    /// <summary>Refused: a variable is not a value. Use the <c>…From</c> twin.</summary>
+    [Obsolete(NotAValue.Message, error: true)]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public SqlScalarStep<TValue> WithParameter<TParameter>(string name, ResolvableVariable<TParameter> value) => throw NotAValue.For($"WithParameter('{name}')", $"WithParameterFrom('{name}', ...)");
+
+    /// <summary>Refused: a variable is not a value. Use the <c>…From</c> twin.</summary>
+    [Obsolete(NotAValue.Message, error: true)]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public SqlScalarStep<TValue> WithParameter<TVar, TParameter>(string name, ImmutableVariable<TVar, TParameter> value)
+        where TVar : VariableReference<TParameter> => throw NotAValue.For($"WithParameter('{name}')", $"WithParameterFrom('{name}', ...)");
+
 
     /// <inheritdoc />
     public override Step<SqlScalarResult<TValue>> Clone()
