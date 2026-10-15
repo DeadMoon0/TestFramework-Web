@@ -417,14 +417,16 @@ three are **not** equivalent:
   pattern without a `*` stays an exact comparison, and a leading slash is optional on both.
 - **A header filter is the only true isolation on a shared stub.** The timeline cannot stamp a
   correlation id on the outbound call — the application makes it, not the test — but if the
-  application forwards `traceparent` or a correlation header your request already set, filter on it:
+  application forwards `traceparent` or a correlation header your request already set, filter on it.
+  Read the value from a variable, so each run filters on its own id rather than one fixed when the
+  timeline was built:
 
 ```csharp
 .Trigger(WebExt.Stub.Calls("payments").WithMethod(HttpMethod.Post).WithPath("/api/charges")
-    .WithHeader("x-correlation-id", correlationId)).Name("calls")
+    .WithHeader("x-correlation-id", Var.Ref<string>("correlationId"))).Name("calls")
 
 .WaitForEvent(WebExt.Stub.Called("payments", HttpMethod.Post, "/api/charges")
-    .WithHeader("x-correlation-id", correlationId))
+    .WithHeader("x-correlation-id", Var.Ref<string>("correlationId")))
 ```
 
 **This package declares and verifies; it does not host.** `TestFramework.Container.Web` hosts

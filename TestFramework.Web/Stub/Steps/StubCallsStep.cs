@@ -76,9 +76,9 @@ public abstract class StubStepBase<TResult> : Step<TResult>, IHasEnvironmentRequ
     }
 
     /// <summary>
-    /// Header values a call must carry to count, keyed by header name.
+    /// Header values a call must carry to count.
     /// </summary>
-    protected Dictionary<string, string> HeaderFilters { get; } = new(StringComparer.OrdinalIgnoreCase);
+    private protected StubHeaderFilters HeaderFilters { get; } = new();
 
     /// <summary>
     /// The stub this step inspects.
@@ -108,6 +108,8 @@ public abstract class StubStepBase<TResult> : Step<TResult>, IHasEnvironmentRequ
     /// <inheritdoc />
     public override void DeclareIO(StepIOContract contract)
     {
+        ArgumentNullException.ThrowIfNull(contract);
+        HeaderFilters.Declare(contract);
     }
 
     /// <summary>
@@ -115,15 +117,18 @@ public abstract class StubStepBase<TResult> : Step<TResult>, IHasEnvironmentRequ
     /// </summary>
     /// <param name="calls">Every call the stub received.</param>
     /// <param name="watermark">The newest timestamp that predates this run, or <see langword="null"/> for the whole log.</param>
-    private protected IReadOnlyList<StubCall> Filter(IEnumerable<StubCall> calls, DateTimeOffset? watermark)
+    /// <param name="variables">The run's variables, which header filters may read.</param>
+    private protected IReadOnlyList<StubCall> Filter(IEnumerable<StubCall> calls, DateTimeOffset? watermark, VariableStore variables)
     {
         ArgumentNullException.ThrowIfNull(calls);
+
+        IReadOnlyDictionary<string, string> headers = HeaderFilters.Resolve(variables);
 
         return [.. calls.Where(call =>
             StubCallMatcher.IsInScope(call, watermark)
             && (Method is null || string.Equals(call.Method, Method, StringComparison.OrdinalIgnoreCase))
             && (Path is null || StubPathMatcher.Matches(call.Path, Path))
-            && StubCallMatcher.HasHeaders(call, HeaderFilters))];
+            && StubCallMatcher.HasHeaders(call, headers))];
     }
 
     /// <summary>
@@ -156,13 +161,11 @@ public abstract class StubStepBase<TResult> : Step<TResult>, IHasEnvironmentRequ
     /// <summary>
     /// A readable description of the filter, for logs and messages.
     /// </summary>
-    protected string FilterDescription
+    private protected string FilterDescription
     {
         get
         {
-            string headers = HeaderFilters.Count == 0
-                ? string.Empty
-                : " with " + string.Join(", ", HeaderFilters.Select(filter => $"{filter.Key}={filter.Value}"));
+            string headers = HeaderFilters.IsEmpty ? string.Empty : " with " + HeaderFilters.Describe();
 
             return $"{Method ?? "any method"} {Path ?? "any path"}{headers}";
         }
@@ -198,7 +201,7 @@ public sealed class StubCallsStep : StubStepBase<StubCallsResult>
     /// <param name="method">The method a call must have.</param>
     /// <returns>The step for fluent chaining.</returns>
     /// <remarks>
-    /// A modifier like <see cref="WithHeader"/>, not a constructor argument: each filter is its own method, so a
+    /// A modifier like <see cref="WithHeader(string, string)"/>, not a constructor argument: each filter is its own method, so a
     /// filter added later - a query, a body - is a new method rather than one more optional parameter that every
     /// compiled caller would have depended on.
     /// </remarks>
@@ -243,7 +246,27 @@ public sealed class StubCallsStep : StubStepBase<StubCallsResult>
         ArgumentNullException.ThrowIfNull(value);
 
         ((TestFramework.Core.IFreezable)this).EnsureNotFrozen();
-        HeaderFilters[name] = value;
+        HeaderFilters.Add(name, value);
+        return this;
+    }
+
+    /// <summary>
+    /// Counts only calls carrying a header with the value a variable holds when the step runs.
+    /// </summary>
+    /// <param name="name">The header name.</param>
+    /// <param name="value">The variable carrying the value the header must have.</param>
+    /// <returns>The step for fluent chaining.</returns>
+    /// <remarks>
+    /// The form for a stub shared between runs: each run filters on its own correlation id rather than on one
+    /// fixed when the timeline was built.
+    /// </remarks>
+    public StubCallsStep WithHeader(string name, VariableReference<string> value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(value);
+
+        ((TestFramework.Core.IFreezable)this).EnsureNotFrozen();
+        HeaderFilters.Add(name, value);
         return this;
     }
 
@@ -257,8 +280,7 @@ public sealed class StubCallsStep : StubStepBase<StubCallsResult>
     public override Step<StubCallsResult> Clone()
     {
         StubCallsStep clone = new(StubIdentifier, Method, Path);
-        foreach ((string name, string value) in HeaderFilters)
-            clone.HeaderFilters[name] = value;
+        HeaderFilters.CopyTo(clone.HeaderFilters);
 
         return clone.WithClonedOptions(this);
     }
@@ -279,7 +301,7 @@ public sealed class StubCallsStep : StubStepBase<StubCallsResult>
         DateTimeOffset? watermark = StubObservationScope.WatermarkFor(context.Services, StubIdentifier);
         WarnAboutUntimedCalls(context.Services, all, watermark, context.Logger);
 
-        IReadOnlyList<StubCall> matching = Filter(all, watermark);
+        IReadOnlyList<StubCall> matching = Filter(all, watermark, context.Variables);
         IReadOnlyList<StubCall> unmatched = [.. all.Where(call => !call.Matched && StubCallMatcher.IsInScope(call, watermark))];
 
         context.Logger.LogInformation("Stub '{0}' received {1} call(s) for {2}.", StubIdentifier.ToString(), matching.Count, FilterDescription);

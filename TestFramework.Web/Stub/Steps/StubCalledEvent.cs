@@ -59,7 +59,7 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
     private readonly StubIdentifier _stubIdentifier;
     private readonly string _method;
     private readonly string _path;
-    private readonly Dictionary<string, string> _headerFilters = new(StringComparer.OrdinalIgnoreCase);
+    private readonly StubHeaderFilters _headerFilters = new();
     private VariableReference<string>? _bodyContains;
 
     /// <summary>
@@ -112,7 +112,26 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
         ArgumentNullException.ThrowIfNull(value);
 
         ((TestFramework.Core.IFreezable)this).EnsureNotFrozen();
-        _headerFilters[name] = value;
+        _headerFilters.Add(name, value);
+        return this;
+    }
+
+    /// <summary>
+    /// Narrows the wait to a call carrying a header with the value a variable holds when the event runs.
+    /// </summary>
+    /// <param name="name">The header name.</param>
+    /// <param name="value">The variable carrying the value the header must have.</param>
+    /// <remarks>
+    /// The form for a stub shared between runs: each run waits on its own correlation id rather than on one
+    /// fixed when the timeline was built.
+    /// </remarks>
+    public StubCalledEvent WithHeader(string name, VariableReference<string> value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(value);
+
+        ((TestFramework.Core.IFreezable)this).EnsureNotFrozen();
+        _headerFilters.Add(name, value);
         return this;
     }
 
@@ -136,6 +155,8 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
 
         if (_bodyContains?.Identifier is { } identifier)
             contract.Input(identifier, typeof(string));
+
+        _headerFilters.Declare(contract);
     }
 
     /// <inheritdoc />
@@ -145,8 +166,7 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
         if (_bodyContains is { } bodyContains)
             clone.WithBodyContaining(bodyContains);
 
-        foreach ((string name, string value) in _headerFilters)
-            clone._headerFilters[name] = value;
+        _headerFilters.CopyTo(clone._headerFilters);
 
         return clone.WithClonedOptions(this);
     }
@@ -159,6 +179,7 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
         StubConfig config = context.Configured<StubConfig>(_stubIdentifier);
         StubAdminClient admin = StubConfigResolver.CreateAdminClient(context, _stubIdentifier);
         string? expectedBody = _bodyContains?.GetRequiredValue(context.Variables, "body text");
+        IReadOnlyDictionary<string, string> headers = _headerFilters.Resolve(context.Variables);
 
         // Without the window, a wait on a shared stub can complete on a call another run made before
         // this one even started.
@@ -173,7 +194,7 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
 
             foreach (StubCall call in await admin.GetCallsAsync(context.Deadline.Token).ConfigureAwait(false))
             {
-                if (!Matches(call, expectedBody, watermark))
+                if (!Matches(call, expectedBody, headers, watermark))
                     continue;
 
                 stopwatch.Stop();
@@ -185,10 +206,10 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
         }
     }
 
-    private bool Matches(StubCall call, string? expectedBody, DateTimeOffset? watermark)
+    private bool Matches(StubCall call, string? expectedBody, IReadOnlyDictionary<string, string> headers, DateTimeOffset? watermark)
         => StubCallMatcher.IsInScope(call, watermark)
         && string.Equals(call.Method, _method, StringComparison.OrdinalIgnoreCase)
         && StubPathMatcher.Matches(call.Path, _path)
-        && StubCallMatcher.HasHeaders(call, _headerFilters)
+        && StubCallMatcher.HasHeaders(call, headers)
         && (expectedBody is null || call.Body?.Contains(expectedBody, StringComparison.Ordinal) == true);
 }

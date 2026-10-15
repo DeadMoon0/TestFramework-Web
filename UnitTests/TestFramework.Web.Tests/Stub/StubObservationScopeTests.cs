@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using TestFramework.Core.Artifacts;
 using TestFramework.Core.Logging;
 using TestFramework.Core.Steps;
@@ -193,9 +194,10 @@ public class StubObservationScopeTests
 
         public override StepInstance<Step<StubCallsResult>, StubCallsResult> GetInstance() => new(this);
 
-        public void WithHeader(string name, string value) => HeaderFilters[name] = value;
+        public void WithHeader(string name, string value) => HeaderFilters.Add(name, value);
 
-        public IReadOnlyList<StubCall> Apply(IEnumerable<StubCall> calls, DateTimeOffset? watermark) => Filter(calls, watermark);
+        public IReadOnlyList<StubCall> Apply(IEnumerable<StubCall> calls, DateTimeOffset? watermark)
+            => Filter(calls, watermark, RunContext.Detached(new ServiceCollection().BuildServiceProvider()).Variables);
 
         public override Task<StubCallsResult?> Execute(RunContext context)
             => Task.FromResult<StubCallsResult?>(new StubCallsResult(StubIdentifier, [], []));

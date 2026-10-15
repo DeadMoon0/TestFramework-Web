@@ -32,7 +32,7 @@
     Stub verification and waiting go through the stub server's own admin request log, polled over HTTP. The same assertions therefore run against a stub this run started, one the team runs permanently, or one started by hand - but those three are not equivalent, and the difference decides what the evidence is worth. Only a stub this run owns gives isolated evidence: on a shared stub the log also holds other runs' calls, made before this one and while it runs.
     WebExt.Stub.Reset defaults to a watermark: it reads the log, records the newest ReceivedAt from the stub's own clock, and later steps ignore everything at or before it. It deletes nothing. Set ResetMode to ClearServerLog for a stub the run owns; on a shared stub that would delete other runs' evidence. A call the stub logged without a timestamp stays in scope and produces one warning naming the stub.
     An unmatched stub call is the application asking a dependency for something the test never declared. Nothing else in a test reveals it. Assert the unmatched list is empty on a stub the run owns; on a shared stub the count is advisory, because another run's undeclared call lands in it.
-    WithHeader(name, value) on Calls and Called is the only construct giving true isolation on a shared stub. The timeline cannot stamp a correlation id on the outbound call - the application under test makes it - but any application that forwards traceparent or a correlation header the test already set can be filtered on.
+    WithHeader(name, Var.Ref<string>(...)) on Calls and Called is the only construct giving true isolation on a shared stub; the variable form makes each run filter on its own value. The timeline cannot stamp a correlation id on the outbound call - the application under test makes it - but any application that forwards traceparent or a correlation header the test already set can be filtered on.
 </key_concepts>
 
 <best_practices>
@@ -78,8 +78,8 @@
     - SqlSchema.CreateTablesScript(types...) | CreateTable(map) | CreateTables(maps) -> DDL from a model map
     - Model map extras for generation: .Identity(x =&gt; x.Id), .MaxLength(x =&gt; x.Name, 200), .Precision(x =&gt; x.Total, 18, 2), .Required(x =&gt; x.Name), .ColumnType(x =&gt; x.Amount, "money")
     - StubDefinition with Configure(StubMappingBuilder): .OnGet|OnPost|OnPut|OnDelete(path).WithHeader|WithQuery|WithBodyContaining|WithPriority(...).RespondJson|RespondText|RespondStatus(...) or .Respond(StubResponse.Json|Text|Status(...) with { Delay = ..., UseTemplating = true })
-    - WebExt.Stub.Called(identifier, method, path).WithBodyContaining(variable).WithHeader(name, value) as a WaitForEvent source
-    - WebExt.Stub.Calls(identifier).WithMethod(method).WithPath(path).WithHeader(name, value) | WebExt.Stub.Reset(identifier). The path filter takes the same * wildcard the mappings take, and a leading slash is optional.
+    - WebExt.Stub.Called(identifier, method, path).WithBodyContaining(variable).WithHeader(name, text|variable) as a WaitForEvent source
+    - WebExt.Stub.Calls(identifier).WithMethod(method).WithPath(path).WithHeader(name, text|variable) | WebExt.Stub.Reset(identifier). The path filter takes the same * wildcard the mappings take, and a leading slash is optional.
     - run.StubCall(label) | StubCalls(label) | StubUnmatchedCalls(label) -> ValueHandle&lt;T&gt;
     - StubConfig: BaseUrl, AdminPath, PollInterval, AllowInvalidCertificates, ResetMode (Watermark by default, or ClearServerLog)
     - Extension points: IWebComponentFactory, IHttpSender, IApiConfigProvider, IApiAuthenticationProvider, ISqlExecutorFactory (registered with UseSqlExecutor(factory); a directly registered ISqlExecutor is refused), ISqlModelMapSource, ISqlCredentialProvider, ISqlConfigProvider, IStubConfigProvider
