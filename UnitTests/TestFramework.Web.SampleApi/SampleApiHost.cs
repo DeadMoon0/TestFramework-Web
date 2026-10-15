@@ -85,7 +85,7 @@ public static class SampleApiHost
         });
 
         // Echoes the request back so tests can assert what actually went over the wire.
-        app.MapGet("/api/echo", (HttpRequest request) => Results.Ok(new EchoResponse(
+        app.MapMethods("/api/echo", ["GET", "PUT", "PATCH", "DELETE", "OPTIONS"], (HttpRequest request) => Results.Ok(new EchoResponse(
             request.Method,
             request.Path.Value ?? string.Empty,
             request.QueryString.Value ?? string.Empty,

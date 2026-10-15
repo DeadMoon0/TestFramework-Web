@@ -1,13 +1,16 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Threading.Tasks;
 using TestFramework.Config;
 using TestFramework.Core.Exceptions;
 using TestFramework.Core.Timelines;
 using TestFramework.Core.Timelines.Assertions;
 using TestFramework.Core.Variables;
+using TestFramework.Web.Builder.Stages;
 using TestFramework.Web.Exceptions;
 using TestFramework.Web.Extensions;
 using TestFramework.Web.SampleApi;
@@ -164,6 +167,52 @@ public class ApiTriggerTests(SampleApiFixture fixture)
 
         run.EnsureRanToCompletion();
         run.ApiBody("echo").Should().Contain("corr-4711");
+    }
+
+    [Theory]
+    [InlineData("PATCH")]
+    [InlineData("DELETE")]
+    [InlineData("OPTIONS")]
+    public async Task EveryVerb_GoesOverTheWireAsItself(string verb)
+    {
+        IApiConnectionStage api = WebExt.Api.Http("sample");
+        IApiPayloadStage request = verb switch
+        {
+            "PATCH" => api.Patch("api/echo"),
+            "DELETE" => api.Delete("api/echo"),
+            _ => api.Method(new HttpMethod(verb), Var.Const("api/echo")),
+        };
+
+        Timeline timeline = Timeline.Create()
+            .Trigger(request.Call()).Name("echo")
+            .Build();
+
+        TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
+
+        run.EnsureRanToCompletion();
+        run.ApiBody("echo").Should().Contain($"\"method\":\"{verb}\"");
+    }
+
+    [Fact]
+    public async Task AHeaderSetFromOneVariable_ReachesTheServerWhole()
+    {
+        Timeline timeline = Timeline.Create()
+            .SetVariable("headers", Var.Const(new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["x-tenant"] = "acme",
+                ["x-correlation-id"] = "corr-0815",
+            }))
+            .Trigger(WebExt.Api.Http("sample")
+                .Get("api/echo")
+                .WithHeaders(Var.Ref<Dictionary<string, string>>("headers"))
+                .Call()).Name("echo")
+            .Build();
+
+        TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
+
+        run.EnsureRanToCompletion();
+        run.ApiBody("echo").Should().Contain("acme");
+        run.ApiBody("echo").Should().Contain("corr-0815");
     }
 
     [Fact]
