@@ -37,7 +37,7 @@ public sealed class ApiRequestFailedException : TimelineFrameworkException
         ];
 
         if (innerException is TaskCanceledException or TimeoutException)
-            recovery.Add($"Raise 'Api:{identifier}:RequestTimeout' or the step timeout with .WithTimeOut(...) if the API is simply slow.");
+            recovery.Add($"Raise 'Api:{identifier}:RequestTimeout' or the step timeout with .WithTimeout(...) if the API is simply slow.");
 
         if (requestUri.Scheme == Uri.UriSchemeHttps)
             recovery.Add($"For a self-signed certificate on a local host, set 'Api:{identifier}:AllowInvalidCertificates' to true.");

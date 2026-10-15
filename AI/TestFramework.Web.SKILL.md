@@ -43,7 +43,7 @@
     Prefer WithRouteValue over string concatenation. It escapes the value and fails loudly when a token is left unsubstituted.
     For APIs behind Windows integrated authentication, set Auth to Negotiate rather than changing the application.
     Use per-request WithBearerToken or WithAuth when a token comes from an earlier step; configuration is for static credentials.
-    Wait for a slow host with IsLive at Reachable level plus .WithTimeOut(...) and .WithRetry(...), not with sleeps.
+    Wait for a slow host with IsLive at Reachable level plus .WithTimeout(...) and .WithRetry(...), not with sleeps.
     Put an IsLive step in front of a host that may still be starting. It is the only step that waits: against a loopback or host.docker.internal authority it retries a 404 or 503 for LocalWarmupRetryDuration. An ordinary call is sent exactly once, so a timeline asserting NotFound gets its answer immediately.
     Let the step timeout be the only timeout unless a per-request transport limit is genuinely needed.
     Put additional secret-bearing header names in the Web:SensitiveHeaders configuration section rather than registering them in code.

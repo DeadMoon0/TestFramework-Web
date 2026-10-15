@@ -22,14 +22,14 @@ public class CookieIsolationTests(SampleApiFixture fixture)
     public async Task Cookies_AreNotCarriedIntoTheNextRun()
     {
         Timeline issuing = Timeline.Create()
-            .Trigger(WebExt.Api.Http("cookiesoff").Get("api/cookie/set").Call()).Name("set")
+            .Trigger(WebExt.Api.Http("cookiesoff").Get("api/cookie/set").Call()).Label("set")
             .Build();
 
         TimelineRun first = await issuing.SetupRun(fixture.CreateConfig("cookiesoff")).RunAsync();
         first.EnsureRanToCompletion();
 
         Timeline echoing = Timeline.Create()
-            .Trigger(WebExt.Api.Http("cookiesoff").Get("api/cookie/echo").Call()).Name("echo")
+            .Trigger(WebExt.Api.Http("cookiesoff").Get("api/cookie/echo").Call()).Label("echo")
             .Build();
 
         TimelineRun second = await echoing.SetupRun(fixture.CreateConfig("cookiesoff")).RunAsync();
@@ -51,14 +51,14 @@ public class CookieIsolationTests(SampleApiFixture fixture)
         ConfigInstance Config() => fixture.CreateConfig("cookieson", values => values["Api:cookieson:UseCookies"] = "true");
 
         Timeline issuing = Timeline.Create()
-            .Trigger(WebExt.Api.Http("cookieson").Get("api/cookie/set").Call()).Name("set")
+            .Trigger(WebExt.Api.Http("cookieson").Get("api/cookie/set").Call()).Label("set")
             .Build();
 
         TimelineRun first = await issuing.SetupRun(Config()).RunAsync();
         first.EnsureRanToCompletion();
 
         Timeline echoing = Timeline.Create()
-            .Trigger(WebExt.Api.Http("cookieson").Get("api/cookie/echo").Call()).Name("echo")
+            .Trigger(WebExt.Api.Http("cookieson").Get("api/cookie/echo").Call()).Label("echo")
             .Build();
 
         TimelineRun second = await echoing.SetupRun(Config()).RunAsync();

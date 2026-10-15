@@ -66,7 +66,7 @@ public class SqlTimelineTests
             .SetVariable("name", Var.Const("test-order"))
             .Trigger(WebExt.Sql.Execute("main", "UPDATE Orders SET Status = @status WHERE Name = @name")
                 .WithParameter("status", Var.Ref<int>("status"))
-                .WithParameter("name", Var.Ref<string>("name"))).Name("update")
+                .WithParameter("name", Var.Ref<string>("name"))).Label("update")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig(executor)).RunAsync();
@@ -86,7 +86,7 @@ public class SqlTimelineTests
 
         Timeline timeline = Timeline.Create()
             .Trigger(WebExt.Sql.Scalar<int>("main", "SELECT COUNT(*) FROM Orders WHERE Status = @status")
-                .WithParameter("status", Var.Const(3))).Name("count")
+                .WithParameter("status", Var.Const(3))).Label("count")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig(executor)).RunAsync();
@@ -102,7 +102,7 @@ public class SqlTimelineTests
         RecordingSqlExecutor executor = new() { ScalarResult = _ => 7 };
 
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Sql.Scalar<int>("main", "SELECT COUNT(*) FROM Orders")).Name("count")
+            .Trigger(WebExt.Sql.Scalar<int>("main", "SELECT COUNT(*) FROM Orders")).Label("count")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig(executor)).RunAsync();
@@ -132,7 +132,7 @@ public class SqlTimelineTests
         SqlScript script = SqlScript.FromText("DELETE FROM Orders;\nGO\nINSERT INTO Orders (Id) VALUES (1);");
 
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Sql.Script("main", script)).Name("seed")
+            .Trigger(WebExt.Sql.Script("main", script)).Label("seed")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig(executor)).RunAsync();
@@ -149,7 +149,7 @@ public class SqlTimelineTests
         SqlScript script = SqlScript.FromText("DELETE FROM Orders;\nGO\nINSERT INTO Orders (Id) VALUES (1);");
 
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Sql.Script("main", script)).Name("seed")
+            .Trigger(WebExt.Sql.Script("main", script)).Label("seed")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig(executor)).RunAsync();
@@ -169,7 +169,7 @@ public class SqlTimelineTests
         SqlScript script = SqlScript.FromText("BEGIN TRAN;\nGO\nINSERT INTO Orders (Id) VALUES (1);");
 
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Sql.Script("main", script)).Name("seed")
+            .Trigger(WebExt.Sql.Script("main", script)).Label("seed")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig(executor)).RunAsync();
@@ -187,7 +187,7 @@ public class SqlTimelineTests
         ScriptAwareSqlExecutor executor = new();
         SqlScript script = SqlScript.FromText("INSERT INTO Orders (Id, Name) VALUES (1, 'ada@example.com');\nGO\nSELECT 1;", "seed.sql");
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Sql.Script("main", script)).Name("seed")
+            .Trigger(WebExt.Sql.Script("main", script)).Label("seed")
             .Build();
 
         List<string> log = [];
@@ -206,7 +206,7 @@ public class SqlTimelineTests
         RecordingSqlExecutor executor = new() { ScalarResult = _ => "SampleDb" };
 
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Sql.IsLive("main", SqlAlivenessLevel.Database)).Name("live")
+            .Trigger(WebExt.Sql.IsLive("main", SqlAlivenessLevel.Database)).Label("live")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig(executor)).RunAsync();
@@ -344,7 +344,7 @@ public class SqlTimelineTests
         RecordingSqlExecutor executor = new();
 
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Sql.Execute("missing", "DELETE FROM Orders")).Name("delete")
+            .Trigger(WebExt.Sql.Execute("missing", "DELETE FROM Orders")).Label("delete")
             .Build();
 
         // The recording executor is bypassed here on purpose: resolution fails before it is reached.
@@ -379,7 +379,7 @@ public class SqlTimelineTests
     public async Task AnEntryThatCannotCompose_IsRefusedUnderItsOwnIdentifier()
     {
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Sql.Execute("main", "DELETE FROM Orders")).Name("delete")
+            .Trigger(WebExt.Sql.Execute("main", "DELETE FROM Orders")).Label("delete")
             .Build();
 
         // Coordinates, but a connection string the driver cannot read: the entry is 'main', whatever database it names.

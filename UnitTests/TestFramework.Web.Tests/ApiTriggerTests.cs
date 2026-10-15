@@ -30,7 +30,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
     public async Task Get_ReturnsTheResponseBodyAndStatus()
     {
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Api.Http("sample").Get("api/items").Call()).Name("list")
+            .Trigger(WebExt.Api.Http("sample").Get("api/items").Call()).Label("list")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
@@ -54,7 +54,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
             .Trigger(WebExt.Api.Http("sample")
                 .Get("api/items")
                 .WithQuery("take", Var.Ref<string>("take"))
-                .Call()).Name("list")
+                .Call()).Label("list")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
@@ -71,7 +71,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
             .Trigger(WebExt.Api.Http("sample")
                 .Get("api/items/{id}")
                 .WithRouteValue("id", Var.Ref<string>("itemId"))
-                .Call()).Name("get-item")
+                .Call()).Label("get-item")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
@@ -86,7 +86,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
         // An unsuccessful status is a result, not a transport failure: the timeline must survive it
         // so tests can assert the API's error behaviour.
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Api.Http("sample").Get("api/items/does-not-exist").Call()).Name("missing")
+            .Trigger(WebExt.Api.Http("sample").Get("api/items/does-not-exist").Call()).Label("missing")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
@@ -102,7 +102,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
         // The body of an error response is usually the diagnosis; a status assertion that fails without it
         // sends the reader back to re-run the test with logging on.
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Api.Http("sample").Get("api/items/does-not-exist").Call()).Name("missing")
+            .Trigger(WebExt.Api.Http("sample").Get("api/items/does-not-exist").Call()).Label("missing")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
@@ -119,7 +119,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
             .Trigger(WebExt.Api.Http("sample")
                 .Post("api/items")
                 .WithJsonBody(Var.Ref<CreateSampleItem>("payload"))
-                .Call()).Name("create")
+                .Call()).Label("create")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
@@ -143,7 +143,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
             .Trigger(WebExt.Api.Http("sample")
                 .Post("api/echo")
                 .WithJsonBody(Var.Ref<CreateSampleItem>("payload"))
-                .Call()).Name("echo")
+                .Call()).Label("echo")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
@@ -160,7 +160,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
             .Trigger(WebExt.Api.Http("sample")
                 .Get("api/echo")
                 .WithHeader(Var.Const("x-correlation-id"), Var.Ref<string>("correlationId"))
-                .Call()).Name("echo")
+                .Call()).Label("echo")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
@@ -184,7 +184,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
         };
 
         Timeline timeline = Timeline.Create()
-            .Trigger(request.Call()).Name("echo")
+            .Trigger(request.Call()).Label("echo")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
@@ -205,7 +205,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
             .Trigger(WebExt.Api.Http("sample")
                 .Get("api/echo")
                 .WithHeaders(Var.Ref<Dictionary<string, string>>("headers"))
-                .Call()).Name("echo")
+                .Call()).Label("echo")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
@@ -226,7 +226,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
         });
 
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Api.Http("secured").Get("api/secure").Call()).Name("secure")
+            .Trigger(WebExt.Api.Http("secured").Get("api/secure").Call()).Label("secure")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(config).RunAsync();
@@ -239,7 +239,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
     public async Task MissingCredentials_ProduceAnUnauthorizedResponse()
     {
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Api.Http("sample").Get("api/secure").Call()).Name("secure")
+            .Trigger(WebExt.Api.Http("sample").Get("api/secure").Call()).Label("secure")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
@@ -256,7 +256,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
             .Trigger(WebExt.Api.Http("sample")
                 .Get("api/secure")
                 .WithBearerToken(Var.Ref<string>("token"))
-                .Call()).Name("secure")
+                .Call()).Label("secure")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
@@ -269,7 +269,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
     public async Task ProblemDetails_AreReturnedAsABodyRatherThanAFailure()
     {
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Api.Http("sample").Get("api/problem").Call()).Name("problem")
+            .Trigger(WebExt.Api.Http("sample").Get("api/problem").Call()).Label("problem")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
@@ -293,7 +293,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
             values => values["Api:warming:HealthPath"] = $"/api/flaky?key=warmup-{Guid.NewGuid()}&failures=2");
 
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Api.IsLive("warming", ApiAlivenessLevel.Healthy)).Name("live")
+            .Trigger(WebExt.Api.IsLive("warming", ApiAlivenessLevel.Healthy)).Label("live")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(config).RunAsync();
@@ -311,7 +311,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
                 .Get("api/flaky")
                 .WithQuery("key", Var.Const($"no-warmup-{Guid.NewGuid()}"))
                 .WithQuery("failures", Var.Const("2"))
-                .Call()).Name("flaky")
+                .Call()).Label("flaky")
             .Build();
 
         Stopwatch stopwatch = Stopwatch.StartNew();
@@ -335,7 +335,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
             .Trigger(WebExt.Api.Http("slow")
                 .Get("api/slow")
                 .WithQuery("delayMs", Var.Const("3000"))
-                .Call()).Name("slow")
+                .Call()).Label("slow")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(config).RunAsync();
@@ -351,7 +351,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
         ConfigInstance config = fixture.CreateConfig("dead", values => values["Api:dead:BaseUrl"] = "http://127.0.0.1:1/");
 
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Api.Http("dead").Get("api/items").Call()).Name("dead")
+            .Trigger(WebExt.Api.Http("dead").Get("api/items").Call()).Label("dead")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(config).RunAsync();
@@ -365,7 +365,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
     public async Task UnknownIdentifier_FailsWithTheRegisteredIdentifiersListed()
     {
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Api.Http("not-registered").Get("api/items").Call()).Name("unknown")
+            .Trigger(WebExt.Api.Http("not-registered").Get("api/items").Call()).Label("unknown")
             .Build();
 
         // Where it fails depends on the engine: from TestFramework.Core 0.6.0 the run is refused while it is
@@ -394,7 +394,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
     public async Task IsLive_Reachable_SucceedsAgainstAnyStatusCode()
     {
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Api.IsLive("sample", ApiAlivenessLevel.Reachable)).Name("reachable")
+            .Trigger(WebExt.Api.IsLive("sample", ApiAlivenessLevel.Reachable)).Label("reachable")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
@@ -411,7 +411,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
     public async Task IsLive_Healthy_ProbesTheConfiguredHealthPath()
     {
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Api.IsLive("sample", ApiAlivenessLevel.Healthy)).Name("healthy")
+            .Trigger(WebExt.Api.IsLive("sample", ApiAlivenessLevel.Healthy)).Label("healthy")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
@@ -435,7 +435,7 @@ public class ApiTriggerTests(SampleApiFixture fixture)
             builder => builder.ConfigureApiTrigger(trigger => trigger with { LocalWarmupRetryDuration = TimeSpan.Zero }));
 
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Api.IsLive("nohealth", ApiAlivenessLevel.Healthy)).Name("healthy")
+            .Trigger(WebExt.Api.IsLive("nohealth", ApiAlivenessLevel.Healthy)).Label("healthy")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(config).RunAsync();

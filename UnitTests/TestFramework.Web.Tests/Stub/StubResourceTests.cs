@@ -219,7 +219,7 @@ public class StubResourceTests(ITestOutputHelper output)
     private async Task<TimelineRun> Run(PublishingEnvironment? environment, string resolves = "payments", params (string Key, string Value)[] configured)
     {
         Timeline timeline = Timeline.Create()
-            .Trigger(new ResolvesStubStep(resolves)).Name("resolves")
+            .Trigger(new ResolvesStubStep(resolves)).Label("resolves")
             .Build();
 
         ITimelineRunBuilder builder = timeline.SetupRun(Configured(configured), output.WriteLine);

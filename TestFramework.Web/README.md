@@ -42,11 +42,11 @@ ConfigInstance config = ConfigInstance.FromJsonFile("local.testsettings.json")
 
 Timeline timeline = Timeline.Create()
     .SetVariable("itemId", Var.Const("2"))
-    .Trigger(WebExt.Api.IsLive("sample", ApiAlivenessLevel.Healthy)).Name("live")
+    .Trigger(WebExt.Api.IsLive("sample", ApiAlivenessLevel.Healthy)).Label("live")
     .Trigger(WebExt.Api.Http("sample")
         .Get("api/items/{id}")
         .WithRouteValue("id", Var.Ref<string>("itemId"))
-        .Call()).Name("get-item")
+        .Call()).Label("get-item")
     .Build();
 
 TimelineRun run = await timeline.SetupRun(config).RunAsync();
@@ -194,7 +194,7 @@ anything about routes or authorization, which is what you want while waiting for
 Combine it with the normal timeline modifiers:
 
 ```csharp
-.Trigger(WebExt.Api.IsLive("sample")).WithTimeOut(TimeSpan.FromMinutes(1)).WithRetry(10, CalcDelays.Fixed(TimeSpan.FromSeconds(2)))
+.Trigger(WebExt.Api.IsLive("sample")).WithTimeout(TimeSpan.FromMinutes(1)).WithRetry(10, CalcDelays.Fixed(TimeSpan.FromSeconds(2)))
 ```
 
 This is also the step that waits out a local host's startup: at `Healthy` or `Authenticated` level a
@@ -243,7 +243,7 @@ it is a step. An aggregate is neither, so it is an observation:
 Timeline timeline = Timeline.Create()
     .SetupArtifact("customer")                                   // seeded, then removed on teardown
     .SetVariable("orderName", Var.Const("test-order"))
-    .Trigger(WebExt.Api.Http("orders").Post("api/orders").WithJsonBody(Var.Ref<CreateOrder>("payload")).Call()).Name("create")
+    .Trigger(WebExt.Api.Http("orders").Post("api/orders").WithJsonBody(Var.Ref<CreateOrder>("payload")).Call()).Label("create")
     .FindArtifact("order", WebExt.ArtifactFinder.Sql.Where<Order>("main", "Name = @name")
         .WithParameter("name", Var.Ref<string>("orderName")))
     .Build();
@@ -266,8 +266,8 @@ there. A composite key takes the parts the test supplies, in key order:
 ```csharp
 TimelineRun run = await Timeline.Create()
     .SetupArtifact("order")
-    .Transform("orderPath", Var.Ref<int>("orderId"), id => $"api/orders/{id}")
-    .Trigger(WebExt.Api.Http("orders").Get(Var.Ref<string>("orderPath")).Call()).Name("read")
+    .Transform(Var.Ref<int>("orderId"), "orderPath", id => $"api/orders/{id}")
+    .Trigger(WebExt.Api.Http("orders").Get(Var.Ref<string>("orderPath")).Call()).Label("read")
     .Build()
     .SetupRun(config)
     .AddArtifact("order",
@@ -315,7 +315,7 @@ kept in step with them by hand:
 
 ```csharp
 Timeline timeline = Timeline.Create()
-    .Trigger(WebExt.Sql.Script("main", SqlSchema.CreateTablesScript(typeof(Order), typeof(Customer)))).Name("schema")
+    .Trigger(WebExt.Sql.Script("main", SqlSchema.CreateTablesScript(typeof(Order), typeof(Customer)))).Label("schema")
     .Build();
 ```
 
@@ -375,12 +375,12 @@ entirely; `{{request.body.amount}}` templating covers what a callback would othe
 
 ```csharp
 Timeline timeline = Timeline.Create()
-    .Trigger(WebExt.Stub.Reset("payments")).Name("clean")     // opens this run's observation window
-    .Trigger(WebExt.Api.Http("orders").Post("api/orders").WithJsonBody(...).Call()).Name("create")
+    .Trigger(WebExt.Stub.Reset("payments")).Label("clean")     // opens this run's observation window
+    .Trigger(WebExt.Api.Http("orders").Post("api/orders").WithJsonBody(...).Call()).Label("create")
     .WaitForEvent(WebExt.Stub.Called("payments", HttpMethod.Post, "/api/charges")
         .WithBodyContaining(Var.Ref<string>("orderId")))            // wait for *this* call
-        .WithTimeOut(TimeSpan.FromSeconds(30)).Name("charged")
-    .Trigger(WebExt.Stub.Calls("payments")).Name("calls")
+        .WithTimeout(TimeSpan.FromSeconds(30)).Label("charged")
+    .Trigger(WebExt.Stub.Calls("payments")).Label("calls")
     .Build();
 
 run.StubCall("charged").Select(call => call.Body).Should().Contain("\"amount\":30");
@@ -423,7 +423,7 @@ three are **not** equivalent:
 
 ```csharp
 .Trigger(WebExt.Stub.Calls("payments").WithMethod(HttpMethod.Post).WithPath("/api/charges")
-    .WithHeader("x-correlation-id", Var.Ref<string>("correlationId"))).Name("calls")
+    .WithHeader("x-correlation-id", Var.Ref<string>("correlationId"))).Label("calls")
 
 .WaitForEvent(WebExt.Stub.Called("payments", HttpMethod.Post, "/api/charges")
     .WithHeader("x-correlation-id", Var.Ref<string>("correlationId")))

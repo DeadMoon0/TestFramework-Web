@@ -31,7 +31,7 @@ public sealed class ApiLivenessProbeException : TimelineFrameworkException
         ArgumentNullException.ThrowIfNull(additionalRecovery);
 
         List<string> recovery = [.. additionalRecovery];
-        recovery.Add($"Use .WithTimeOut(...) and .WithRetry(...) when the API needs time to start.");
+        recovery.Add($"Use .WithTimeout(...) and .WithRetry(...) when the API needs time to start.");
 
         return new ApiLivenessProbeException(
             $"API '{identifier}' answered {(int)statusCode} {statusCode} for the {level} probe of '{probeUri}'.",

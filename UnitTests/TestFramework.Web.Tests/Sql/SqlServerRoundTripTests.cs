@@ -61,7 +61,7 @@ public class SqlServerRoundTripTests
     public async Task IsLive_ReachesTheConfiguredDatabase()
     {
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Sql.IsLive("main", SqlAlivenessLevel.Database)).Name("live")
+            .Trigger(WebExt.Sql.IsLive("main", SqlAlivenessLevel.Database)).Label("live")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig()).RunAsync();
@@ -76,7 +76,7 @@ public class SqlServerRoundTripTests
         int id = Random.Shared.Next(100_000, 999_999);
 
         Timeline seed = Timeline.Create()
-            .Trigger(WebExt.Sql.Script("main", CreateTableScript)).Name("schema")
+            .Trigger(WebExt.Sql.Script("main", CreateTableScript)).Label("schema")
             .SetupArtifact("row")
             .FindArtifact("found", WebExt.ArtifactFinder.Sql.Where<RoundTripRow>("main", "Id = @id")
                 .WithParameter("id", Var.Const(id)))
@@ -95,7 +95,7 @@ public class SqlServerRoundTripTests
         // The seeded row is owned by the run, so teardown removed it.
         Timeline verify = Timeline.Create()
             .Trigger(WebExt.Sql.Scalar<int>("main", $"SELECT COUNT(1) FROM [{TableName}] WHERE Id = @id")
-                .WithParameter("id", Var.Const(id))).Name("count")
+                .WithParameter("id", Var.Const(id))).Label("count")
             .Build();
 
         TimelineRun verifyRun = await verify.SetupRun(CreateConfig()).RunAsync();
@@ -120,7 +120,7 @@ public class SqlServerRoundTripTests
             """);
 
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Sql.Script("main", script)).Name("script")
+            .Trigger(WebExt.Sql.Script("main", script)).Label("script")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig()).RunAsync();
@@ -135,9 +135,9 @@ public class SqlServerRoundTripTests
         int id = Random.Shared.Next(100_000, 999_999);
 
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Sql.Script("main", CreateTableScript)).Name("schema")
+            .Trigger(WebExt.Sql.Script("main", CreateTableScript)).Label("schema")
             .Trigger(WebExt.Sql.Execute("main", $"DELETE FROM [{TableName}] WHERE Id = @id; INSERT INTO [{TableName}] (Id, Name, Quantity) VALUES (@id, 'stale', 1);")
-                .WithParameter("id", Var.Const(id))).Name("preexisting")
+                .WithParameter("id", Var.Const(id))).Label("preexisting")
             .SetupArtifact("row")
             .Build();
 
@@ -159,8 +159,8 @@ public class SqlServerRoundTripTests
         // statement under a two-minute step timeout died at 30 s - while the configuration says the step timeout is
         // the only limit.
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Sql.Execute("main", "WAITFOR DELAY '00:00:31';")).Name("slow")
-                .WithTimeOut(TimeSpan.FromMinutes(2))
+            .Trigger(WebExt.Sql.Execute("main", "WAITFOR DELAY '00:00:31';")).Label("slow")
+                .WithTimeout(TimeSpan.FromMinutes(2))
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig()).RunAsync();

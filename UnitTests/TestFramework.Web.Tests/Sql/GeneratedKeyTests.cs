@@ -107,7 +107,7 @@ public class GeneratedKeyTests
         RecordingSqlExecutor executor = new();
 
         Timeline timeline = Timeline.Create()
-            .SetupArtifact("ticket").Name("setup")
+            .SetupArtifact("ticket").Label("setup")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig(executor))
@@ -158,7 +158,7 @@ public class GeneratedKeyTests
         RecordingSqlExecutor executor = new();
 
         Timeline timeline = Timeline.Create()
-            .SetupArtifact("line").Name("setup")
+            .SetupArtifact("line").Label("setup")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig(executor))
@@ -178,7 +178,7 @@ public class GeneratedKeyTests
         RecordingSqlExecutor executor = new();
 
         Timeline timeline = Timeline.Create()
-            .SetupArtifact("order").Name("setup")
+            .SetupArtifact("order").Label("setup")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig(executor))
@@ -196,7 +196,7 @@ public class GeneratedKeyTests
         RecordingSqlExecutor executor = new();
 
         Timeline timeline = Timeline.Create()
-            .SetupArtifact("ticket").Name("setup")
+            .SetupArtifact("ticket").Label("setup")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig(executor))

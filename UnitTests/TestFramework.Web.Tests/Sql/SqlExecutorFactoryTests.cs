@@ -30,7 +30,7 @@ public sealed class SqlExecutorFactoryTests
         RunAwareFactory factory = new();
 
         TimelineRun run = await Timeline.Create()
-            .Trigger(WebExt.Sql.Execute("main", "UPDATE Orders SET Quantity = 1")).Name("update")
+            .Trigger(WebExt.Sql.Execute("main", "UPDATE Orders SET Quantity = 1")).Label("update")
             .Build()
             .SetupRun(Config(builder => builder.UseSqlExecutor(factory)))
             .RunAsync();
@@ -45,7 +45,7 @@ public sealed class SqlExecutorFactoryTests
     {
         // Ignoring it would silently swap the author's executor for the built-in one.
         TimelineRun run = await Timeline.Create()
-            .Trigger(WebExt.Sql.Execute("main", "UPDATE Orders SET Quantity = 1")).Name("update")
+            .Trigger(WebExt.Sql.Execute("main", "UPDATE Orders SET Quantity = 1")).Label("update")
             .Build()
             .SetupRun(Config(builder => builder.AddService(services => services.AddSingleton<ISqlExecutor>(new RecordingSqlExecutor()))))
             .RunAsync();

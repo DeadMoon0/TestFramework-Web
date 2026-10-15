@@ -65,7 +65,7 @@ public class SqlServerFailureTests
     public async Task AStatementTheServerCannotParse_FailsTheStepNamingTheStatement()
     {
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Sql.Execute("main", "SELEC 1 FROM nowhere")).Name("broken")
+            .Trigger(WebExt.Sql.Execute("main", "SELEC 1 FROM nowhere")).Label("broken")
             .Build();
 
         SqlExecutionFailedException failure = await FailureOf(timeline, CreateConfig(), "broken");
@@ -77,7 +77,7 @@ public class SqlServerFailureTests
     public async Task AParameterTheStatementUsesButTheStepDoesNotBind_FailsTheStep()
     {
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Sql.Scalar<int>("main", "SELECT @missing")).Name("unbound")
+            .Trigger(WebExt.Sql.Scalar<int>("main", "SELECT @missing")).Label("unbound")
             .Build();
 
         SqlExecutionFailedException failure = await FailureOf(timeline, CreateConfig(), "unbound");
@@ -89,8 +89,8 @@ public class SqlServerFailureTests
     public async Task AStatementOutlastingItsCommandTimeout_IsStoppedAtThatTimeout()
     {
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Sql.Execute("main", "WAITFOR DELAY '00:00:10'")).Name("slow")
-                .WithTimeOut(TimeSpan.FromSeconds(30))
+            .Trigger(WebExt.Sql.Execute("main", "WAITFOR DELAY '00:00:10'")).Label("slow")
+                .WithTimeout(TimeSpan.FromSeconds(30))
             .Build();
 
         Stopwatch stopwatch = Stopwatch.StartNew();
@@ -107,9 +107,9 @@ public class SqlServerFailureTests
         string key = id.ToString(CultureInfo.InvariantCulture);
 
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Sql.Script("main", CreateTableScript)).Name("schema")
+            .Trigger(WebExt.Sql.Script("main", CreateTableScript)).Label("schema")
             .Trigger(WebExt.Sql.Execute("main", $"INSERT INTO [{TableName}] (Id, Name) VALUES (@id, 'written elsewhere')")
-                .WithParameter("id", Var.Const(id))).Name("application")
+                .WithParameter("id", Var.Const(id))).Label("application")
             .RegisterArtifact("adopted", WebExt.Artifact.Sql.Row<AdoptedRow>("main", Var.Const(key)))
             .Build();
 
@@ -127,7 +127,7 @@ public class SqlServerFailureTests
         string key = id.ToString(CultureInfo.InvariantCulture);
 
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Sql.Script("main", CreateTableScript)).Name("schema")
+            .Trigger(WebExt.Sql.Script("main", CreateTableScript)).Label("schema")
             .RegisterArtifact("adopted", WebExt.Artifact.Sql.Row<AdoptedRow>("main", Var.Const(key)))
             .Build();
 
@@ -141,7 +141,7 @@ public class SqlServerFailureTests
     {
         Timeline timeline = Timeline.Create()
             .Trigger(WebExt.Sql.Scalar<int>("main", $"SELECT COUNT(1) FROM [{TableName}] WHERE Id = @id")
-                .WithParameter("id", Var.Const(id))).Name("count")
+                .WithParameter("id", Var.Const(id))).Label("count")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(CreateConfig()).RunAsync();

@@ -187,7 +187,7 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
         System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         // The step timeout is the only limit, so a caller controls how long to wait with
-        // WithTimeOut(...) rather than with a second competing setting here.
+        // WithTimeout(...) rather than with a second competing setting here.
         while (true)
         {
             context.Deadline.Token.ThrowIfCancellationRequested();

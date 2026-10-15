@@ -43,8 +43,8 @@ Use this file for:
 
 ```csharp
 Timeline timeline = Timeline.Create()
-    .Trigger(WebExt.Api.IsLive("sample", ApiAlivenessLevel.Healthy)).Name("live")
-    .Trigger(WebExt.Api.Http("sample").Get("api/items").Call()).Name("list")
+    .Trigger(WebExt.Api.IsLive("sample", ApiAlivenessLevel.Healthy)).Label("live")
+    .Trigger(WebExt.Api.Http("sample").Get("api/items").Call()).Label("list")
     .Build();
 
 TimelineRun run = await timeline.SetupRun(config).RunAsync();

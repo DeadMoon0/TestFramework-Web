@@ -144,7 +144,7 @@ public class SqlResourceTests(ITestOutputHelper output)
     private async Task<TimelineRun> Run(PublishingEnvironment? environment, string resolves = "orders-db", params (string Key, string Value)[] configured)
     {
         Timeline timeline = Timeline.Create()
-            .Trigger(new ResolvesDatabaseStep(resolves)).Name("resolves")
+            .Trigger(new ResolvesDatabaseStep(resolves)).Label("resolves")
             .Build();
 
         ITimelineRunBuilder builder = timeline.SetupRun(Configured(configured), output.WriteLine);

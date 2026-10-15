@@ -52,7 +52,7 @@ literal `{id}` to a server produces a far more confusing `404` later.
 ## ApiRequestFailedException
 
 Names the method, the absolute URI, the elapsed time and the underlying transport exception, then
-adapts its recovery hints to the cause: timeouts point at `RequestTimeout` and `.WithTimeOut(...)`,
+adapts its recovery hints to the cause: timeouts point at `RequestTimeout` and `.WithTimeout(...)`,
 HTTPS failures point at `AllowInvalidCertificates`.
 
 ## Assertion Failures

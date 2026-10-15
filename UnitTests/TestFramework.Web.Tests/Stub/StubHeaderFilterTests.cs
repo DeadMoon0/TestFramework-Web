@@ -28,7 +28,7 @@ public class StubHeaderFilterTests
     public async Task ACallsFilterOnAVariableNothingWrites_IsRefusedBeforeTheRunStarts()
     {
         Timeline timeline = Timeline.Create()
-            .Trigger(WebExt.Stub.Calls("payments").WithHeader("x-correlation-id", Var.Ref<string>("correlationId"))).Name("calls")
+            .Trigger(WebExt.Stub.Calls("payments").WithHeader("x-correlation-id", Var.Ref<string>("correlationId"))).Label("calls")
             .Build();
 
         TimelineFrameworkException refused = await Assert.ThrowsAnyAsync<TimelineFrameworkException>(() => timeline.SetupRun(Config()).RunAsync());
@@ -41,7 +41,7 @@ public class StubHeaderFilterTests
     {
         Timeline timeline = Timeline.Create()
             .WaitForEvent(WebExt.Stub.Called("payments", System.Net.Http.HttpMethod.Post, "/api/charges")
-                .WithHeader("x-correlation-id", Var.Ref<string>("correlationId"))).Name("charged")
+                .WithHeader("x-correlation-id", Var.Ref<string>("correlationId"))).Label("charged")
             .Build();
 
         TimelineFrameworkException refused = await Assert.ThrowsAnyAsync<TimelineFrameworkException>(() => timeline.SetupRun(Config()).RunAsync());
