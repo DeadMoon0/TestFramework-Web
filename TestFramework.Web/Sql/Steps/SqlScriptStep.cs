@@ -182,6 +182,11 @@ public sealed class SqlScriptStep : SqlStepBase<SqlScriptResult>
     public override string Name => "SQL Script";
 
     /// <inheritdoc />
+    /// <remarks>A seed script is literal values throughout, so its text is logged only where parameter values are.</remarks>
+    private protected override string LoggedStatement(SqlStepConfig config)
+        => config.LogParameterValues ? Statement : $"script '{_script.Description}' ({_script.SplitBatches().Count} batch(es))";
+
+    /// <inheritdoc />
     public override string Description => $"Runs '{_script.Description}' against the database '{SqlIdentifier}'";
 
     /// <summary>

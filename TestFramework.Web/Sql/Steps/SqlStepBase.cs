@@ -36,6 +36,13 @@ public abstract class SqlStepBase<TResult> : Step<TResult>, IHasEnvironmentRequi
     }
 
     /// <summary>
+    /// What the log says this step runs: the statement itself, unless it is made of data.
+    /// </summary>
+    /// <param name="config">The run's SQL tuning.</param>
+    /// <returns>The text to log.</returns>
+    private protected virtual string LoggedStatement(SqlStepConfig config) => Statement;
+
+    /// <summary>
     /// The SQL identifier this step runs against.
     /// </summary>
     public SqlIdentifier SqlIdentifier { get; }
@@ -98,7 +105,7 @@ public abstract class SqlStepBase<TResult> : Step<TResult>, IHasEnvironmentRequi
             logger.LogInformation(
                 "SQL '{0}' -> {1} [{2}]",
                 SqlIdentifier.ToString(),
-                Statement,
+                LoggedStatement(stepConfig),
                 described);
         }
 

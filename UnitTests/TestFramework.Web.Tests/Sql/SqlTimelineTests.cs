@@ -181,6 +181,26 @@ public class SqlTimelineTests
     }
 
     [Fact]
+    public async Task AScriptsTextStaysOutOfTheLog_UnlessParameterValuesAreLogged()
+    {
+        // A seed script is nothing but literal values, so it is held to the same privacy switch as parameter values.
+        ScriptAwareSqlExecutor executor = new();
+        SqlScript script = SqlScript.FromText("INSERT INTO Orders (Id, Name) VALUES (1, 'ada@example.com');\nGO\nSELECT 1;", "seed.sql");
+        Timeline timeline = Timeline.Create()
+            .Trigger(WebExt.Sql.Script("main", script)).Name("seed")
+            .Build();
+
+        List<string> log = [];
+        TimelineRun run = await timeline
+            .SetupRun(RunServices.Owned(CreateConfig(executor).BuildServiceProvider()), log.Add)
+            .RunAsync();
+
+        run.EnsureRanToCompletion();
+        Assert.DoesNotContain(log, line => line.Contains("ada@example.com", StringComparison.Ordinal));
+        Assert.Contains(log, line => line.Contains("seed.sql", StringComparison.Ordinal) && line.Contains("2 batch", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task IsLive_ProbesTheConfiguredDatabase()
     {
         RecordingSqlExecutor executor = new() { ScalarResult = _ => "SampleDb" };
