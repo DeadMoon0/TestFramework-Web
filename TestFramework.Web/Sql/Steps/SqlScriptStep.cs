@@ -222,22 +222,6 @@ public sealed class SqlScriptStep : SqlStepBase<SqlScriptResult>
     [EditorBrowsable(EditorBrowsableState.Never)]
     public SqlScriptStep WithParameter<TValue>(string name, ConstVariable<TValue> value) => WithParameterFrom(name, value);
 
-    /// <summary>Refused: a variable is not a value. Use the <c>…From</c> twin.</summary>
-    [Obsolete(NotAValue.Message, error: true)]
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public SqlScriptStep WithParameter<TValue>(string name, VariableReference<TValue> value) => throw NotAValue.For($"WithParameter('{name}')", $"WithParameterFrom('{name}', ...)");
-
-    /// <summary>Refused: a variable is not a value. Use the <c>…From</c> twin.</summary>
-    [Obsolete(NotAValue.Message, error: true)]
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public SqlScriptStep WithParameter<TValue>(string name, ResolvableVariable<TValue> value) => throw NotAValue.For($"WithParameter('{name}')", $"WithParameterFrom('{name}', ...)");
-
-    /// <summary>Refused: a variable is not a value. Use the <c>…From</c> twin.</summary>
-    [Obsolete(NotAValue.Message, error: true)]
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public SqlScriptStep WithParameter<TVar, TValue>(string name, ImmutableVariable<TVar, TValue> value)
-        where TVar : VariableReference<TValue> => throw NotAValue.For($"WithParameter('{name}')", $"WithParameterFrom('{name}', ...)");
-
 
     /// <inheritdoc />
     public override Step<SqlScriptResult> Clone()

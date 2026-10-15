@@ -106,20 +106,6 @@ public interface IWithBodyAction
     [EditorBrowsable(EditorBrowsableState.Never)]
     IApiPayloadStage WithJsonBody<TValue>(ConstVariable<TValue> value);
 
-    /// <summary>Refused: a variable is not a value. Use <c>WithJsonBodyFrom</c>.</summary>
-    [Obsolete(NotAValue.Message, error: true)]
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    IApiPayloadStage WithJsonBody<TValue>(VariableReference<TValue> value);
-
-    /// <summary>Refused: a variable is not a value. Use <c>WithJsonBodyFrom</c>.</summary>
-    [Obsolete(NotAValue.Message, error: true)]
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    IApiPayloadStage WithJsonBody<TValue>(ResolvableVariable<TValue> value);
-
-    /// <summary>Refused: a variable is not a value. Use <c>WithJsonBodyFrom</c>.</summary>
-    [Obsolete(NotAValue.Message, error: true)]
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    IApiPayloadStage WithJsonBody<TVar, TValue>(ImmutableVariable<TVar, TValue> value) where TVar : VariableReference<TValue>;
 }
 
 /// <summary>

@@ -108,22 +108,6 @@ public sealed class SqlScalarStep<TValue> : SqlStepBase<SqlScalarResult<TValue>>
     [EditorBrowsable(EditorBrowsableState.Never)]
     public SqlScalarStep<TValue> WithParameter<TParameter>(string name, ConstVariable<TParameter> value) => WithParameterFrom(name, value);
 
-    /// <summary>Refused: a variable is not a value. Use the <c>…From</c> twin.</summary>
-    [Obsolete(NotAValue.Message, error: true)]
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public SqlScalarStep<TValue> WithParameter<TParameter>(string name, VariableReference<TParameter> value) => throw NotAValue.For($"WithParameter('{name}')", $"WithParameterFrom('{name}', ...)");
-
-    /// <summary>Refused: a variable is not a value. Use the <c>…From</c> twin.</summary>
-    [Obsolete(NotAValue.Message, error: true)]
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public SqlScalarStep<TValue> WithParameter<TParameter>(string name, ResolvableVariable<TParameter> value) => throw NotAValue.For($"WithParameter('{name}')", $"WithParameterFrom('{name}', ...)");
-
-    /// <summary>Refused: a variable is not a value. Use the <c>…From</c> twin.</summary>
-    [Obsolete(NotAValue.Message, error: true)]
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public SqlScalarStep<TValue> WithParameter<TVar, TParameter>(string name, ImmutableVariable<TVar, TParameter> value)
-        where TVar : VariableReference<TParameter> => throw NotAValue.For($"WithParameter('{name}')", $"WithParameterFrom('{name}', ...)");
-
 
     /// <inheritdoc />
     public override Step<SqlScalarResult<TValue>> Clone()

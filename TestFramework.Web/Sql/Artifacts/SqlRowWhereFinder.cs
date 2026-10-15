@@ -74,22 +74,6 @@ public sealed class SqlRowWhereFinder<TRow> : ArtifactFinder<SqlRowArtifactDescr
     [EditorBrowsable(EditorBrowsableState.Never)]
     public SqlRowWhereFinder<TRow> WithParameter<TValue>(string name, ConstVariable<TValue> value) => WithParameterFrom(name, value);
 
-    /// <summary>Refused: a variable is not a value. Use the <c>…From</c> twin.</summary>
-    [Obsolete(NotAValue.Message, error: true)]
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public SqlRowWhereFinder<TRow> WithParameter<TValue>(string name, VariableReference<TValue> value) => throw NotAValue.For($"WithParameter('{name}')", $"WithParameterFrom('{name}', ...)");
-
-    /// <summary>Refused: a variable is not a value. Use the <c>…From</c> twin.</summary>
-    [Obsolete(NotAValue.Message, error: true)]
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public SqlRowWhereFinder<TRow> WithParameter<TValue>(string name, ResolvableVariable<TValue> value) => throw NotAValue.For($"WithParameter('{name}')", $"WithParameterFrom('{name}', ...)");
-
-    /// <summary>Refused: a variable is not a value. Use the <c>…From</c> twin.</summary>
-    [Obsolete(NotAValue.Message, error: true)]
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public SqlRowWhereFinder<TRow> WithParameter<TVar, TValue>(string name, ImmutableVariable<TVar, TValue> value)
-        where TVar : VariableReference<TValue> => throw NotAValue.For($"WithParameter('{name}')", $"WithParameterFrom('{name}', ...)");
-
 
     /// <summary>
     /// Finds the first matching row.

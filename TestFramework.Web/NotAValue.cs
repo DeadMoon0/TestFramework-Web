@@ -4,20 +4,15 @@ using TestFramework.Core.Exceptions;
 namespace TestFramework.Web;
 
 /// <summary>
-/// The refusal every value verb gives when it is handed a variable, and what the compiler says before that.
+/// The refusal every value verb gives when it is handed a variable.
 /// </summary>
 /// <remarks>
 /// Each value verb - <c>WithParameter</c>, <c>WithJsonBody</c> - takes the plain value, and its <c>…From</c> twin
 /// takes a variable. A variable is never a value: stored as data it could only be read later by whatever unwrapped
-/// it, which the plan check cannot see. The hidden overloads that make this a compile error carry
-/// <see cref="Message"/>; this refusal covers a variable that reaches the value verb anyway, behind a caller's own
-/// generic helper.
+/// it, which the plan check cannot see, so a value verb refuses one while the timeline is built and names the twin.
 /// </remarks>
 internal static class NotAValue
 {
-    /// <summary>What the compiler says when a variable is passed to a value verb.</summary>
-    public const string Message = "A variable is not a value: this verb takes the value itself. Use its ...From twin, such as WithParameterFrom or WithJsonBodyFrom, to read a variable.";
-
     /// <summary>
     /// The refusal for a variable handed to a value verb.
     /// </summary>
