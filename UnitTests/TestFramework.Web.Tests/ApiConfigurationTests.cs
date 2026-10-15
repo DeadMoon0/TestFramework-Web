@@ -116,10 +116,10 @@ public class ApiConfigurationTests
     /// that the answer names the section rather than the package.
     /// </remarks>
     [Fact]
-    public void LoadWebConfigs_LeavesARunAbleToAnswer_EvenWithoutAnApiSection()
+    public void AddWeb_LeavesARunAbleToAnswer_EvenWithoutAnApiSection()
     {
         ServiceCollection services = new();
-        services.LoadWebConfigs(BuildConfiguration());
+        services.AddWeb(BuildConfiguration());
         services.AddSingleton(BuildConfiguration());
 
         using ServiceProvider provider = services.BuildServiceProvider();

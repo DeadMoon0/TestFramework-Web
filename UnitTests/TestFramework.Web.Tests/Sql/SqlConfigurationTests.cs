@@ -98,12 +98,12 @@ public class SqlConfigurationTests
     }
 
     [Fact]
-    public void LoadWebSqlConfigs_LeavesARunAbleToAnswer_EvenWithoutASqlSection()
+    public void AddWeb_LeavesARunAbleToAnswer_EvenWithoutASqlSection()
     {
         ServiceCollection services = new();
         IConfiguration configuration = BuildConfiguration();
 
-        services.LoadWebSqlConfigs(configuration);
+        services.AddWeb(configuration);
         services.AddSingleton(configuration);
 
         using ServiceProvider provider = services.BuildServiceProvider();

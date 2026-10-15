@@ -95,12 +95,12 @@ public class SiteConfigurationTests
     }
 
     [Fact]
-    public void LoadWebSiteConfigs_LeavesARunAbleToAnswer_EvenWithoutASiteSection()
+    public void AddWeb_LeavesARunAbleToAnswer_EvenWithoutASiteSection()
     {
         ServiceCollection services = new();
         IConfiguration configuration = BuildConfiguration();
 
-        services.LoadWebSiteConfigs(configuration);
+        services.AddWeb(configuration);
         services.AddSingleton(configuration);
 
         using ServiceProvider provider = services.BuildServiceProvider();
@@ -112,12 +112,12 @@ public class SiteConfigurationTests
     }
 
     [Fact]
-    public void LoadWebSiteConfigs_LetsARunReadTheSection()
+    public void AddWeb_LetsARunReadTheSection()
     {
         ServiceCollection services = new();
         IConfiguration configuration = BuildConfiguration(("Site:shop:BaseUrl", "http://localhost:5090/"));
 
-        services.LoadWebSiteConfigs(configuration);
+        services.AddWeb(configuration);
         services.AddSingleton(configuration);
 
         using ServiceProvider provider = services.BuildServiceProvider();

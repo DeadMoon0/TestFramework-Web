@@ -57,10 +57,10 @@ public class WebSetupExtensionTests
     }
 
     [Fact]
-    public void LoadWebConfigs_RegistersAConfiguredRedactor()
+    public void AddWeb_RegistersAConfiguredRedactor()
     {
         ServiceCollection services = new();
-        services.LoadWebConfigs(BuildConfiguration(("Web:SensitiveHeaders:0", "x-tenant-secret")));
+        services.AddWeb(BuildConfiguration(("Web:SensitiveHeaders:0", "x-tenant-secret")));
 
         HttpHeaderRedactor redactor = HttpHeaderRedactor.Resolve(services.BuildServiceProvider());
 

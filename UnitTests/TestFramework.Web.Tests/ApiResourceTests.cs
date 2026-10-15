@@ -197,7 +197,7 @@ public class ApiResourceTests(ITestOutputHelper output)
 
         ServiceCollection services = new ServiceCollection();
         services.AddSingleton(configuration);
-        services.LoadWebConfigs(configuration);
+        services.AddWeb(configuration);
 
         return services.BuildServiceProvider();
     }

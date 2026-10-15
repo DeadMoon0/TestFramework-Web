@@ -246,7 +246,7 @@ public class StubResourceTests(ITestOutputHelper output)
 
         ServiceCollection services = new ServiceCollection();
         services.AddSingleton(configuration);
-        services.LoadWebStubConfigs(configuration);
+        services.AddWeb(configuration);
 
         return services.BuildServiceProvider();
     }

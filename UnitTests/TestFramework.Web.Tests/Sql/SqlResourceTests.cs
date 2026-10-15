@@ -171,7 +171,7 @@ public class SqlResourceTests(ITestOutputHelper output)
 
         ServiceCollection services = new ServiceCollection();
         services.AddSingleton(configuration);
-        services.LoadWebSqlConfigs(configuration);
+        services.AddWeb(configuration);
 
         return services.BuildServiceProvider();
     }

@@ -180,10 +180,7 @@ public class ApiResourceGraphTests(ITestOutputHelper output)
         services.AddSingleton(configuration);
         // All four sections, because a run that configures a site and a stub loads both - and the point of the
         // graph is that a reader does not care which section an identifier came from.
-        services.LoadWebConfigs(configuration);
-        services.LoadWebSiteConfigs(configuration);
-        services.LoadWebSqlConfigs(configuration);
-        services.LoadWebStubConfigs(configuration);
+        services.AddWeb(configuration);
 
         return services.BuildServiceProvider();
     }
