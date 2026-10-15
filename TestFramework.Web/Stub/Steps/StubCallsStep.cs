@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using TestFramework.Config;
 using TestFramework.Core.Artifacts;
 using TestFramework.Core.Environment;
 using TestFramework.Core.Logging;

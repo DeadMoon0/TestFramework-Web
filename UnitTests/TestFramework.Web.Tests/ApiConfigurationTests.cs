@@ -1,4 +1,5 @@
-﻿using TestFramework.Core.Exceptions;
+﻿using TestFramework.Config;
+using TestFramework.Core.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Linq;

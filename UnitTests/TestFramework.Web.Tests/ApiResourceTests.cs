@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using TestFramework.Config;
 using TestFramework.Web.Auth;
 using System.Linq;
 using System.Threading.Tasks;

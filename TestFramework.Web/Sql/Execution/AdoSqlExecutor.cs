@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Dapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
+using TestFramework.Config;
 using TestFramework.Core.Steps;
 using TestFramework.Web.Sql.Exceptions;
 

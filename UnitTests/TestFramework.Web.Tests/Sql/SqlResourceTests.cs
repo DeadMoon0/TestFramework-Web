@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using TestFramework.Config;
 using TestFramework.Core.Environment;
 using TestFramework.Core.Environment.Graph;
 using TestFramework.Core.Exceptions;

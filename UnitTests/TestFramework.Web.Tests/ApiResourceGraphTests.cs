@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using TestFramework.Config;
 using TestFramework.Core.Environment.Graph;
 using TestFramework.Core.Steps;
 using TestFramework.Core.Steps.Options;

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using Microsoft.Extensions.DependencyInjection;
+using TestFramework.Config;
 using TestFramework.Core.Environment.Graph;
 using TestFramework.Core.Exceptions;
 using TestFramework.Core.Steps;
