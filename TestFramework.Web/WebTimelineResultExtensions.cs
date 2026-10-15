@@ -71,7 +71,8 @@ public static class WebTimelineResultExtensions
 
         // The expression carries the request and the timing, so an assertion failure identifies the
         // call without the reader having to re-run anything.
-        return run.Assert(response.StatusCode, $"'{label}' status of {response.Summary()}");
+        // The whole description: a failed status is diagnosed by the body the response came with.
+        return run.Assert(response.StatusCode, $"'{label}' status of {response}");
     }
 
     /// <summary>
@@ -96,7 +97,7 @@ public static class WebTimelineResultExtensions
     {
         ArgumentNullException.ThrowIfNull(run);
         HttpResponseContext response = run.Step(label).Response();
-        return run.Assert(response.Header(headerName), $"'{label}' header '{headerName}'");
+        return run.Assert(response.Header(headerName), $"'{label}' header '{headerName}' of {response}");
     }
 
     /// <summary>

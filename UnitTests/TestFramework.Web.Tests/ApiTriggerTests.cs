@@ -94,6 +94,21 @@ public class ApiTriggerTests(SampleApiFixture fixture)
     }
 
     [Fact]
+    public async Task AFailedStatusAssertion_QuotesTheBodyOfTheUnsuccessfulResponse()
+    {
+        // The body of an error response is usually the diagnosis; a status assertion that fails without it
+        // sends the reader back to re-run the test with logging on.
+        Timeline timeline = Timeline.Create()
+            .Trigger(WebExt.Api.Http("sample").Get("api/items/does-not-exist").Call()).Name("missing")
+            .Build();
+
+        TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
+
+        Exception failure = Assert.ThrowsAny<Exception>(() => run.ApiStatus("missing").Should().Be(HttpStatusCode.OK));
+        Assert.Contains("\"id\":\"does-not-exist\"", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Post_SendsAJsonBodyAndCapturesTheCreatedLocation()
     {
         Timeline timeline = Timeline.Create()
