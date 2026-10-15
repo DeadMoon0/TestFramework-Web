@@ -160,7 +160,7 @@ public sealed record SqlScriptResult : StepResultContext
 }
 
 /// <summary>
-/// Runs a script, batch by batch.
+/// Runs a script: every batch in order, on one connection.
 /// </summary>
 public sealed class SqlScriptStep : SqlStepBase<SqlScriptResult>
 {

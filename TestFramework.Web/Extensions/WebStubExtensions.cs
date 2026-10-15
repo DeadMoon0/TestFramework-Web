@@ -13,7 +13,7 @@ public static class WebStubExtensions
     /// Loads stub configuration entries into the service collection.
     /// </summary>
     /// <remarks>Uses <c>null</c> for <c>provider</c>; the other overload states it.</remarks>
-    /// <param name="serviceCollection">The service collection to register the stub config store in.</param>
+    /// <param name="serviceCollection">The service collection to declare the stub section in.</param>
     /// <param name="configuration">The configuration root from which to load settings.</param>
     /// <returns>The service collection for fluent chaining.</returns>
     public static IServiceCollection LoadWebStubConfigs(this IServiceCollection serviceCollection, IConfiguration configuration)
@@ -22,7 +22,7 @@ public static class WebStubExtensions
     /// <summary>
     /// Loads stub configuration entries into the service collection.
     /// </summary>
-    /// <param name="serviceCollection">The service collection to register the stub config store in.</param>
+    /// <param name="serviceCollection">The service collection to declare the stub section in.</param>
     /// <param name="configuration">The configuration root from which to load settings.</param>
     /// <param name="provider">Optional custom configuration provider. Uses <see cref="DefaultStubConfigProvider"/> when omitted.</param>
     /// <returns>The service collection for fluent chaining.</returns>

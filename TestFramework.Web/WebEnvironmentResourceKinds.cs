@@ -169,10 +169,9 @@ public static class WebEnvironmentResourceKinds
     /// What a served site offers: where to reach it.
     /// </summary>
     /// <remarks>
-    /// One value, and per viewpoint, because that is the whole of what a site is to the rest of a run. What a
-    /// browser does about certificates is the browser's business rather than the site's, so it stays in the
-    /// configuration record and out of the graph - a kind lists what a resource offers others, not everything
-    /// its entry happens to say.
+    /// Where to reach it, per viewpoint, and whether its certificate may be untrusted. The second is here because a
+    /// step reads the site back from the run's values with <c>Configured&lt;SiteConfig&gt;</c>, so everything the
+    /// record holds has to travel through the run with it.
     /// </remarks>
     public static readonly ResourceKind SiteKind = ResourceKind
         .Named(Site)

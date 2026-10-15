@@ -13,7 +13,7 @@ namespace TestFramework.Web.Site.Configuration;
 /// <remarks>
 /// A site is the clearest case for describing configuration as a resource: the same identifier can be a
 /// deployed address somebody wrote down or a container that starts during the run, and nothing reading it
-/// should have to know which. It reads through the package's own provider, so the store and the graph cannot
+/// should have to know which. It reads through the package's own provider, so validation and the graph cannot
 /// disagree about what the entry said.
 /// </remarks>
 /// <param name="provider">Reads an entry, including whatever validation the caller configured.</param>

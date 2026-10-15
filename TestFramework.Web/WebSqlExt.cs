@@ -35,7 +35,7 @@ public class SqlProxy
     public SqlScalarStep<TValue> Scalar<TValue>(SqlIdentifier identifier, string statement) => new(identifier, statement, null);
 
     /// <summary>
-    /// Runs a script, batch by batch.
+    /// Runs a script: every batch in order, on one connection.
     /// </summary>
     /// <param name="identifier">The SQL identifier to run against.</param>
     /// <param name="script">The script to run.</param>

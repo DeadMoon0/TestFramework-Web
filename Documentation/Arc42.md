@@ -13,8 +13,10 @@ deployed API, an in-process host and a container, with only the environment diff
 
 - Targets `net8.0` and `net10.0`. The in-process hosting lane, when it lands, will require the test
   process to target at least the application's framework version.
-- Depends only on `TestFramework.Core`, `TestFramework.Config` and
-  `Microsoft.Extensions.Configuration`/`DependencyInjection`. No ASP.NET reference in the REST lane.
+- Depends on `TestFramework.Core`, `TestFramework.Config`,
+  `Microsoft.Extensions.Configuration`/`DependencyInjection`, and for the SQL lane `Dapper` and
+  `Microsoft.Data.SqlClient` (with `System.Security.Cryptography.Pkcs` pinned above the version SqlClient
+  pulls in). No ASP.NET reference in the REST lane.
 - Step results travel to the WPF debugging UI, so results must be plain serializable data.
 - Zero compiler warnings with `TreatWarningsAsErrors`; all public API carries XML documentation.
 
@@ -46,9 +48,10 @@ need is met.
 ## 5. Building Block View
 
 **`Configuration/`** — `ApiConfig` plus `ApiShape`, `IApiConfigProvider` and its
-default reading the `Api:<identifier>` section. `ApiConfigResolver` centralizes lookup so the
-"unknown identifier" message is identical everywhere. The store is registered even when no `Api`
-section exists, so a future environment can hydrate identifiers at run time.
+default reading the `Api:<identifier>` section. `ApiShape` declares that section to the run, which
+reads it once before the first step; a step asks with `context.Configured<ApiConfig>(identifier)`, and an
+unknown identifier is refused listing the declared ones. The shape is registered even when no `Api`
+section exists, so an environment can publish an entry at run time.
 
 **`Http/`** — `HttpRequestSpec` (resolved request, URI composition, message creation),
 `ApiRequestBuilderState` and `ComposedRequestVariable` (variable accumulation and resolution),
@@ -61,12 +64,12 @@ section exists, so a future environment can hydrate identifiers at run time.
 liveness-probe warmup tuning and request logging.
 
 **`Auth/`** — the mode enum, the provider interface, the configuration-driven provider, a delegate
-provider, and a variable-backed bearer provider resolved against the store at execution time.
+provider, and a variable-backed bearer provider resolved against the run's variables at execution time.
 
 **`Runtime/`** — `IWebComponentFactory` and the default implementation pooling `HttpClient`
 instances per identifier and per connection-relevant setting.
 
-**`Sql/`** — `SqlConfig` and its store, the model map (`Model/`) resolved from explicit
+**`Sql/`** — `SqlConfig` and its shape, the model map (`Model/`) resolved from explicit
 registrations, then attributes, then convention, the statement builder and ADO executor
 (`Execution/`), row artifacts and finders (`Artifacts/`), Act and Observe steps (`Steps/`), and
 `Schema/` generating table definitions from a map.
@@ -80,7 +83,7 @@ and the observation. The package declares and verifies stubs; it never hosts one
 A single API step:
 
 1. `ComposedRequestVariable.GetValue` resolves every variable into an `HttpRequestSpec`.
-2. `ApiConfigResolver` resolves the `ApiConfig`, failing with the registered identifiers listed.
+2. `context.Configured<ApiConfig>` reads the entry from the run, failing with the declared identifiers listed.
 3. `HttpRequestSpec.ResolveUri` composes the absolute URI, substituting and escaping route values
    and the query, and rejects unsubstituted tokens.
 4. `IWebComponentFactory.CreateSender` returns a pooled sender for that identifier.

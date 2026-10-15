@@ -69,8 +69,8 @@ public class ApiResourceTests(ITestOutputHelper output)
     public async Task TheShapeAndTheResolverAgreeOnEveryValue()
     {
         // The two directions of one mapping, written in different files: ApiShape puts a record into the
-        // graph, ApiConfigResolver reads one back out. If the shape published a value under a name the
-        // resolver does not read - or the other way round - this is what says so.
+        // graph, the shape's Read turns one back into a record. If it published a value under a name the
+        // reading side does not read - or the other way round - this is what says so.
         TimelineRun run = await Run(
             new PublishingEnvironment("orders", "http://127.0.0.1:49813/", healthPath: "/ready"),
             configured: [("Api:orders:BaseUrl", "http://localhost:5080/"), ("Api:orders:HealthPath", "/healthz")]);

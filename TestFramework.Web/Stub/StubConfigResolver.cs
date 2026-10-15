@@ -18,7 +18,7 @@ namespace TestFramework.Web.Stub;
 /// <remarks>
 /// <para>
 /// What is left of this class after configuration moved onto the run: only the part that is actually about
-/// stubs. Reading the record is <c>context.Config&lt;StubConfig&gt;(identifier)</c> now, one reader for the
+/// stubs. Reading the record is <c>context.Configured&lt;StubConfig&gt;(identifier)</c> now, one reader for the
 /// whole family, because every package's version of it was the same twelve lines with a different noun.
 /// </para>
 /// <para>
