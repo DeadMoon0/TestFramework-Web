@@ -27,7 +27,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Dapper" Version="2.1.66" />
-		<PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.2" />
+		<PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.7" />
 		<PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
 		<PackageReference Include="TestFramework.Config" Version="0.4.0" />
