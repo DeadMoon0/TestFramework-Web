@@ -1,7 +1,10 @@
 # Error Handling In TestFramework.Web
 
-Every exception in this package derives from `TimelineFrameworkException` and carries a friendly
-message, recovery steps and — where a set of valid values exists — the available options.
+Every failure a test can cause in this package derives from `TimelineFrameworkException` and carries a
+friendly message, recovery steps and — where a set of valid values exists — the available options.
+Asking a run for the wrong kind of result, or for a script file that is not there, is a
+`FrameworkConfigurationException`. An `InvalidOperationException` is left only for internal invariants: seeing one
+is a bug in the package, not in the test.
 
 The design rule: a failure message must be enough to fix the problem without re-running the test.
 

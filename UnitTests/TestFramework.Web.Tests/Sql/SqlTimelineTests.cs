@@ -97,6 +97,32 @@ public class SqlTimelineTests
     }
 
     [Fact]
+    public async Task AskingForTheWrongKindOfScalar_FailsWithAFrameworkExceptionNamingBothTypes()
+    {
+        RecordingSqlExecutor executor = new() { ScalarResult = _ => 7 };
+
+        Timeline timeline = Timeline.Create()
+            .Trigger(WebExt.Sql.Scalar<int>("main", "SELECT COUNT(*) FROM Orders")).Name("count")
+            .Build();
+
+        TimelineRun run = await timeline.SetupRun(CreateConfig(executor)).RunAsync();
+
+        FrameworkConfigurationException refused = Assert.Throws<FrameworkConfigurationException>(() => run.SqlScalar<long>("count"));
+        Assert.Contains("SqlScalarResult<Int64>", refused.Message, StringComparison.Ordinal);
+        Assert.Contains("SqlScalarResult<Int32>", refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AScriptFileThatIsNotThere_IsAConfigurationMistakeNamingThePath()
+    {
+        string missing = System.IO.Path.Combine(AppContext.BaseDirectory, "no-such-seed.sql");
+
+        FrameworkConfigurationException refused = Assert.Throws<FrameworkConfigurationException>(() => SqlScript.FromFile(missing));
+
+        Assert.Contains(missing, refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Script_KeepsPerBatchSemantics_ForAnExecutorThatDoesNotOverrideTheScriptMethod()
     {
         // RecordingSqlExecutor implements only the required members, exactly like an external

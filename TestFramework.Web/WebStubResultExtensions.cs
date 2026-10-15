@@ -22,7 +22,7 @@ public static class WebStubResultExtensions
         ArgumentNullException.ThrowIfNull(run);
 
         StubCallsResult result = run.Step(label).LastResult.Result as StubCallsResult
-            ?? throw ResultTypeMismatch(run, label, typeof(StubCallsResult));
+            ?? throw StepResultMismatch.For(run.Step(label), typeof(StubCallsResult));
 
         return run.Assert(result.Calls, $"'{label}' calls of {result}");
     }
@@ -41,7 +41,7 @@ public static class WebStubResultExtensions
         ArgumentNullException.ThrowIfNull(run);
 
         StubCallsResult result = run.Step(label).LastResult.Result as StubCallsResult
-            ?? throw ResultTypeMismatch(run, label, typeof(StubCallsResult));
+            ?? throw StepResultMismatch.For(run.Step(label), typeof(StubCallsResult));
 
         return run.Assert(result.UnmatchedCalls, $"'{label}' unmatched calls of {result}");
     }
@@ -56,16 +56,8 @@ public static class WebStubResultExtensions
         ArgumentNullException.ThrowIfNull(run);
 
         StubCalledResult result = run.Step(label).LastResult.Result as StubCalledResult
-            ?? throw ResultTypeMismatch(run, label, typeof(StubCalledResult));
+            ?? throw StepResultMismatch.For(run.Step(label), typeof(StubCalledResult));
 
         return run.Assert(result.Call, $"'{label}' call of {result}");
-    }
-
-    private static InvalidOperationException ResultTypeMismatch(TimelineRun run, string label, Type expected)
-    {
-        StepHandle handle = run.Step(label);
-        return new InvalidOperationException(
-            $"Step '{handle.Label ?? handle.Step.Name}' did not produce a {expected.Name}. "
-            + $"Its last result was '{handle.LastResult.Result?.GetType().Name ?? "null"}'.");
     }
 }

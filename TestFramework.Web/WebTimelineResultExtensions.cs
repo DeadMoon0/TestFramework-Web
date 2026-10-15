@@ -25,15 +25,13 @@ public static class WebTimelineResultExtensions
     /// </summary>
     /// <param name="handle">The executed step.</param>
     /// <returns>The captured response context.</returns>
-    /// <exception cref="InvalidOperationException">The step did not produce an API response.</exception>
+    /// <exception cref="FrameworkConfigurationException">The step did not produce an API response.</exception>
     public static HttpResponseContext Response(this StepHandle handle)
     {
         ArgumentNullException.ThrowIfNull(handle);
 
         return handle.LastResult.Result as HttpResponseContext
-            ?? throw new FrameworkConfigurationException(
-                $"Step '{handle.Label ?? handle.Step.Name}' did not produce an {nameof(HttpResponseContext)}. "
-                + $"Its last result was '{handle.LastResult.Result?.GetType().Name ?? "null"}'.");
+            ?? throw StepResultMismatch.For(handle, typeof(HttpResponseContext));
     }
 
     /// <summary>
@@ -41,15 +39,13 @@ public static class WebTimelineResultExtensions
     /// </summary>
     /// <param name="handle">The executed step.</param>
     /// <returns>The captured probe result.</returns>
-    /// <exception cref="InvalidOperationException">The step did not produce a probe result.</exception>
+    /// <exception cref="FrameworkConfigurationException">The step did not produce a probe result.</exception>
     public static ApiIsLiveResult ProbeResult(this StepHandle handle)
     {
         ArgumentNullException.ThrowIfNull(handle);
 
         return handle.LastResult.Result as ApiIsLiveResult
-            ?? throw new FrameworkConfigurationException(
-                $"Step '{handle.Label ?? handle.Step.Name}' did not produce an {nameof(ApiIsLiveResult)}. "
-                + $"Its last result was '{handle.LastResult.Result?.GetType().Name ?? "null"}'.");
+            ?? throw StepResultMismatch.For(handle, typeof(ApiIsLiveResult));
     }
 
     /// <summary>

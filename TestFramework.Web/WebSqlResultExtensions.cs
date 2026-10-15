@@ -27,7 +27,7 @@ public static class WebSqlResultExtensions
         ArgumentNullException.ThrowIfNull(run);
 
         SqlScalarResult<TValue> result = run.Step(label).LastResult.Result as SqlScalarResult<TValue>
-            ?? throw ResultTypeMismatch(run, label, typeof(SqlScalarResult<TValue>));
+            ?? throw StepResultMismatch.For(run.Step(label), typeof(SqlScalarResult<TValue>));
 
         return run.Assert(result.Value, $"'{label}' scalar from {result}");
     }
@@ -42,7 +42,7 @@ public static class WebSqlResultExtensions
         ArgumentNullException.ThrowIfNull(run);
 
         SqlExecuteResult result = run.Step(label).LastResult.Result as SqlExecuteResult
-            ?? throw ResultTypeMismatch(run, label, typeof(SqlExecuteResult));
+            ?? throw StepResultMismatch.For(run.Step(label), typeof(SqlExecuteResult));
 
         return run.Assert(result.AffectedRows, $"'{label}' affected rows of {result}");
     }
@@ -57,7 +57,7 @@ public static class WebSqlResultExtensions
         ArgumentNullException.ThrowIfNull(run);
 
         SqlIsLiveResult result = run.Step(label).LastResult.Result as SqlIsLiveResult
-            ?? throw ResultTypeMismatch(run, label, typeof(SqlIsLiveResult));
+            ?? throw StepResultMismatch.For(run.Step(label), typeof(SqlIsLiveResult));
 
         return run.Assert(result, $"'{label}' probe");
     }
@@ -73,13 +73,5 @@ public static class WebSqlResultExtensions
     {
         ArgumentNullException.ThrowIfNull(run);
         return run.Artifact<SqlRowArtifactData<TRow>>(artifactIdentifier).Select(data => data.Row);
-    }
-
-    private static InvalidOperationException ResultTypeMismatch(TimelineRun run, string label, Type expected)
-    {
-        StepHandle handle = run.Step(label);
-        return new InvalidOperationException(
-            $"Step '{handle.Label ?? handle.Step.Name}' did not produce a {expected.Name}. "
-            + $"Its last result was '{handle.LastResult.Result?.GetType().Name ?? "null"}'.");
     }
 }

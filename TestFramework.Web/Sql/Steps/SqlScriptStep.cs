@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using TestFramework.Core.Artifacts;
+using TestFramework.Core.Exceptions;
 using TestFramework.Core.Logging;
 using TestFramework.Core.Steps;
 using TestFramework.Core.Variables;
@@ -57,14 +58,14 @@ public sealed class SqlScript
     /// Creates a script from a file.
     /// </summary>
     /// <param name="path">The path to the script file.</param>
-    /// <exception cref="FileNotFoundException">The file does not exist.</exception>
+    /// <exception cref="FrameworkConfigurationException">The file does not exist.</exception>
     public static SqlScript FromFile(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
         string fullPath = Path.GetFullPath(path);
         if (!File.Exists(fullPath))
-            throw new FileNotFoundException($"The SQL script '{fullPath}' does not exist. Check the path and that the file is copied to the output directory.", fullPath);
+            throw new FrameworkConfigurationException($"The SQL script '{fullPath}' does not exist. Check the path and that the file is copied to the output directory.");
 
         return new SqlScript(File.ReadAllText(fullPath), Path.GetFileName(fullPath));
     }
