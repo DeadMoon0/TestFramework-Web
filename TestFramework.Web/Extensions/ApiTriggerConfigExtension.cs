@@ -15,7 +15,7 @@ public static class ApiTriggerConfigExtension
     /// Configures API trigger behaviour for the run.
     /// </summary>
     /// <param name="builder">The config instance builder.</param>
-    /// <param name="configure">Projects the defaults onto the configuration to use.</param>
+    /// <param name="configure">Projects the configuration so far onto the one to use; several calls apply in order.</param>
     /// <returns>The builder for fluent chaining.</returns>
     /// <example>
     /// <code>
@@ -38,14 +38,14 @@ public static class ApiTriggerConfigExtension
     /// Configures API trigger behaviour in a service collection.
     /// </summary>
     /// <param name="serviceCollection">The service collection to register the configuration in.</param>
-    /// <param name="configure">Projects the defaults onto the configuration to use.</param>
+    /// <param name="configure">Projects the configuration so far onto the one to use; several calls apply in order.</param>
     /// <returns>The service collection for fluent chaining.</returns>
     public static IServiceCollection ConfigureApiTrigger(this IServiceCollection serviceCollection, Func<ApiTriggerConfig, ApiTriggerConfig> configure)
     {
         ArgumentNullException.ThrowIfNull(serviceCollection);
         ArgumentNullException.ThrowIfNull(configure);
 
-        serviceCollection.AddSingleton(configure(new ApiTriggerConfig()));
+        TuningRegistrations.AddProjection(serviceCollection, configure);
         return serviceCollection;
     }
 

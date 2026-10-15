@@ -16,7 +16,7 @@
 		<RepositoryUrl>https://github.com/DeadMoon0/TestFramework-Web.git</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<Copyright>Copyright (c) DeadMoon0 2026</Copyright>
-		<PackageReleaseNotes>BREAKING - needs Core 0.7.0 and Config 0.4.0, and optional parameters became overloads and init properties, e.g. Stub.Calls(id).WithMethod(...).WithPath(...). BREAKING - a row whose key the database assigns leaves that key out, Row&lt;T&gt;(id), and hands it on with KeyTo; a custom SQL executor is registered with UseSqlExecutor(factory). SQL statements without a CommandTimeout run under the step timeout, redacted headers from configuration and code add up, and ConfigExtension is now WebConfigExtension.</PackageReleaseNotes>
+		<PackageReleaseNotes>BREAKING - needs Core 0.7.0 and Config 0.4.0, and optional parameters became overloads and init properties, e.g. Stub.Calls(id).WithMethod(...).WithPath(...). BREAKING - a row whose key the database assigns leaves that key out, Row&lt;T&gt;(id), and hands it on with KeyTo; a custom SQL executor is registered with UseSqlExecutor(factory). SQL statements without a CommandTimeout run under the step timeout, redacted headers, model maps and tuning calls add up instead of the last one winning, a second executor or credential provider is refused, and ConfigExtension is now WebConfigExtension.</PackageReleaseNotes>
 	</PropertyGroup>
 
 	<ItemGroup>

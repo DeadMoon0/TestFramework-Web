@@ -68,9 +68,7 @@ public static class WebSqlExtensions
         ArgumentNullException.ThrowIfNull(serviceCollection);
         ArgumentNullException.ThrowIfNull(configure);
 
-        SqlModelBuilder modelBuilder = new();
-        configure(modelBuilder);
-        serviceCollection.AddSingleton(SqlModelRegistry.CreateDefault(modelBuilder));
+        TuningRegistrations.AddModels(serviceCollection, configure);
         return serviceCollection;
     }
 
@@ -78,14 +76,14 @@ public static class WebSqlExtensions
     /// Configures SQL step behaviour for the run.
     /// </summary>
     /// <param name="builder">The config instance builder.</param>
-    /// <param name="configure">Projects the defaults onto the configuration to use.</param>
+    /// <param name="configure">Projects the configuration so far onto the one to use; several calls apply in order.</param>
     /// <returns>The builder for fluent chaining.</returns>
     public static IConfigInstanceBuilder ConfigureSqlSteps(this IConfigInstanceBuilder builder, Func<SqlStepConfig, SqlStepConfig> configure)
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configure);
 
-        builder.AddService(services => services.AddSingleton(configure(new SqlStepConfig())));
+        builder.AddService(services => TuningRegistrations.AddProjection(services, configure));
         return builder;
     }
 
@@ -100,7 +98,7 @@ public static class WebSqlExtensions
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(provider);
 
-        builder.AddService(services => services.AddSingleton(provider));
+        builder.AddService(services => TuningRegistrations.AddSingleOnly(services, provider, nameof(UseSqlCredentials)));
         return builder;
     }
 
@@ -115,7 +113,7 @@ public static class WebSqlExtensions
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(factory);
 
-        builder.AddService(services => services.AddSingleton(factory));
+        builder.AddService(services => TuningRegistrations.AddSingleOnly(services, factory, nameof(UseSqlExecutor)));
         return builder;
     }
 }

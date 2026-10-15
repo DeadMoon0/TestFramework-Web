@@ -31,6 +31,25 @@ public sealed class SqlModelBuilder
     }
 
     internal IReadOnlyDictionary<Type, SqlModelDefinition> Definitions => _definitions;
+
+    /// <summary>
+    /// Takes over another builder's mappings, refusing a model both of them map.
+    /// </summary>
+    /// <param name="other">The mappings of another registration.</param>
+    internal void Absorb(SqlModelBuilder other)
+    {
+        foreach ((Type model, SqlModelDefinition definition) in other._definitions)
+        {
+            if (!_definitions.TryAdd(model, definition))
+            {
+                throw new Core.Exceptions.FrameworkConfigurationException(
+                    $"'{model.Name}' is mapped by two AddWebSqlModels registrations, and the run cannot tell which mapping is meant.")
+                {
+                    RecoverySteps = [$"Map '{model.Name}' in one AddWebSqlModels call; the others can keep mapping their own models."],
+                };
+            }
+        }
+    }
 }
 
 /// <summary>
