@@ -54,7 +54,7 @@ internal sealed class StubShape(IStubConfigProvider provider) : ConfigShape<Stub
     /// two are guarded together - a name written here and not read there is a value nothing can ever see.
     /// </para>
     /// </remarks>
-    public override IReadOnlyDictionary<ValueKey, string> Values(StubConfig config)
+    public override IReadOnlyDictionary<ValueKey, string> Values(StubConfig config, string identifier)
     {
         ArgumentNullException.ThrowIfNull(config);
 

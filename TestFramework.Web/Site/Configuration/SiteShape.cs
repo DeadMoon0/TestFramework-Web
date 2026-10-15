@@ -47,7 +47,7 @@ internal sealed class SiteShape(ISiteConfigProvider provider) : ConfigShape<Site
     /// reachable at. A container serving the same identifier later publishes two genuinely different ones and
     /// overrides these.
     /// </remarks>
-    public override IReadOnlyDictionary<ValueKey, string> Values(SiteConfig config)
+    public override IReadOnlyDictionary<ValueKey, string> Values(SiteConfig config, string identifier)
     {
         ArgumentNullException.ThrowIfNull(config);
 

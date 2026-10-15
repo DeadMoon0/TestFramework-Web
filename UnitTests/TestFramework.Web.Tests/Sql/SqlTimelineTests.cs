@@ -375,6 +375,29 @@ public class SqlTimelineTests
         Assert.Contains("main", failure.ToString());
     }
 
+    [Fact]
+    public async Task AnEntryThatCannotCompose_IsRefusedUnderItsOwnIdentifier()
+    {
+        Timeline timeline = Timeline.Create()
+            .Trigger(WebExt.Sql.Execute("main", "DELETE FROM Orders")).Name("delete")
+            .Build();
+
+        // Coordinates, but a connection string the driver cannot read: the entry is 'main', whatever database it names.
+        ConfigInstance config = ConfigInstance.Create()
+            .OverrideConfig(new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["Sql:main:ConnectionString"] = "this is not a connection string",
+                ["Sql:main:Database"] = "SampleDb",
+            })
+            .LoadWebConfig()
+            .Build();
+
+        Exception failure = await Assert.ThrowsAnyAsync<Exception>(() => timeline.SetupRun(config).RunAsync());
+
+        Assert.Contains("Sql:main:", failure.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("Sql:SampleDb:", failure.ToString(), StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// An executor that takes the whole script, standing in for one that keeps a single connection.
     /// </summary>

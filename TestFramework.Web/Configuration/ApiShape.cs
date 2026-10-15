@@ -65,7 +65,7 @@ internal sealed class ApiShape(IApiConfigProvider provider) : ConfigShape<ApiCon
     /// from redacts them by construction rather than by whoever formats it remembering to.
     /// </para>
     /// </remarks>
-    public override IReadOnlyDictionary<ValueKey, string> Values(ApiConfig config)
+    public override IReadOnlyDictionary<ValueKey, string> Values(ApiConfig config, string identifier)
     {
         ArgumentNullException.ThrowIfNull(config);
 

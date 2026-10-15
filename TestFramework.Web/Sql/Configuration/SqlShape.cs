@@ -52,13 +52,14 @@ internal sealed class SqlShape(ISqlConfigProvider provider) : ConfigShape<SqlCon
     }
 
     /// <inheritdoc />
-    public override IReadOnlyDictionary<ValueKey, string> Values(SqlConfig config)
+    public override IReadOnlyDictionary<ValueKey, string> Values(SqlConfig config, string identifier)
     {
         ArgumentNullException.ThrowIfNull(config);
+        ArgumentException.ThrowIfNullOrWhiteSpace(identifier);
 
         Dictionary<ValueKey, string> values = [];
 
-        string? connectable = Connectable(config);
+        string? connectable = Connectable(config, identifier);
         if (connectable is { Length: > 0 } connectionString)
         {
             values[new ValueKey(ValueNames.ConnectionString, ResourceVantage.Host)] = connectionString;
@@ -146,15 +147,13 @@ internal sealed class SqlShape(ISqlConfigProvider provider) : ConfigShape<SqlCon
     /// compose is a load-time refusal with the factory's own message, which is what it always should have
     /// been.
     /// </remarks>
-    private static string? Connectable(SqlConfig config)
+    private static string? Connectable(SqlConfig config, string identifier)
     {
         if (!SqlConnectionStringFactory.HasCoordinates(config))
         {
             return null;
         }
 
-        // The shape never learns the identifier - Values(config) is the whole signature - so the entry's
-        // own database name is the best label a composition failure can carry.
-        return SqlConnectionStringFactory.Create(config.Database is { Length: > 0 } database ? database : "the Sql entry", config);
+        return SqlConnectionStringFactory.Create(identifier, config);
     }
 }
