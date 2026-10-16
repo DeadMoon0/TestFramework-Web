@@ -10,7 +10,7 @@ namespace TestFramework.Web;
 /// <summary>
 /// Entry point for the web-specific TestFramework DSL.
 /// </summary>
-public static class WebExt
+public static partial class WebExt
 {
     /// <summary>
     /// Access REST API triggers and liveness probes.
@@ -30,12 +30,12 @@ public static class WebExt
     /// <summary>
     /// Access artifact reference factories.
     /// </summary>
-    public static WebArtifactProxy Artifact { get; } = new WebArtifactProxy();
+    public static ArtifactProxy Artifact { get; } = new ArtifactProxy();
 
     /// <summary>
     /// Access artifact finder factories.
     /// </summary>
-    public static WebArtifactFinderProxy ArtifactFinder { get; } = new WebArtifactFinderProxy();
+    public static ArtifactFinderProxy ArtifactFinder { get; } = new ArtifactFinderProxy();
 
     /// <summary>
     /// Creates REST API steps for a configured identifier.

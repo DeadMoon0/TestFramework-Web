@@ -151,7 +151,7 @@ public abstract class StubStepBase<TResult> : Step<TResult>, IHasEnvironmentRequ
         if (watermark is null || !calls.Any(call => call.ReceivedAt is null))
             return;
 
-        if (StubObservationScope.Resolve(serviceProvider)?.ShouldWarnAboutUntimedCalls(StubIdentifier) != true)
+        if (!StubObservationScope.Resolve(serviceProvider).ShouldWarnAboutUntimedCalls(StubIdentifier))
             return;
 
         logger.LogWarning(
@@ -375,12 +375,12 @@ public sealed class StubResetStep : StubStepBase<StubCallsResult>
 
         StubConfig config = context.Configured<StubConfig>(StubIdentifier);
         StubAdminClient admin = StubConfigResolver.CreateAdminClient(context, StubIdentifier);
-        StubObservationScope? scope = StubObservationScope.Resolve(context.Services);
+        StubObservationScope scope = StubObservationScope.Resolve(context.Services);
 
         if (config.ResetMode == StubResetMode.ClearServerLog)
         {
             await admin.ResetCallsAsync(context.Deadline.Token).ConfigureAwait(false);
-            scope?.ClearWatermark(StubIdentifier);
+            scope.ClearWatermark(StubIdentifier);
 
             context.Logger.LogInformation("Stub '{0}' request log deleted on the server.", StubIdentifier.ToString());
             return new StubCallsResult(StubIdentifier, [], []);
@@ -391,15 +391,9 @@ public sealed class StubResetStep : StubStepBase<StubCallsResult>
         // runs somewhere else.
         IReadOnlyList<StubCall> existing = await admin.GetCallsAsync(context.Deadline.Token).ConfigureAwait(false);
         DateTimeOffset? watermark = StubCallMatcher.NewestTimestamp(existing);
-        scope?.SetWatermark(StubIdentifier, watermark);
+        scope.SetWatermark(StubIdentifier, watermark);
 
-        if (scope is null)
-        {
-            context.Logger.LogWarning(
-                $"Stub '{StubIdentifier}' could not record an observation watermark: no stub configuration was loaded into the run. "
-                + "Later observations will see the whole request log.");
-        }
-        else if (watermark is { } cutoff)
+        if (watermark is { } cutoff)
         {
             context.Logger.LogInformation(
                 "Stub '{0}' observation window starts after {1}; the {2} call(s) already logged are ignored.",

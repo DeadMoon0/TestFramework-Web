@@ -36,7 +36,7 @@ jobs:
         run: dotnet restore UnitTests/TestFramework.Web.Tests/TestFramework.Web.Tests.csproj
 
       - name: Run unit tests
-        run: dotnet test UnitTests/TestFramework.Web.Tests/TestFramework.Web.Tests.csproj --configuration Release --no-restore --filter "Category!=WindowsOnly&Category!=SqlServer" --logger "trx"
+        run: dotnet test UnitTests/TestFramework.Web.Tests/TestFramework.Web.Tests.csproj --configuration Release --no-restore --filter "Category!=SqlServer" --logger "trx"
 
   # The shipped ADO.NET executor only runs against a real server, so this leg gives it one. The password is
   # for a container that exists for the length of this job and is reachable from nowhere else.

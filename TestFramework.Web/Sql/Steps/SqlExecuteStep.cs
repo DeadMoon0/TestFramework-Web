@@ -109,7 +109,7 @@ public sealed class SqlExecuteStep : SqlStepBase<SqlExecuteResult>
     /// <inheritdoc />
     public override async Task<SqlExecuteResult?> Execute(RunContext context)
     {
-        (ISqlExecutor executor, IReadOnlyDictionary<string, object?> parameters) = Prepare(context);
+        (ISqlExecutor executor, _, IReadOnlyDictionary<string, object?> parameters) = Prepare(context);
 
         System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
         int affected = await executor.ExecuteAsync(SqlIdentifier, Statement, parameters, context.Deadline.Token).ConfigureAwait(false);

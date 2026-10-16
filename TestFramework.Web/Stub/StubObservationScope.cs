@@ -23,13 +23,17 @@ internal sealed class StubObservationScope
     private readonly ConcurrentDictionary<string, byte> _warnedAboutUntimedCalls = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Returns the scope registered for the run, or <see langword="null"/> when none is.
+    /// Returns the scope registered for the run.
     /// </summary>
+    /// <remarks>
+    /// Required rather than optional: the loader that makes a stub resolvable at all registers the scope with
+    /// it, so a run that reached a stub step without one is a broken registration, not a mode to fall back on.
+    /// </remarks>
     /// <param name="serviceProvider">The service provider for the current run.</param>
-    public static StubObservationScope? Resolve(IServiceProvider serviceProvider)
+    public static StubObservationScope Resolve(IServiceProvider serviceProvider)
     {
         ArgumentNullException.ThrowIfNull(serviceProvider);
-        return serviceProvider.GetService<StubObservationScope>();
+        return serviceProvider.GetRequiredService<StubObservationScope>();
     }
 
     /// <summary>
@@ -38,7 +42,7 @@ internal sealed class StubObservationScope
     /// <param name="serviceProvider">The service provider for the current run.</param>
     /// <param name="identifier">The stub identifier.</param>
     public static DateTimeOffset? WatermarkFor(IServiceProvider serviceProvider, string identifier)
-        => Resolve(serviceProvider)?.GetWatermark(identifier);
+        => Resolve(serviceProvider).GetWatermark(identifier);
 
     /// <summary>
     /// Records the newest timestamp already in the log, so later observations ignore it and everything before.

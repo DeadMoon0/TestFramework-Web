@@ -85,7 +85,8 @@ public abstract class SqlStepBase<TResult> : Step<TResult>, IHasEnvironmentRequi
     /// and once it does the other two parameters were only ever pieces of it.
     /// </remarks>
     /// <param name="context">The run.</param>
-    protected (ISqlExecutor Executor, IReadOnlyDictionary<string, object?> Parameters) Prepare(RunContext context)
+    /// <returns>The executor, the step configuration it was logged under, and the resolved parameters.</returns>
+    protected (ISqlExecutor Executor, SqlStepConfig StepConfig, IReadOnlyDictionary<string, object?> Parameters) Prepare(RunContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 
@@ -109,6 +110,6 @@ public abstract class SqlStepBase<TResult> : Step<TResult>, IHasEnvironmentRequi
                 described);
         }
 
-        return (executor, parameters);
+        return (executor, stepConfig, parameters);
     }
 }

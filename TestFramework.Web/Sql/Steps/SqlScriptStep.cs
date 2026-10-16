@@ -233,7 +233,7 @@ public sealed class SqlScriptStep : SqlStepBase<SqlScriptResult>
     /// <inheritdoc />
     public override async Task<SqlScriptResult?> Execute(RunContext context)
     {
-        (ISqlExecutor executor, IReadOnlyDictionary<string, object?> parameters) = Prepare(context);
+        (ISqlExecutor executor, _, IReadOnlyDictionary<string, object?> parameters) = Prepare(context);
 
         IReadOnlyList<string> batches = _script.SplitBatches();
         System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();

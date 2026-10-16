@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.Extensions.DependencyInjection;
+using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
 using TestFramework.Core.Artifacts;
@@ -9,7 +9,6 @@ using TestFramework.Core.Steps;
 using TestFramework.Core.Steps.Options;
 using TestFramework.Core.Variables;
 using TestFramework.Web.Sql.Execution;
-using System.ComponentModel;
 
 namespace TestFramework.Web.Sql.Steps;
 
@@ -94,7 +93,7 @@ public sealed class SqlScalarStep<TValue> : SqlStepBase<SqlScalarResult<TValue>>
     /// <param name="value">The variable carrying the value.</param>
     /// <returns>The same instance, for chaining.</returns>
     public SqlScalarStep<TValue> WithParameterFrom<TParameter>(string name, VariableReference<TParameter> value)
-{
+    {
         ((TestFramework.Core.IFreezable)this).EnsureNotFrozen();
         Parameters.Add(name, value);
         return this;
@@ -119,7 +118,7 @@ public sealed class SqlScalarStep<TValue> : SqlStepBase<SqlScalarResult<TValue>>
     /// <inheritdoc />
     public override async Task<SqlScalarResult<TValue>?> Execute(RunContext context)
     {
-        (ISqlExecutor executor, IReadOnlyDictionary<string, object?> parameters) = Prepare(context);
+        (ISqlExecutor executor, SqlStepConfig stepConfig, IReadOnlyDictionary<string, object?> parameters) = Prepare(context);
 
         System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
         TValue? value = await executor.ScalarAsync<TValue>(SqlIdentifier, Statement, parameters, context.Deadline.Token).ConfigureAwait(false);
@@ -128,7 +127,6 @@ public sealed class SqlScalarStep<TValue> : SqlStepBase<SqlScalarResult<TValue>>
         // Gated the way parameter values are, and for the same reason: a scalar read is real data - a
         // secret or a personal column lands in the log otherwise, with no opt-out. The value still reaches
         // the result and the run; only the log line withholds it.
-        SqlStepConfig stepConfig = context.Services.GetService<SqlStepConfig>() ?? new SqlStepConfig();
         string logged = stepConfig.LogParameterValues
             ? value?.ToString() ?? "null"
             : $"({typeof(TValue).Name}; enable {nameof(SqlStepConfig)}.{nameof(SqlStepConfig.LogParameterValues)} to log values)";
