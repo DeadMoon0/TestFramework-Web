@@ -109,8 +109,15 @@ internal sealed class ApiRequestBuilderState
         _authOverride = provider;
     }
 
+    /// <summary>
+    /// Freezes what has been accumulated so far into a request of its own.
+    /// </summary>
+    /// <remarks>
+    /// Every list is copied, so a builder that goes on to add more parts after <c>Call()</c> builds a
+    /// second request and leaves the trigger it already produced as it was.
+    /// </remarks>
     internal ComposedRequestVariable BuildVariable()
-        => new(_method, _path, _routeValues, _query, _headers, _multiHeaders, _headerDictionaries, _bodyTextFactory, _bodyBytes, _contentType, _authOverride, _inputs);
+        => new(_method, _path, [.. _routeValues], [.. _query], [.. _headers], [.. _multiHeaders], [.. _headerDictionaries], _bodyTextFactory, _bodyBytes, _contentType, _authOverride, [.. _inputs]);
 
     private void Track(VariableReferenceGeneric reference)
     {
@@ -125,16 +132,16 @@ internal sealed class ApiRequestBuilderState
 internal sealed class ComposedRequestVariable(
     HttpMethod method,
     VariableReference<string> path,
-    List<(string Name, VariableReference<string> Value)> routeValues,
-    List<(string Name, VariableReference<string> Value)> query,
-    List<(VariableReference<string> Key, VariableReference<string> Value)> headers,
-    List<(VariableReference<string> Key, VariableReference<string[]> Values)> multiHeaders,
-    List<VariableReference<Dictionary<string, string>>> headerDictionaries,
+    IReadOnlyList<(string Name, VariableReference<string> Value)> routeValues,
+    IReadOnlyList<(string Name, VariableReference<string> Value)> query,
+    IReadOnlyList<(VariableReference<string> Key, VariableReference<string> Value)> headers,
+    IReadOnlyList<(VariableReference<string> Key, VariableReference<string[]> Values)> multiHeaders,
+    IReadOnlyList<VariableReference<Dictionary<string, string>>> headerDictionaries,
     Func<VariableStore, string?>? bodyTextFactory,
     VariableReference<byte[]>? bodyBytes,
     string? contentType,
     IApiAuthenticationProvider? authOverride,
-    List<VariableReferenceGeneric> inputs) : VariableReference<HttpRequestSpec>
+    IReadOnlyList<VariableReferenceGeneric> inputs) : VariableReference<HttpRequestSpec>
 {
     public override bool RequireImmutability => false;
 

@@ -21,7 +21,7 @@ namespace TestFramework.Web.Http;
 /// </remarks>
 public sealed record HttpResponseContext : StepResultContext
 {
-    internal HttpResponseContext(string apiIdentifier, string requestMethod, Uri requestUri, HttpStatusCode statusCode, string? reasonPhrase, string? contentType, string? body, IReadOnlyDictionary<string, string[]> headers, TimeSpan elapsed)
+    internal HttpResponseContext(string apiIdentifier, string requestMethod, Uri requestUri, HttpStatusCode statusCode, string? reasonPhrase, string? contentType, string? body, byte[]? bodyBytes, IReadOnlyDictionary<string, string[]> headers, TimeSpan elapsed)
     {
         this.ApiIdentifier = apiIdentifier;
         this.RequestMethod = requestMethod;
@@ -30,6 +30,7 @@ public sealed record HttpResponseContext : StepResultContext
         this.ReasonPhrase = reasonPhrase;
         this.ContentType = contentType;
         this.Body = body;
+        this.BodyBytes = bodyBytes;
         this.Headers = headers;
         this.Elapsed = elapsed;
     }
@@ -67,7 +68,16 @@ public sealed record HttpResponseContext : StepResultContext
     /// <summary>
     /// The response body as text, when the response had content.
     /// </summary>
+    /// <remarks>
+    /// Decoded with the charset the response declares. For binary content such as an image or a file the
+    /// decoding loses bytes, so read <see cref="BodyBytes"/> there.
+    /// </remarks>
     public string? Body { get; }
+
+    /// <summary>
+    /// The response body exactly as it was received, when the response had content.
+    /// </summary>
+    public byte[]? BodyBytes { get; }
 
     /// <summary>
     /// Response and content headers, merged and case-insensitive.
@@ -171,6 +181,11 @@ public sealed record HttpResponseContext : StepResultContext
         TimeSpan elapsed,
         CancellationToken cancellationToken)
     {
+        // The bytes first: reading them buffers the content, so the text is decoded from that same buffer
+        // rather than from a stream the first read already consumed.
+        byte[]? bodyBytes = response.Content is null
+            ? null
+            : await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
         string? body = response.Content is null
             ? null
             : await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
@@ -191,6 +206,7 @@ public sealed record HttpResponseContext : StepResultContext
             response.ReasonPhrase,
             response.Content?.Headers.ContentType?.ToString(),
             body,
+            bodyBytes,
             new ReadOnlyDictionary<string, string[]>(headers),
             elapsed);
     }

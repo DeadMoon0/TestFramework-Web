@@ -7,12 +7,14 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using TestFramework.Config;
 using TestFramework.Core.Exceptions;
+using TestFramework.Core.Steps;
 using TestFramework.Core.Timelines;
 using TestFramework.Core.Timelines.Assertions;
 using TestFramework.Core.Variables;
 using TestFramework.Web.Builder.Stages;
 using TestFramework.Web.Exceptions;
 using TestFramework.Web.Extensions;
+using TestFramework.Web.Http;
 using TestFramework.Web.SampleApi;
 using TestFramework.Web.Trigger.IsLive;
 using Xunit;
@@ -368,26 +370,13 @@ public class ApiTriggerTests(SampleApiFixture fixture)
             .Trigger(WebExt.Api.Http("not-registered").Get("api/items").Call()).Label("unknown")
             .Build();
 
-        // Where it fails depends on the engine: from TestFramework.Core 0.6.0 the run is refused while it is
-        // planned, because nothing declares the identifier; an earlier engine refuses inside the step. Either
-        // way the failure is the family's own type, and it lists the identifiers that do exist.
-        FrameworkConfigurationException failure = await FailureOf(timeline, fixture.CreateConfig(), "unknown");
+        // Nothing declares the identifier, so the run is refused while it is planned - before any step runs -
+        // with the family's own type, listing the identifiers that do exist.
+        FrameworkConfigurationException failure = await Assert.ThrowsAsync<FrameworkConfigurationException>(
+            () => timeline.SetupRun(fixture.CreateConfig()).RunAsync());
 
         Assert.Contains("not-registered", failure.ToString());
         Assert.Contains("sample", failure.ToString());
-    }
-
-    private static async Task<FrameworkConfigurationException> FailureOf(Timeline timeline, ConfigInstance config, string label)
-    {
-        try
-        {
-            TimelineRun run = await timeline.SetupRun(config).RunAsync();
-            return Assert.IsType<FrameworkConfigurationException>(run.Step(label).LastResult.Exception);
-        }
-        catch (FrameworkConfigurationException refusedWhilePlanned)
-        {
-            return refusedWhilePlanned;
-        }
     }
 
     [Fact]
@@ -443,5 +432,76 @@ public class ApiTriggerTests(SampleApiFixture fixture)
         run.Step("healthy").Should().HaveThrown<ApiLivenessProbeException>();
         run.Assert(run.Step("healthy").LastResult.Exception!.Message, "probe failure message")
             .Should().Contain("HealthPath");
+    }
+
+    [Fact]
+    public async Task IsLive_Healthy_ProbesTheHealthPathBeneathTheBaseUrlsOwnPath()
+    {
+        // The API lives under a path of its own; the health path is relative to that, leading slash or not.
+        ConfigInstance config = fixture.CreateConfig(
+            "rooted",
+            values =>
+            {
+                values["Api:rooted:BaseUrl"] = fixture.BaseUrl + "api/";
+                values["Api:rooted:HealthPath"] = "/items";
+            });
+
+        Timeline timeline = Timeline.Create()
+            .Trigger(WebExt.Api.IsLive("rooted", ApiAlivenessLevel.Healthy)).Label("healthy")
+            .Build();
+
+        TimelineRun run = await timeline.SetupRun(config).RunAsync();
+
+        run.EnsureRanToCompletion();
+        using (run.AssertionScope())
+        {
+            run.ApiProbe("healthy").Select(probe => probe.StatusCode).Should().Be(HttpStatusCode.OK);
+            run.ApiProbe("healthy").Select(probe => probe.ProbeUri.AbsolutePath).Should().Be("/api/items");
+        }
+    }
+
+    [Fact]
+    public async Task ABinaryResponse_IsReadableAsTheExactBytesTheServerSent()
+    {
+        Timeline timeline = Timeline.Create()
+            .Trigger(WebExt.Api.Http("sample").Get("api/binary").Call()).Label("binary")
+            .Build();
+
+        TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
+
+        run.EnsureRanToCompletion();
+        byte[] expected = SampleApiHost.BinaryPayload();
+        run.Assert(run.Step("binary").Response().BodyBytes, "binary body")
+            .Should().Match(bytes => bytes is not null && bytes.SequenceEqual(expected), "is the payload byte for byte");
+    }
+
+    [Fact]
+    public async Task ARequestBuilderReusedAfterCall_LeavesTheRequestItAlreadyProducedUnchanged()
+    {
+        IApiPayloadStage request = WebExt.Api.Http("sample")
+            .Get("api/echo")
+            .WithQuery("first", Var.Const("1"));
+
+        Step<HttpResponseContext> firstCall = request.Call();
+        Step<HttpResponseContext> secondCall = request
+            .WithQuery("second", Var.Const("2"))
+            .WithHeader(Var.Const("x-second"), Var.Const("added-later"))
+            .Call();
+
+        Timeline timeline = Timeline.Create()
+            .Trigger(firstCall).Label("first")
+            .Trigger(secondCall).Label("second")
+            .Build();
+
+        TimelineRun run = await timeline.SetupRun(fixture.CreateConfig()).RunAsync();
+
+        run.EnsureRanToCompletion();
+        using (run.AssertionScope())
+        {
+            run.ApiBody("first").Should()
+                .Match(body => body is not null && !body.Contains("second", StringComparison.Ordinal) && !body.Contains("added-later", StringComparison.Ordinal),
+                    "carries nothing added after its Call()");
+            run.ApiBody("second").Should().Contain("first=1").And().Contain("second=2").And().Contain("added-later");
+        }
     }
 }

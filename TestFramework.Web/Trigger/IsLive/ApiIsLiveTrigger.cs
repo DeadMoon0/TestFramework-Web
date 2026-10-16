@@ -179,7 +179,7 @@ internal sealed class ApiIsLiveTrigger(ApiIdentifier identifier, VariableReferen
         || string.Equals(uri.Host, "host.docker.internal", StringComparison.OrdinalIgnoreCase);
 
     private Uri BuildProbeUri(ApiConfig config, ApiAlivenessLevel level)
-        => HttpRequestSpec.Join(identifier, config.BaseUrl, level == ApiAlivenessLevel.Reachable ? string.Empty : config.HealthPath);
+        => HttpRequestSpec.Join(identifier, config.BaseUrlRequired, level == ApiAlivenessLevel.Reachable ? string.Empty : config.HealthPath);
 
     private void EnsureProbeSucceeded(ApiAlivenessLevel level, HttpStatusCode statusCode, Uri probeUri)
     {

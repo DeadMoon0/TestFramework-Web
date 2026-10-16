@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using TestFramework.Config;
 using TestFramework.Core.Artifacts;
 using TestFramework.Core.Environment;
-using TestFramework.Core.Environment.Graph;
 using TestFramework.Core.Logging;
 using TestFramework.Core.Steps;
 using TestFramework.Core.Steps.Options;
@@ -180,18 +180,14 @@ public sealed class SqlIsLiveTrigger : Step<SqlIsLiveResult>, IHasEnvironmentReq
     /// Compares what <c>DB_NAME()</c> answered against the database this run knows the identifier by.
     /// </summary>
     /// <remarks>
-    /// The expected name comes from the run - the same value the graph carries for everything else -
-    /// because that is what the test author stated or the container published. A run that holds no name
-    /// for the identifier cannot verify one, and saying so beats quietly passing on whatever database the
-    /// login defaults to.
+    /// The expected name is read the way every other SQL site reads the entry - the configured record, as
+    /// this run knows it - because that is what the test author stated or the container published. A run
+    /// that holds no name for the identifier cannot verify one, and saying so beats quietly passing on
+    /// whatever database the login defaults to.
     /// </remarks>
     private void EnsureConfiguredDatabaseAnswered(RunContext context, string? answered)
     {
-        if (!context.Values.TryGet(
-                ValueRef.For(WebEnvironmentResourceKinds.Sql, _sqlIdentifier, WebEnvironmentResourceKinds.DatabaseNameValue),
-                ResourceVantage.Host,
-                out string? expected)
-            || expected is not { Length: > 0 })
+        if (context.Configured<SqlConfig>(_sqlIdentifier).Database is not { Length: > 0 } expected)
         {
             throw SqlConfigurationValidationException.InvalidValue(
                 _sqlIdentifier.ToString(),

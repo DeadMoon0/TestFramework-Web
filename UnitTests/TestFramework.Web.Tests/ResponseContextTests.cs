@@ -1,6 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Net.Http;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using TestFramework.Web.Exceptions;
 using TestFramework.Web.Http;
 using Xunit;
@@ -22,6 +26,7 @@ public class ResponseContextTests
             statusCode.ToString(),
             contentType,
             body,
+            body is null ? null : Encoding.UTF8.GetBytes(body),
             headers ?? new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase),
             TimeSpan.FromMilliseconds(12));
 
@@ -119,6 +124,22 @@ public class ResponseContextTests
 
         Assert.Contains("500", rendered, StringComparison.Ordinal);
         Assert.Contains("boom", rendered, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ATextBody_IsReadAsTextAndAsTheBytesThatCarriedIt()
+    {
+        byte[] utf8 = Encoding.UTF8.GetBytes("Grüße aus Köln");
+        using HttpResponseMessage message = new(HttpStatusCode.OK)
+        {
+            Content = new StringContent("Grüße aus Köln", Encoding.UTF8, "text/plain"),
+        };
+
+        HttpResponseContext response = await HttpResponseContext.FromHttpResponseAsync(
+            "sample", HttpMethod.Get, new Uri("http://localhost:5080/api/text"), message, TimeSpan.Zero, CancellationToken.None);
+
+        Assert.Equal("Grüße aus Köln", response.Body);
+        Assert.Equal(utf8, response.BodyBytes);
     }
 
     [Fact]

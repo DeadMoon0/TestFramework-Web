@@ -126,7 +126,7 @@ public sealed class HttpRequestSpec
     /// <param name="baseUrl">The configured base URL.</param>
     /// <param name="path">The relative path, or empty for the base itself.</param>
     /// <returns>The absolute URI.</returns>
-    internal static Uri Join(string identifier, string? baseUrl, string path)
+    internal static Uri Join(string identifier, string baseUrl, string path)
     {
         if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out Uri? baseUri))
             throw ApiConfigurationValidationException.InvalidValue(identifier, nameof(Configuration.ApiConfig.BaseUrl), $"'{baseUrl}' is not an absolute URL");

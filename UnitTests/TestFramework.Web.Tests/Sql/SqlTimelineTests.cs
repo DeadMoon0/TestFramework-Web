@@ -11,6 +11,7 @@ using TestFramework.Core.Timelines.Assertions;
 using TestFramework.Core.Variables;
 using TestFramework.Web.Extensions;
 using TestFramework.Web.Sql.Artifacts;
+using TestFramework.Web.Sql.Exceptions;
 using TestFramework.Web.Sql.Execution;
 using TestFramework.Web.Sql.Steps;
 using TestFramework.Web.Sql.Steps.IsLive;
@@ -217,6 +218,45 @@ public class SqlTimelineTests
     }
 
     [Fact]
+    public async Task IsLive_RefusesAConnectionThatAnswersAsAnotherDatabase()
+    {
+        RecordingSqlExecutor executor = new() { ScalarResult = _ => "master" };
+
+        Timeline timeline = Timeline.Create()
+            .Trigger(WebExt.Sql.IsLive("main", SqlAlivenessLevel.Database)).Label("live")
+            .Build();
+
+        TimelineRun run = await timeline.SetupRun(CreateConfig(executor)).RunAsync();
+
+        run.Step("live").Should().HaveThrown<SqlConfigurationValidationException>();
+        run.Assert(run.Step("live").LastResult.Exception!.Message, "probe failure message")
+            .Should().Contain("'master'").And().Contain("'SampleDb'");
+    }
+
+    [Fact]
+    public async Task IsLive_VerifiesAgainstTheDatabaseAConnectionStringNames()
+    {
+        RecordingSqlExecutor executor = new() { ScalarResult = _ => "Orders" };
+        ConfigInstance config = ConfigInstance.Create()
+            .OverrideConfig(new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["Sql:main:ConnectionString"] = "Server=localhost;Database=Orders;Integrated Security=true",
+            })
+            .LoadWebConfig()
+            .UseSqlExecutor(new FixedSqlExecutorFactory(executor))
+            .Build();
+
+        Timeline timeline = Timeline.Create()
+            .Trigger(WebExt.Sql.IsLive("main", SqlAlivenessLevel.Database)).Label("live")
+            .Build();
+
+        TimelineRun run = await timeline.SetupRun(config).RunAsync();
+
+        run.EnsureRanToCompletion();
+        run.SqlProbe("live").Select(probe => probe.Success).Should().Be(true);
+    }
+
+    [Fact]
     public async Task SeededRow_IsInsertedWhenAbsentAndDeletedOnTeardown()
     {
         RecordingSqlExecutor executor = new() { ScalarResult = _ => 0 };
@@ -357,19 +397,10 @@ public class SqlTimelineTests
             .LoadWebConfig()
             .Build();
 
-        // Where it fails depends on the engine: from TestFramework.Core 0.6.0 the run is refused while it is
-        // planned, because nothing declares the identifier; an earlier engine refuses inside the step. Either
-        // way the failure is the family's own type, and it lists the identifiers that do exist.
-        FrameworkConfigurationException failure;
-        try
-        {
-            TimelineRun run = await timeline.SetupRun(config).RunAsync();
-            failure = Assert.IsType<FrameworkConfigurationException>(run.Step("delete").LastResult.Exception);
-        }
-        catch (FrameworkConfigurationException refusedWhilePlanned)
-        {
-            failure = refusedWhilePlanned;
-        }
+        // Nothing declares the identifier, so the run is refused while it is planned - before any step runs -
+        // with the family's own type, listing the identifiers that do exist.
+        FrameworkConfigurationException failure = await Assert.ThrowsAsync<FrameworkConfigurationException>(
+            () => timeline.SetupRun(config).RunAsync());
 
         Assert.Contains("missing", failure.ToString());
         Assert.Contains("main", failure.ToString());

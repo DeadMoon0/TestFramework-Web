@@ -40,6 +40,12 @@ public static class SampleApiHost
     public const string BearerTokenValue = "sample-token";
 
     /// <summary>
+    /// The bytes the binary endpoint answers with: a PNG signature followed by bytes that are not valid UTF-8.
+    /// </summary>
+    /// <returns>A fresh copy, so no caller can change what the endpoint sends.</returns>
+    public static byte[] BinaryPayload() => [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0xFF, 0xFE, 0x80];
+
+    /// <summary>
     /// Name of the session cookie issued by the cookie endpoints.
     /// </summary>
     public const string SessionCookieName = "sample-session";
@@ -133,6 +139,8 @@ public static class SampleApiHost
         });
 
         app.MapGet("/api/status/{code}", (int code) => Results.StatusCode(code));
+
+        app.MapGet("/api/binary", () => Results.Bytes(BinaryPayload(), "image/png"));
 
         // Hands out a session cookie. Paired with /api/cookie/echo it shows whether a pooled client
         // is carrying a jar from an earlier run.
