@@ -104,7 +104,7 @@ public abstract class StubStepBase<TResult> : Step<TResult>, IHasEnvironmentRequ
 
     /// <inheritdoc />
     public IReadOnlyCollection<EnvironmentRequirement> GetEnvironmentRequirements(VariableStore variableStore)
-        => [new EnvironmentRequirement(WebEnvironmentResourceKinds.Stub, StubIdentifier)];
+        => [new EnvironmentRequirement(WebResourceKinds.Stub, StubIdentifier)];
 
     /// <inheritdoc />
     public override void DeclareIO(StepIOContract contract)

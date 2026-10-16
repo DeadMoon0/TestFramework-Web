@@ -33,7 +33,7 @@ internal sealed class SqlShape(ISqlConfigProvider provider) : ConfigShape<SqlCon
     public override string Section => DefaultSqlConfigProvider.SqlSelector;
 
     /// <inheritdoc />
-    public override ResourceKind Kind => WebEnvironmentResourceKinds.SqlKind;
+    public override ResourceKind Kind => WebResourceKinds.SqlKind;
 
     /// <inheritdoc />
     public override IReadOnlyList<string> Identifiers(IConfiguration configuration)
@@ -74,14 +74,14 @@ internal sealed class SqlShape(ISqlConfigProvider provider) : ConfigShape<SqlCon
             : connectable is { Length: > 0 } ? new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(connectable).InitialCatalog : null;
         if (databaseName is { Length: > 0 } database)
         {
-            values[new ValueKey(WebEnvironmentResourceKinds.DatabaseNameValue)] = database;
+            values[new ValueKey(WebResourceKinds.DatabaseNameValue)] = database;
         }
 
         // The one property that is not already inside the composed string: it bounds a command rather than a
         // connection, so nothing would carry it otherwise.
         if (config.CommandTimeout is { } commandTimeout)
         {
-            values[new ValueKey(WebEnvironmentResourceKinds.CommandTimeoutValue)] = commandTimeout.ToString("c", CultureInfo.InvariantCulture);
+            values[new ValueKey(WebResourceKinds.CommandTimeoutValue)] = commandTimeout.ToString("c", CultureInfo.InvariantCulture);
         }
 
         return values;
@@ -110,20 +110,20 @@ internal sealed class SqlShape(ISqlConfigProvider provider) : ConfigShape<SqlCon
         SqlConfig config = new SqlConfig
         {
             ConnectionString = Text(values, ValueNames.ConnectionString),
-            Database = Text(values, WebEnvironmentResourceKinds.DatabaseNameValue),
+            Database = Text(values, WebResourceKinds.DatabaseNameValue),
         };
 
-        if (values.TryGetValue(WebEnvironmentResourceKinds.CommandTimeoutValue, out string? commandTimeout))
+        if (values.TryGetValue(WebResourceKinds.CommandTimeoutValue, out string? commandTimeout))
         {
             config = config with
             {
                 CommandTimeout = ConfigValueRules.PositiveDuration(commandTimeout, out TimeSpan parsed)
                     ? parsed
                     : throw new FrameworkConfigurationException(
-                        $"The run holds '{commandTimeout}' as {WebEnvironmentResourceKinds.CommandTimeoutValue} for database '{identifier}', which cannot be read as a positive duration such as '00:00:30'.")
+                        $"The run holds '{commandTimeout}' as {WebResourceKinds.CommandTimeoutValue} for database '{identifier}', which cannot be read as a positive duration such as '00:00:30'.")
                     {
                         RecoverySteps = [
-                            $"Correct 'Sql:{identifier}:{WebEnvironmentResourceKinds.CommandTimeoutValue}', or the environment component that publishes it.",
+                            $"Correct 'Sql:{identifier}:{WebResourceKinds.CommandTimeoutValue}', or the environment component that publishes it.",
                         ],
                     },
             };

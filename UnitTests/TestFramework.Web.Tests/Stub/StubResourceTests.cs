@@ -159,7 +159,7 @@ public class StubResourceTests(ITestOutputHelper output)
             new PublishingEnvironment(
                 "payments",
                 "http://127.0.0.1:49812/",
-                settings: [(WebEnvironmentResourceKinds.PollIntervalValue, "00:00:02")]),
+                settings: [(WebResourceKinds.PollIntervalValue, "00:00:02")]),
             configured: [("Stub:payments:BaseUrl", "http://localhost:8080/"), ("Stub:payments:PollInterval", "00:00:00.250")]);
 
         run.EnsureRanToCompletion();
@@ -181,7 +181,7 @@ public class StubResourceTests(ITestOutputHelper output)
             new PublishingEnvironment(
                 "payments",
                 "http://127.0.0.1:49812/",
-                settings: [(WebEnvironmentResourceKinds.PollIntervalValue, "soon")]),
+                settings: [(WebResourceKinds.PollIntervalValue, "soon")]),
             configured: [("Stub:payments:BaseUrl", "http://localhost:8080/")]);
 
         TimelineRunFailedException failure = Assert.Throws<TimelineRunFailedException>(run.EnsureRanToCompletion);
@@ -276,14 +276,14 @@ public class StubResourceTests(ITestOutputHelper output)
 
             foreach ((string name, string value) in settings ?? [])
             {
-                resources.Produce(WebEnvironmentResourceKinds.StubKind, identifier, name, value);
+                resources.Produce(WebResourceKinds.StubKind, identifier, name, value);
             }
 
-            resources.Produce(WebEnvironmentResourceKinds.StubKind, identifier, ValueNames.BaseUrl, ResourceVantage.Host, baseUrl);
+            resources.Produce(WebResourceKinds.StubKind, identifier, ValueNames.BaseUrl, ResourceVantage.Host, baseUrl);
 
             if (adminPath is not null)
             {
-                resources.Produce(WebEnvironmentResourceKinds.StubKind, identifier, WebEnvironmentResourceKinds.AdminPathValue, adminPath);
+                resources.Produce(WebResourceKinds.StubKind, identifier, WebResourceKinds.AdminPathValue, adminPath);
             }
 
             return Task.FromResult<object?>(null);

@@ -147,7 +147,7 @@ public sealed class StubCalledEvent : Event<StubCalledEvent, StubCalledResult>, 
 
     /// <inheritdoc />
     public IReadOnlyCollection<EnvironmentRequirement> GetEnvironmentRequirements(VariableStore variableStore)
-        => [new EnvironmentRequirement(WebEnvironmentResourceKinds.Stub, _stubIdentifier)];
+        => [new EnvironmentRequirement(WebResourceKinds.Stub, _stubIdentifier)];
 
     /// <inheritdoc />
     public override void DeclareIO(StepIOContract contract)

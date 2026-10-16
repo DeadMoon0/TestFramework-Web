@@ -199,12 +199,12 @@ public class SqlResourceTests(ITestOutputHelper output)
         {
             EnvironmentResources resources = PublishOn(context);
 
-            resources.Produce(WebEnvironmentResourceKinds.SqlKind, identifier, ValueNames.ConnectionString, ResourceVantage.Host, connectionString);
-            resources.Produce(WebEnvironmentResourceKinds.SqlKind, identifier, ValueNames.ConnectionString, ResourceVantage.Network, "Server=sql,1433;Database=orders");
+            resources.Produce(WebResourceKinds.SqlKind, identifier, ValueNames.ConnectionString, ResourceVantage.Host, connectionString);
+            resources.Produce(WebResourceKinds.SqlKind, identifier, ValueNames.ConnectionString, ResourceVantage.Network, "Server=sql,1433;Database=orders");
 
             if (database is not null)
             {
-                resources.Produce(WebEnvironmentResourceKinds.SqlKind, identifier, WebEnvironmentResourceKinds.DatabaseNameValue, database);
+                resources.Produce(WebResourceKinds.SqlKind, identifier, WebResourceKinds.DatabaseNameValue, database);
             }
 
             return Task.FromResult<object?>(null);

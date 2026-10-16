@@ -57,7 +57,7 @@ internal sealed class HttpApiTrigger(ApiIdentifier identifier, ComposedRequestVa
     }
 
     public IReadOnlyCollection<EnvironmentRequirement> GetEnvironmentRequirements(VariableStore variableStore)
-        => [new EnvironmentRequirement(WebEnvironmentResourceKinds.RestApi, identifier)];
+        => [new EnvironmentRequirement(WebResourceKinds.RestApi, identifier)];
 
     public override async Task<HttpResponseContext?> Execute(RunContext context)
     {

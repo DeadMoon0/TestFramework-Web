@@ -24,7 +24,7 @@ internal sealed class StubShape(IStubConfigProvider provider) : ConfigShape<Stub
     public override string Section => DefaultStubConfigProvider.StubSelector;
 
     /// <inheritdoc />
-    public override ResourceKind Kind => WebEnvironmentResourceKinds.StubKind;
+    public override ResourceKind Kind => WebResourceKinds.StubKind;
 
     /// <inheritdoc />
     public override IReadOnlyList<string> Identifiers(IConfiguration configuration)
@@ -68,14 +68,14 @@ internal sealed class StubShape(IStubConfigProvider provider) : ConfigShape<Stub
 
         if (config.AdminPath is { Length: > 0 } adminPath)
         {
-            values[new ValueKey(WebEnvironmentResourceKinds.AdminPathValue)] = adminPath;
+            values[new ValueKey(WebResourceKinds.AdminPathValue)] = adminPath;
         }
 
         // Round-trip formats, not display ones: a duration goes out as ISO-8601 and a flag as "true" or
         // "false", so what comes back is what went in whatever the machine's culture is.
-        values[new ValueKey(WebEnvironmentResourceKinds.PollIntervalValue)] = config.PollInterval.ToString("c", CultureInfo.InvariantCulture);
-        values[new ValueKey(WebEnvironmentResourceKinds.AllowInvalidCertificatesValue)] = config.AllowInvalidCertificates ? "true" : "false";
-        values[new ValueKey(WebEnvironmentResourceKinds.ResetModeValue)] = config.ResetMode.ToString();
+        values[new ValueKey(WebResourceKinds.PollIntervalValue)] = config.PollInterval.ToString("c", CultureInfo.InvariantCulture);
+        values[new ValueKey(WebResourceKinds.AllowInvalidCertificatesValue)] = config.AllowInvalidCertificates ? "true" : "false";
+        values[new ValueKey(WebResourceKinds.ResetModeValue)] = config.ResetMode.ToString();
 
         return values;
     }
@@ -112,22 +112,22 @@ internal sealed class StubShape(IStubConfigProvider provider) : ConfigShape<Stub
 
         StubConfig config = new StubConfig { BaseUrl = baseUrl };
 
-        if (values.TryGetValue(WebEnvironmentResourceKinds.AdminPathValue, out string? adminPath) && adminPath is { Length: > 0 })
+        if (values.TryGetValue(WebResourceKinds.AdminPathValue, out string? adminPath) && adminPath is { Length: > 0 })
         {
             config = config with { AdminPath = adminPath };
         }
 
-        if (values.TryGetValue(WebEnvironmentResourceKinds.PollIntervalValue, out string? pollInterval))
+        if (values.TryGetValue(WebResourceKinds.PollIntervalValue, out string? pollInterval))
         {
-            config = config with { PollInterval = ParseTimeSpan(pollInterval, identifier, WebEnvironmentResourceKinds.PollIntervalValue) };
+            config = config with { PollInterval = ParseTimeSpan(pollInterval, identifier, WebResourceKinds.PollIntervalValue) };
         }
 
-        if (values.TryGetValue(WebEnvironmentResourceKinds.AllowInvalidCertificatesValue, out string? allowInvalid))
+        if (values.TryGetValue(WebResourceKinds.AllowInvalidCertificatesValue, out string? allowInvalid))
         {
-            config = config with { AllowInvalidCertificates = ParseBool(allowInvalid, identifier, WebEnvironmentResourceKinds.AllowInvalidCertificatesValue) };
+            config = config with { AllowInvalidCertificates = ParseBool(allowInvalid, identifier, WebResourceKinds.AllowInvalidCertificatesValue) };
         }
 
-        if (values.TryGetValue(WebEnvironmentResourceKinds.ResetModeValue, out string? resetMode))
+        if (values.TryGetValue(WebResourceKinds.ResetModeValue, out string? resetMode))
         {
             config = config with { ResetMode = ParseResetMode(resetMode, identifier) };
         }
@@ -148,7 +148,7 @@ internal sealed class StubShape(IStubConfigProvider provider) : ConfigShape<Stub
     private static StubResetMode ParseResetMode(string value, string identifier)
         => ConfigValueRules.DefinedEnum(value, out StubResetMode parsed)
             ? parsed
-            : throw Unparseable(value, identifier, WebEnvironmentResourceKinds.ResetModeValue, string.Join(" or ", Enum.GetNames<StubResetMode>()));
+            : throw Unparseable(value, identifier, WebResourceKinds.ResetModeValue, string.Join(" or ", Enum.GetNames<StubResetMode>()));
 
     private static FrameworkConfigurationException Unparseable(string value, string identifier, string valueName, string expected)
         => new FrameworkConfigurationException(

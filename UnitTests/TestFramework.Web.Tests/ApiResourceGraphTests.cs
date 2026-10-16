@@ -37,7 +37,7 @@ public class ApiResourceGraphTests(ITestOutputHelper output)
     public async Task AStepReadsAConfiguredApisAddressFromTheRun()
     {
         Timeline timeline = Timeline.Create()
-            .Trigger(new ReadsValueStep(WebEnvironmentResourceKinds.RestApi, "orders", ValueNames.BaseUrl)).Label("reads")
+            .Trigger(new ReadsValueStep(WebResourceKinds.RestApi, "orders", ValueNames.BaseUrl)).Label("reads")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(Configured(("Api:orders:BaseUrl", "http://localhost:5080/")), output.WriteLine).RunAsync();
@@ -53,7 +53,7 @@ public class ApiResourceGraphTests(ITestOutputHelper output)
         // A person writing one address wrote the address the thing answers on. Publishing it for the host
         // only would leave anything reading from inside the network with nothing, for no reason.
         Timeline timeline = Timeline.Create()
-            .Trigger(new ReadsValueStep(WebEnvironmentResourceKinds.RestApi, "orders", ValueNames.BaseUrl, ResourceVantage.Network)).Label("reads")
+            .Trigger(new ReadsValueStep(WebResourceKinds.RestApi, "orders", ValueNames.BaseUrl, ResourceVantage.Network)).Label("reads")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(Configured(("Api:orders:BaseUrl", "http://localhost:5080/")), output.WriteLine).RunAsync();
@@ -71,7 +71,7 @@ public class ApiResourceGraphTests(ITestOutputHelper output)
         IServiceProvider services = Configured(("Api:orders:BaseUrl", "http://localhost:5080/"));
 
         Timeline timeline = Timeline.Create()
-            .Trigger(new ReadsValueStep(WebEnvironmentResourceKinds.RestApi, "orders", ValueNames.BaseUrl)).Label("reads")
+            .Trigger(new ReadsValueStep(WebResourceKinds.RestApi, "orders", ValueNames.BaseUrl)).Label("reads")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(services, output.WriteLine).RunAsync();
@@ -88,7 +88,7 @@ public class ApiResourceGraphTests(ITestOutputHelper output)
     public async Task AStepReadsAConfiguredSitesAddressFromTheRun()
     {
         Timeline timeline = Timeline.Create()
-            .Trigger(new ReadsValueStep(WebEnvironmentResourceKinds.Site, "storefront", ValueNames.BaseUrl)).Label("reads")
+            .Trigger(new ReadsValueStep(WebResourceKinds.Site, "storefront", ValueNames.BaseUrl)).Label("reads")
             .Build();
 
         TimelineRun run = await timeline.SetupRun(Configured(("Site:storefront:BaseUrl", "http://localhost:5090/")), output.WriteLine).RunAsync();
@@ -102,8 +102,8 @@ public class ApiResourceGraphTests(ITestOutputHelper output)
     public async Task AStepReadsAConfiguredStubsAddressAndAdminPath()
     {
         Timeline timeline = Timeline.Create()
-            .Trigger(new ReadsValueStep(WebEnvironmentResourceKinds.Stub, "payments", ValueNames.BaseUrl)).Label("address")
-            .Trigger(new ReadsValueStep(WebEnvironmentResourceKinds.Stub, "payments", WebEnvironmentResourceKinds.AdminPathValue)).Label("admin")
+            .Trigger(new ReadsValueStep(WebResourceKinds.Stub, "payments", ValueNames.BaseUrl)).Label("address")
+            .Trigger(new ReadsValueStep(WebResourceKinds.Stub, "payments", WebResourceKinds.AdminPathValue)).Label("admin")
             .Build();
 
         TimelineRun run = await timeline
@@ -122,7 +122,7 @@ public class ApiResourceGraphTests(ITestOutputHelper output)
         // Composed from the parts by the package's own factory rather than by the shape, so the graph and
         // anything that connects agree on the spelling.
         Timeline timeline = Timeline.Create()
-            .Trigger(new ReadsValueStep(WebEnvironmentResourceKinds.Sql, "orders-db", ValueNames.ConnectionString)).Label("reads")
+            .Trigger(new ReadsValueStep(WebResourceKinds.Sql, "orders-db", ValueNames.ConnectionString)).Label("reads")
             .Build();
 
         TimelineRun run = await timeline
@@ -148,7 +148,7 @@ public class ApiResourceGraphTests(ITestOutputHelper output)
         // A name is one value for every viewpoint, unlike the coordinate: "orders" is what the database is
         // called from wherever you are looking at it.
         Timeline timeline = Timeline.Create()
-            .Trigger(new ReadsValueStep(WebEnvironmentResourceKinds.Sql, "orders-db", WebEnvironmentResourceKinds.DatabaseNameValue)).Label("reads")
+            .Trigger(new ReadsValueStep(WebResourceKinds.Sql, "orders-db", WebResourceKinds.DatabaseNameValue)).Label("reads")
             .Build();
 
         TimelineRun run = await timeline

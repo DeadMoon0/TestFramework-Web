@@ -46,7 +46,7 @@ public sealed class SqlDatabaseNameTests
         RunContext context = RunContext.Detached(services);
 
         return context.Values.TryGet(
-            ValueRef.For(WebEnvironmentResourceKinds.Sql, "main", WebEnvironmentResourceKinds.DatabaseNameValue),
+            ValueRef.For(WebResourceKinds.Sql, "main", WebResourceKinds.DatabaseNameValue),
             ResourceVantage.Host,
             out string? database)
             ? database

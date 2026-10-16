@@ -56,7 +56,7 @@ internal sealed class ApiIsLiveTrigger(ApiIdentifier identifier, VariableReferen
     }
 
     public IReadOnlyCollection<EnvironmentRequirement> GetEnvironmentRequirements(VariableStore variableStore)
-        => [new EnvironmentRequirement(WebEnvironmentResourceKinds.RestApi, identifier)];
+        => [new EnvironmentRequirement(WebResourceKinds.RestApi, identifier)];
 
     public override async Task<ApiIsLiveResult?> Execute(RunContext context)
     {

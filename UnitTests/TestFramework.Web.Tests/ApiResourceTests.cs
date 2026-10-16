@@ -225,12 +225,12 @@ public class ApiResourceTests(ITestOutputHelper output)
         {
             EnvironmentResources resources = PublishOn(context);
 
-            resources.Produce(WebEnvironmentResourceKinds.RestApiKind, identifier, ValueNames.BaseUrl, ResourceVantage.Host, baseUrl);
-            resources.Produce(WebEnvironmentResourceKinds.RestApiKind, identifier, ValueNames.BaseUrl, ResourceVantage.Network, "http://api:8080/");
+            resources.Produce(WebResourceKinds.RestApiKind, identifier, ValueNames.BaseUrl, ResourceVantage.Host, baseUrl);
+            resources.Produce(WebResourceKinds.RestApiKind, identifier, ValueNames.BaseUrl, ResourceVantage.Network, "http://api:8080/");
 
             if (healthPath is not null)
             {
-                resources.Produce(WebEnvironmentResourceKinds.RestApiKind, identifier, nameof(ApiConfig.HealthPath), healthPath);
+                resources.Produce(WebResourceKinds.RestApiKind, identifier, nameof(ApiConfig.HealthPath), healthPath);
             }
 
             return Task.FromResult<object?>(null);

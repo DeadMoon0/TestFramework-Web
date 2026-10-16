@@ -33,7 +33,7 @@ internal sealed class ApiShape(IApiConfigProvider provider) : ConfigShape<ApiCon
     public override string Section => DefaultApiConfigProvider.ApiSelector;
 
     /// <inheritdoc />
-    public override ResourceKind Kind => WebEnvironmentResourceKinds.RestApiKind;
+    public override ResourceKind Kind => WebResourceKinds.RestApiKind;
 
     /// <inheritdoc />
     public override IReadOnlyList<string> Identifiers(IConfiguration configuration)

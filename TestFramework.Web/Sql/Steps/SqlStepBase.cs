@@ -62,7 +62,7 @@ public abstract class SqlStepBase<TResult> : Step<TResult>, IHasEnvironmentRequi
 
     /// <inheritdoc />
     public IReadOnlyCollection<EnvironmentRequirement> GetEnvironmentRequirements(VariableStore variableStore)
-        => [new EnvironmentRequirement(WebEnvironmentResourceKinds.Sql, SqlIdentifier)];
+        => [new EnvironmentRequirement(WebResourceKinds.Sql, SqlIdentifier)];
 
     /// <inheritdoc />
     public override void DeclareIO(StepIOContract contract)

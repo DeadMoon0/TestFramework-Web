@@ -140,7 +140,7 @@ public sealed class SqlIsLiveTrigger : Step<SqlIsLiveResult>, IHasEnvironmentReq
 
     /// <inheritdoc />
     public IReadOnlyCollection<EnvironmentRequirement> GetEnvironmentRequirements(VariableStore variableStore)
-        => [new EnvironmentRequirement(WebEnvironmentResourceKinds.Sql, _sqlIdentifier)];
+        => [new EnvironmentRequirement(WebResourceKinds.Sql, _sqlIdentifier)];
 
     /// <inheritdoc />
     public override async Task<SqlIsLiveResult?> Execute(RunContext context)

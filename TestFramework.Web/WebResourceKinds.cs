@@ -9,7 +9,7 @@ namespace TestFramework.Web;
 /// satisfied. The same timeline therefore runs unchanged against a deployed API, an in-process
 /// host, or a container.
 /// </remarks>
-public static class WebEnvironmentResourceKinds
+public static class WebResourceKinds
 {
     /// <summary>
     /// REST API environment requirement kind.

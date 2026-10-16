@@ -23,7 +23,7 @@ internal sealed class SiteShape(ISiteConfigProvider provider) : ConfigShape<Site
     public override string Section => DefaultSiteConfigProvider.SiteSelector;
 
     /// <inheritdoc />
-    public override ResourceKind Kind => WebEnvironmentResourceKinds.SiteKind;
+    public override ResourceKind Kind => WebResourceKinds.SiteKind;
 
     /// <inheritdoc />
     public override IReadOnlyList<string> Identifiers(IConfiguration configuration)
