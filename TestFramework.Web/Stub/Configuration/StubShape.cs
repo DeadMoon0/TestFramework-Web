@@ -14,7 +14,7 @@ namespace TestFramework.Web.Stub.Configuration;
 /// </summary>
 /// <remarks>
 /// A stub is a resource like any other as far as the run is concerned: it has an address, and it has a control
-/// surface at a path on that address. Reading goes through the package's own provider so the store and the
+/// surface at a path on that address. Reading goes through the package's own provider so the steps and the
 /// graph agree on what the entry said.
 /// </remarks>
 /// <param name="provider">Reads an entry, including whatever validation the caller configured.</param>

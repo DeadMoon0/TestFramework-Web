@@ -31,24 +31,17 @@ public static class SqlConfigResolver
     /// </summary>
     /// <param name="context">The run.</param>
     /// <remarks>
-    /// <para>
-    /// The run is passed to the executor rather than through <see cref="Execution.ISqlExecutor"/>'s methods,
-    /// and that is the whole reason the seam did not have to change: an executor is built per run and holds
-    /// it, so <c>ExecuteAsync(identifier, statement, parameters, token)</c> keeps its exact shape and an
-    /// implementation somebody else wrote keeps working unchanged.
-    /// </para>
-    /// <para>
-    /// Such an implementation resolves its own connection strings, and one that reaches for a configuration
-    /// store finds nothing there now. That is the caller's choice to make; the shipped executor reads the run.
-    /// </para>
+    /// An executor is created per run by an <see cref="Execution.ISqlExecutorFactory"/>, which is handed the run,
+    /// so it resolves connections the way the steps do - <c>context.Configured&lt;SqlConfig&gt;(identifier)</c> -
+    /// and finds a database a container published. An <see cref="Execution.ISqlExecutor"/> registered as a
+    /// service is refused: it was built once, with no run to read.
     /// </remarks>
     public static Execution.ISqlExecutor ResolveExecutor(RunContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        // An executor registered as a service was a singleton handed nothing, so it could never see the run it
-        // executes for. Refused by name rather than ignored: ignoring it would silently swap the author's
-        // executor for the default one.
+        // Refused by name rather than ignored: ignoring it would silently swap the author's executor for the
+        // default one.
         if (context.Services.GetService<Execution.ISqlExecutor>() is { } registered)
         {
             throw new Core.Exceptions.FrameworkConfigurationException(

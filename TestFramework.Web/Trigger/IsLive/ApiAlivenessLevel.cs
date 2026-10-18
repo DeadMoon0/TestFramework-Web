@@ -22,5 +22,9 @@ public enum ApiAlivenessLevel
     /// <summary>
     /// The configured health path answers with a success status code and does not reject the configured credentials.
     /// </summary>
+    /// <remarks>
+    /// Under <c>Negotiate</c> the credentials ride on the connection, not on the request, so every probe carries
+    /// them and this level asks exactly what <see cref="Healthy"/> asks.
+    /// </remarks>
     Authenticated = 2,
 }

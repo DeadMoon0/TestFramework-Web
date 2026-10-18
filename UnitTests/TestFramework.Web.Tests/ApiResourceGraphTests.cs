@@ -27,7 +27,7 @@ namespace TestFramework.Web.Tests;
 /// asks the run and never learns who answered.
 /// </para>
 /// <para>
-/// The section is read once, by the same provider the package's own loader uses, so the store and the graph
+/// The section is read once, by the same provider the package's own loader uses, so the steps and the graph
 /// cannot come to different conclusions about what the file said.
 /// </para>
 /// </remarks>
@@ -64,10 +64,10 @@ public class ApiResourceGraphTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public async Task TheStoreAndTheGraphReadTheSameFile()
+    public async Task TheStepsAndTheGraphReadTheSameFile()
     {
-        // One reader, so the two cannot disagree about what the entry said. The store is what the package's
-        // own steps use; the graph is what anything else uses.
+        // One reader, so the two cannot disagree about what the entry said. Configured<T> is what the
+        // package's own steps use; the graph is what anything else uses.
         IServiceProvider services = Configured(("Api:orders:BaseUrl", "http://localhost:5080/"));
 
         Timeline timeline = Timeline.Create()
